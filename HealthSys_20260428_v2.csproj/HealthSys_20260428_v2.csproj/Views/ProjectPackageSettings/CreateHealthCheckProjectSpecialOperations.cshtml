@@ -1,0 +1,998 @@
+@model HealthSys_20260428_v2.csproj.Models.HealthProjectWizardViewModel
+
+@{
+    ViewData["Title"] = "問卷項目";
+    var routeMode = Model.IsEditMode ? "edit" : null;
+    var routeCode = Model.IsEditMode ? Model.Project.Code : null;
+    var routeProjectNo = Model.IsEditMode ? null : Model.Project.Code;
+    var routeIsPastHistory = Model.Project.IsPastHistoryEnabled ? "Y" : "N";
+    var routeIsOralCheck = Model.Project.IsOralCheckEnabled ? "Y" : "N";
+    var routeIsOnlineQuestion = Model.Project.IsOnlineQuestionEnabled ? "Y" : "N";
+    string DisplayText(string? value) => string.IsNullOrWhiteSpace(value) ? "尚未填寫" : value;
+    string Money(int amount) => amount.ToString("N0");
+    var selectedSpecialOperations = Model.SelectedSpecialOperations.Select(item => new
+    {
+        code = item.Code,
+        name = item.Name,
+        note = item.Note,
+        manualText = item.ManualText,
+        billingCategory = item.BillingCategory,
+        price = item.Price
+    });
+    var selectedSpecialOperationsJson = System.Text.Json.JsonSerializer.Serialize(selectedSpecialOperations);
+}
+
+<section class="project-wizard-page order-step special-operation-step" aria-label="問卷項目" data-special-page data-special-operations-url="@Url.Action("HealthCheckProjectSpecialOperationItems", "ProjectPackageSettings")">
+    <header class="project-wizard-heading">
+        <nav class="project-wizard-breadcrumb" aria-label="目前位置">
+            <span>首頁</span>
+            <span>系統設定</span>
+            <span>@(Model.IsEditMode ? "健檢專案編輯" : "健檢專案建立")</span>
+        </nav>
+    </header>
+
+    <nav class="project-wizard-stepper line" aria-label="@(Model.IsEditMode ? "編輯專案步驟" : "建立專案步驟")">
+        @foreach (var step in Model.Steps)
+        {
+            <div class="project-wizard-step @step.State">
+                <span class="project-wizard-step-number">@step.Number</span>
+                <span>
+                    <strong>@step.Title</strong>
+                    <small>@step.Subtitle</small>
+                </span>
+            </div>
+        }
+    </nav>
+
+    <section class="project-wizard-project-strip six" aria-label="專案資訊">
+        <article>
+            <span>專案名稱</span>
+            <strong>@DisplayText(Model.Project.Name)</strong>
+        </article>
+        <article>
+            <span>專案編號</span>
+            <strong>@Model.Project.Code</strong>
+        </article>
+        <article>
+            <span>醫令小計</span>
+            <strong>NT$ @Money(Model.MedicalOrderSubtotal)</strong>
+        </article>
+        <article>
+            <span>問卷項目</span>
+            <strong>NT$ <span data-special-project-special-subtotal>@Money(Model.SpecialOperationSubtotal)</span></strong>
+        </article>
+        <article>
+            <span>折扣</span>
+            <strong>- NT$ <span data-special-project-discount>@Money(Model.DiscountAmount)</span></strong>
+        </article>
+        <article>
+            <span>目前總額</span>
+            <strong>NT$ <span data-special-project-total>@Money(Model.FinalPrice)</span></strong>
+        </article>
+    </section>
+
+    <div class="suite-order-layout special-operation-layout">
+        <section class="project-wizard-card suite-panel suite-picker special-picker special-entry-card" aria-labelledby="special-picker-title">
+            <header class="suite-panel-header special-picker-header">
+                <h2 id="special-picker-title">可加入問卷項目</h2>
+            </header>
+
+            <div class="suite-category-tabs" aria-label="問卷項目分類" data-special-category-tabs></div>
+
+            <div class="suite-toolbar special-search-toolbar">
+                <div class="suite-category-control" data-special-category-control>
+                    <label>
+                        <span class="customer-action-icon sliders" aria-hidden="true"></span>
+                        <input type="search" placeholder="輸入分類，例如：檢" aria-label="搜尋問卷項目分類" data-special-category-search />
+                    </label>
+                    <button class="ghost-button suite-category-picker-button" type="button" data-special-category-picker aria-expanded="false" aria-controls="special-category-menu">
+                        <span class="package-category-icon stethoscope" aria-hidden="true"></span>
+                        <span>選項</span>
+                    </button>
+                    <div class="suite-category-menu special-category-menu" id="special-category-menu" data-special-category-menu hidden></div>
+                </div>
+                <label>
+                    <span class="customer-action-icon search" aria-hidden="true"></span>
+                    <input type="search" placeholder="搜尋問卷項目" aria-label="搜尋問卷項目" data-special-search />
+                </label>
+            </div>
+
+            <div class="suite-table-wrap">
+                <table class="suite-table special-available-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" aria-label="全選可加入問卷項目" data-special-select-all /></th>
+                            <th>問卷項目</th>
+                            <th>金額</th>
+                        </tr>
+                    </thead>
+                    <tbody data-special-available-body></tbody>
+                </table>
+            </div>
+
+            <footer class="suite-panel-footer">
+                <span data-special-available-summary>顯示 0 筆，共 0 筆</span>
+                <div class="pagination-controls suite-pagination-controls">
+                    <select class="page-select" aria-label="每頁顯示問卷項目筆數" data-special-page-size>
+                        <option value="10" selected>10項/頁</option>
+                        <option value="20">20項/頁</option>
+                        <option value="30">30項/頁</option>
+                        <option value="40">40項/頁</option>
+                        <option value="50">50項/頁</option>
+                    </select>
+                    <nav class="basic-pagination suite-pagination" aria-label="可加入問卷項目分頁" data-special-pagination></nav>
+                </div>
+            </footer>
+        </section>
+
+        <div class="suite-transfer" aria-label="問卷項目操作">
+            <button class="primary-button" type="button" data-special-add>
+                <span class="suite-transfer-icon arrow-right" aria-hidden="true"></span>
+                <span>加入</span>
+            </button>
+            <button class="ghost-button" type="button" data-special-remove>
+                <span class="suite-transfer-icon arrow-left" aria-hidden="true"></span>
+                <span>移除</span>
+            </button>
+            <button class="ghost-button" type="button" data-special-move-up>
+                <span class="suite-transfer-icon arrow-up" aria-hidden="true"></span>
+                <span>上移</span>
+            </button>
+            <button class="ghost-button" type="button" data-special-move-down>
+                <span class="suite-transfer-icon arrow-down" aria-hidden="true"></span>
+                <span>下移</span>
+            </button>
+        </div>
+
+        <section class="project-wizard-card suite-panel suite-selected special-selected" aria-labelledby="special-selected-title">
+            <header class="suite-panel-header">
+                <h2 id="special-selected-title">已選擇問卷項目</h2>
+                <div class="suite-header-actions">
+                    <button class="ghost-button danger" type="button" data-special-clear>
+                        <span class="customer-action-icon trash" aria-hidden="true"></span>
+                        <span>清空全部</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="suite-table-wrap selected">
+                <table class="suite-table special-selected-table">
+                    <thead>
+                        <tr>
+                            <th>操作</th>
+                            <th>項次</th>
+                            <th>問卷項目</th>
+                            <th>金額</th>
+                        </tr>
+                    </thead>
+                    <tbody data-special-selected-body></tbody>
+                </table>
+            </div>
+
+            <footer class="suite-total-panel special-total-panel" aria-label="問卷項目摘要">
+                <article>
+                    <span class="suite-total-icon green" aria-hidden="true"></span>
+                    <span>總項目數</span>
+                    <strong><span data-special-count>0</span></strong>
+                </article>
+                <article>
+                    <span class="suite-total-icon blue" aria-hidden="true"></span>
+                    <span>問卷項目小計</span>
+                    <strong>NT$ <span data-special-subtotal>@Money(Model.SpecialOperationSubtotal)</span></strong>
+                </article>
+                <article class="price">
+                    <span class="suite-total-icon amber" aria-hidden="true"></span>
+                    <span>專案售價</span>
+                    <strong>NT$ <span data-special-final-price>@Money(Model.FinalPrice)</span></strong>
+                </article>
+            </footer>
+        </section>
+    </div>
+
+    <footer class="project-wizard-footer">
+        <a class="ghost-button" asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProjectOrders" asp-route-mode="@routeMode" asp-route-code="@routeCode" asp-route-projectNo="@routeProjectNo" asp-route-isPastHistory="@routeIsPastHistory" asp-route-isOralCheck="@routeIsOralCheck" asp-route-isOnlineQuestion="@routeIsOnlineQuestion" data-special-carry-link>上一步</a>
+        <button class="ghost-button" type="button">
+            <span class="project-save-icon" aria-hidden="true"></span>
+            <span>@(Model.IsEditMode ? "儲存修改" : "儲存草稿")</span>
+        </button>
+        <a class="primary-button" asp-controller="ProjectPackageSettings" asp-action="ConfirmHealthCheckProject" asp-route-mode="@routeMode" asp-route-code="@routeCode" asp-route-projectNo="@routeProjectNo" asp-route-isPastHistory="@routeIsPastHistory" asp-route-isOralCheck="@routeIsOralCheck" asp-route-isOnlineQuestion="@routeIsOnlineQuestion" data-special-carry-link>下一步：確認發布</a>
+    </footer>
+</section>
+
+<script>
+    (function () {
+        const page = document.querySelector("[data-special-page]");
+
+        if (!page) {
+            return;
+        }
+
+        let availableOperations = [];
+        const initialSelectedOperations = @Html.Raw(selectedSpecialOperationsJson);
+        const sourceQuery = new URLSearchParams(window.location.search);
+        const availableBody = page.querySelector("[data-special-available-body]");
+        const categoryTabs = page.querySelector("[data-special-category-tabs]");
+        const categoryControl = page.querySelector("[data-special-category-control]");
+        const categorySearch = page.querySelector("[data-special-category-search]");
+        const categoryPicker = page.querySelector("[data-special-category-picker]");
+        const categoryMenu = page.querySelector("[data-special-category-menu]");
+        const searchInput = page.querySelector("[data-special-search]");
+        const selectAll = page.querySelector("[data-special-select-all]");
+        const availablePageSizeSelect = page.querySelector("[data-special-page-size]");
+        const availablePagination = page.querySelector("[data-special-pagination]");
+        const selectedBody = page.querySelector("[data-special-selected-body]");
+        const carryLinks = Array.from(page.querySelectorAll("[data-special-carry-link]"));
+        const specialOperationsUrl = page.dataset.specialOperationsUrl || "";
+        const medicalSubtotal = @Model.MedicalOrderSubtotal;
+        const discountAmount = @Model.DiscountAmount;
+        const checkedAvailableKeys = new Set();
+        let rowKeySeed = 0;
+        let selectedOperations = buildInitialSelectedOperations();
+        let activeSelectedKey = selectedOperations[0]?.rowKey || "";
+        let activeCategory = "";
+        let activeAvailablePage = 1;
+        let loadingAvailableOperations = true;
+        let availableLoadFailed = false;
+
+        function html(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function money(value) {
+            return Math.max(0, Number(value) || 0).toLocaleString("en-US");
+        }
+
+        function priceValue(value) {
+            return String(Math.max(0, Math.round(Number(value) || 0)));
+        }
+
+        function normalize(value) {
+            return String(value || "").trim().toUpperCase();
+        }
+
+        function operationKey(operation) {
+            return normalize(operation.code || operation.name);
+        }
+
+        function categoryKey(operation) {
+            if (operation._categoryKey) {
+                return operation._categoryKey;
+            }
+
+            const serverCategory = String(operation.categoryKey || operation.category || "").trim();
+
+            if (serverCategory) {
+                return serverCategory;
+            }
+
+            const firstChar = Array.from(String(operation.name || operation.code || "").trim())[0] || "";
+            const chineseNumberChars = "〇零一二三四五六七八九十百千萬万億亿兩两壹貳贰參叁肆伍陸陆柒捌玖拾佰仟";
+            const chineseOrdinalChars = "甲乙丙丁戊己庚辛壬癸";
+
+            if (!/^[\u4E00-\u9FFF]$/.test(firstChar)
+                || chineseNumberChars.includes(firstChar)
+                || chineseOrdinalChars.includes(firstChar)) {
+                return "其他";
+            }
+
+            return firstChar;
+        }
+
+        function prepareAvailableOperation(operation) {
+            const item = {
+                code: String(operation.code || "").trim(),
+                name: String(operation.name || "").trim(),
+                note: String(operation.note || "").trim(),
+                manualText: String(operation.manualText || "").trim(),
+                billingCategory: String(operation.billingCategory || "問卷項目").trim(),
+                price: Math.max(0, Number(operation.price) || 0),
+                category: String(operation.category || operation.categoryName || "").trim(),
+                categoryKey: String(operation.categoryKey || operation.category || "").trim()
+            };
+
+            item._categoryKey = categoryKey(item);
+            item._searchText = normalize([item.name, item.code, item.note].join(" "));
+
+            return item;
+        }
+
+        function categoryTone(category, index) {
+            if (category === "其他") {
+                return "orange";
+            }
+
+            return ["teal", "green", "purple", "blue", "pink"][index % 5];
+        }
+
+        function categoryButton(category, index, attribute) {
+            const tone = categoryTone(category, index);
+
+            return '<button class="' + tone + '" type="button" ' + attribute + '="' + html(category) + '" aria-pressed="false"><span class="package-category-icon sample" aria-hidden="true"></span><span>' + html(category) + '</span></button>';
+        }
+
+        function categoryList() {
+            const allCategories = Array.from(new Set(availableOperations
+                .map(categoryKey)
+                .filter((value) => value)));
+            const categories = allCategories
+                .filter((value) => value !== "其他")
+                .sort((left, right) => left.localeCompare(right, "zh-Hant"));
+
+            return allCategories.includes("其他")
+                ? ["其他", ...categories]
+                : categories;
+        }
+
+        function nextRowKey() {
+            rowKeySeed += 1;
+            return "special-" + rowKeySeed;
+        }
+
+        function cloneOperation(operation) {
+            const manualText = String(operation.manualText || operation.note || "").trim();
+
+            return {
+                rowKey: operation.rowKey || nextRowKey(),
+                code: String(operation.code || "").trim(),
+                name: String(operation.name || "").trim(),
+                note: manualText,
+                manualText: manualText,
+                billingCategory: String(operation.billingCategory || "問卷項目").trim(),
+                price: Math.max(0, Number(operation.price) || 0)
+            };
+        }
+
+        function parseSelectedPayload() {
+            if (!sourceQuery.has("selectedSpecialOperations")) {
+                return initialSelectedOperations.map(cloneOperation);
+            }
+
+            const value = sourceQuery.get("selectedSpecialOperations") || "";
+
+            try {
+                const parsed = JSON.parse(value);
+
+                return Array.isArray(parsed) ? parsed.map(cloneOperation) : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function buildInitialSelectedOperations() {
+            return parseSelectedPayload().filter((operation) => {
+                return operation.code || operation.name || operation.manualText;
+            });
+        }
+
+        function selectedSpecialValue() {
+            return JSON.stringify(selectedOperations.map((operation) => ({
+                code: operation.code,
+                name: operation.name,
+                category: "",
+                categoryKey: "",
+                note: operation.manualText,
+                manualText: operation.manualText,
+                billingCategory: operation.billingCategory,
+                price: operation.price
+            })));
+        }
+
+        function renderCategories() {
+            if (!categoryTabs) {
+                return;
+            }
+
+            const categories = categoryList();
+
+            const buttons = [
+                '<button class="active blue" type="button" data-special-category="" aria-pressed="true"><span class="package-category-icon stethoscope" aria-hidden="true"></span><span>全部</span></button>'
+            ];
+
+            categories.forEach((category, index) => {
+                buttons.push(categoryButton(category, index, "data-special-category"));
+            });
+
+            categoryTabs.innerHTML = buttons.join("");
+
+            if (categoryMenu) {
+                const optionButtons = [
+                    '<button class="active blue" type="button" data-special-category-option="" aria-pressed="true"><span class="package-category-icon stethoscope" aria-hidden="true"></span><span>全部</span></button>'
+                ];
+                const menuButtons = [];
+
+                categories.forEach((category, index) => {
+                    optionButtons.push(categoryButton(category, index, "data-special-category-option"));
+                });
+
+                for (let index = 0; index < optionButtons.length; index += 5) {
+                    const group = optionButtons.slice(index, index + 5);
+                    const groupLabel = "分類第 " + (Math.floor(index / 5) + 1) + " 組";
+                    menuButtons.push('<div class="special-category-menu-group" role="group" aria-label="' + groupLabel + '">');
+                    menuButtons.push(...group);
+                    menuButtons.push('</div>');
+                }
+
+                categoryMenu.innerHTML = menuButtons.join("");
+            }
+
+            syncCategoryButtons();
+        }
+
+        function syncCategoryButtons() {
+            const activeText = normalize(activeCategory);
+            const buttons = Array.from(page.querySelectorAll("[data-special-category], [data-special-category-option]"));
+
+            buttons.forEach((button) => {
+                const value = normalize(button.getAttribute("data-special-category") ?? button.getAttribute("data-special-category-option") ?? "");
+                const active = value === activeText;
+                button.classList.toggle("active", active);
+                button.setAttribute("aria-pressed", String(active));
+            });
+        }
+
+        function closeCategoryMenu() {
+            if (!categoryMenu || !categoryPicker) {
+                return;
+            }
+
+            categoryMenu.hidden = true;
+            categoryPicker.setAttribute("aria-expanded", "false");
+        }
+
+        function toggleCategoryMenu() {
+            if (!categoryMenu || !categoryPicker) {
+                return;
+            }
+
+            const expanded = categoryMenu.hidden;
+            categoryMenu.hidden = !expanded;
+            categoryPicker.setAttribute("aria-expanded", String(expanded));
+        }
+
+        function setActiveCategory(category) {
+            activeCategory = category;
+
+            if (categorySearch) {
+                categorySearch.value = activeCategory;
+            }
+
+            syncCategoryButtons();
+            resetAvailablePaging(true);
+            renderAvailable();
+        }
+
+        function syncWizardLinks() {
+            carryLinks.forEach((link) => {
+                const url = new URL(link.href, window.location.href);
+
+                sourceQuery.forEach((value, key) => {
+                    if (key !== "selectedSpecialOperations") {
+                        url.searchParams.set(key, value);
+                    }
+                });
+
+                url.searchParams.set("selectedSpecialOperations", selectedSpecialValue());
+                link.href = url.href;
+            });
+        }
+
+        function selectedAvailableKeys() {
+            return new Set(selectedOperations
+                .map(operationKey)
+                .filter((key) => key));
+        }
+
+        function sourceByKey(key) {
+            return availableOperations.find((operation) => operationKey(operation) === key) || null;
+        }
+
+        function syncAvailableChecks() {
+            const selectedKeys = selectedAvailableKeys();
+            const checkboxes = Array.from(availableBody?.querySelectorAll("[data-special-check]") || []);
+
+            checkboxes.forEach((checkbox) => {
+                const key = checkbox.getAttribute("data-special-check") || "";
+                const isSelected = selectedKeys.has(key);
+
+                checkbox.disabled = isSelected;
+                checkbox.checked = !isSelected && checkedAvailableKeys.has(key);
+                checkbox.closest("[data-special-available]")?.classList.toggle("is-picked", checkbox.checked);
+                checkbox.closest("[data-special-available]")?.classList.toggle("is-disabled", isSelected);
+            });
+
+            if (selectAll) {
+                const enabledCheckboxes = checkboxes.filter((checkbox) => !checkbox.disabled);
+                const checkedCount = enabledCheckboxes.filter((checkbox) => checkbox.checked).length;
+                selectAll.disabled = enabledCheckboxes.length === 0;
+                selectAll.checked = enabledCheckboxes.length > 0 && checkedCount === enabledCheckboxes.length;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < enabledCheckboxes.length;
+            }
+        }
+
+        function getAvailablePageSize() {
+            const parsed = Number.parseInt(availablePageSizeSelect?.value || "10", 10);
+
+            return [10, 20, 30, 40, 50].includes(parsed) ? parsed : 10;
+        }
+
+        function getAvailablePageCount(rowCount) {
+            return Math.max(1, Math.ceil(rowCount / getAvailablePageSize()));
+        }
+
+        function clampAvailablePage(rowCount) {
+            activeAvailablePage = Math.min(Math.max(activeAvailablePage, 1), getAvailablePageCount(rowCount));
+        }
+
+        function resetAvailablePaging(clearChecked = true) {
+            activeAvailablePage = 1;
+
+            if (clearChecked) {
+                checkedAvailableKeys.clear();
+            }
+
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+        }
+
+        function visibleAvailablePages(pageCount) {
+            const maxVisible = 7;
+
+            if (pageCount <= maxVisible) {
+                return Array.from({ length: pageCount }, (_, index) => index + 1);
+            }
+
+            const pages = new Set([1, pageCount, activeAvailablePage]);
+
+            for (let offset = -2; offset <= 2; offset += 1) {
+                const pageNumber = activeAvailablePage + offset;
+
+                if (pageNumber > 1 && pageNumber < pageCount) {
+                    pages.add(pageNumber);
+                }
+            }
+
+            return Array.from(pages).sort((left, right) => left - right);
+        }
+
+        function createAvailablePageButton(text, pageNumber, options = {}) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = text;
+            button.setAttribute("aria-label", options.label || text);
+
+            if (options.active) {
+                button.classList.add("active");
+                button.setAttribute("aria-current", "page");
+            }
+
+            if (options.disabled) {
+                button.disabled = true;
+            } else {
+                button.addEventListener("click", function () {
+                    setAvailablePage(pageNumber);
+                });
+            }
+
+            return button;
+        }
+
+        function renderAvailablePagination(rowCount) {
+            if (!availablePagination) {
+                return;
+            }
+
+            const pageSize = getAvailablePageSize();
+            const pageCount = getAvailablePageCount(rowCount);
+
+            availablePagination.replaceChildren();
+
+            if (rowCount <= pageSize) {
+                return;
+            }
+
+            const atFirstPage = activeAvailablePage <= 1;
+            const atLastPage = activeAvailablePage >= pageCount;
+            const buttons = [
+                createAvailablePageButton("<<", 1, { disabled: atFirstPage, label: "第一頁" }),
+                createAvailablePageButton("<", activeAvailablePage - 1, { disabled: atFirstPage, label: "上一頁" }),
+                ...visibleAvailablePages(pageCount).map((pageNumber) => createAvailablePageButton(String(pageNumber), pageNumber, {
+                    active: pageNumber === activeAvailablePage,
+                    label: "第 " + pageNumber + " 頁"
+                })),
+                createAvailablePageButton(">", activeAvailablePage + 1, { disabled: atLastPage, label: "下一頁" }),
+                createAvailablePageButton(">>", pageCount, { disabled: atLastPage, label: "最後一頁" })
+            ];
+
+            availablePagination.replaceChildren(...buttons);
+        }
+
+        function setAvailablePage(pageNumber) {
+            activeAvailablePage = pageNumber;
+            renderAvailable();
+        }
+
+        function renderAvailable() {
+            if (!availableBody) {
+                return;
+            }
+
+            if (loadingAvailableOperations) {
+                availableBody.innerHTML = '<tr class="suite-empty-row"><td colspan="3">載入問卷項目...</td></tr>';
+                availablePagination?.replaceChildren();
+
+                const summary = page.querySelector("[data-special-available-summary]");
+
+                if (summary) {
+                    summary.textContent = "載入問卷項目...";
+                }
+
+                return;
+            }
+
+            if (availableLoadFailed) {
+                availableBody.innerHTML = '<tr class="suite-empty-row"><td colspan="3">問卷項目載入失敗</td></tr>';
+                availablePagination?.replaceChildren();
+
+                const summary = page.querySelector("[data-special-available-summary]");
+
+                if (summary) {
+                    summary.textContent = "載入失敗";
+                }
+
+                return;
+            }
+
+            const searchTerm = normalize(searchInput?.value);
+            const rows = availableOperations.filter((operation) => {
+                const text = operation._searchText || normalize([operation.name, operation.code, operation.note].join(" "));
+
+                return (!activeCategory || categoryKey(operation) === activeCategory)
+                    && (!searchTerm || text.includes(searchTerm));
+            });
+            clampAvailablePage(rows.length);
+
+            const pageSize = getAvailablePageSize();
+            const startIndex = (activeAvailablePage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, rows.length);
+            const pageRows = rows.slice(startIndex, endIndex);
+
+            availableBody.innerHTML = pageRows.length
+                ? pageRows.map((operation) => {
+                    const key = operationKey(operation);
+
+                    return [
+                        '<tr data-special-available="' + html(key) + '">',
+                        '<td><input type="checkbox" aria-label="選取 ' + html(operation.name) + '" data-special-check="' + html(key) + '" /></td>',
+                        '<td><strong>' + html(operation.name || operation.code) + '</strong></td>',
+                        '<td>NT$ ' + money(operation.price) + '</td>',
+                        '</tr>'
+                    ].join("");
+                }).join("")
+                : '<tr class="suite-empty-row"><td colspan="3">尚無問卷項目</td></tr>';
+
+            const summary = page.querySelector("[data-special-available-summary]");
+
+            if (summary) {
+                summary.textContent = rows.length
+                    ? `顯示第 ${startIndex + 1} - ${endIndex} 筆，共 ${rows.length} 筆`
+                    : "顯示 0 筆，共 0 筆";
+            }
+
+            renderAvailablePagination(rows.length);
+            syncAvailableChecks();
+        }
+
+        async function loadAvailableOperations() {
+            if (!specialOperationsUrl) {
+                loadingAvailableOperations = false;
+                availableLoadFailed = true;
+                renderAvailable();
+                return;
+            }
+
+            renderAvailable();
+
+            try {
+                const response = await fetch(specialOperationsUrl, {
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+
+                if (!response.ok) {
+                    availableLoadFailed = true;
+                    return;
+                }
+
+                const result = await response.json();
+                availableOperations = Array.isArray(result.items)
+                    ? result.items.map(prepareAvailableOperation)
+                    : [];
+                availableLoadFailed = false;
+            } catch {
+                availableLoadFailed = true;
+            } finally {
+                loadingAvailableOperations = false;
+                renderCategories();
+                resetAvailablePaging(false);
+                renderAvailable();
+            }
+        }
+
+        function clearAvailableChecks() {
+            checkedAvailableKeys.clear();
+            syncAvailableChecks();
+        }
+
+        function addOperation() {
+            const selectedKeys = selectedAvailableKeys();
+            let added = false;
+
+            Array.from(checkedAvailableKeys).forEach((key) => {
+                if (selectedKeys.has(key)) {
+                    return;
+                }
+
+                const source = sourceByKey(key);
+
+                if (!source) {
+                    return;
+                }
+
+                const operation = cloneOperation({
+                    code: source.code,
+                    name: source.name,
+                    note: "",
+                    manualText: "",
+                    billingCategory: source.billingCategory || "問卷項目",
+                    price: source.price || 0
+                });
+
+                selectedOperations.push(operation);
+                activeSelectedKey = operation.rowKey;
+                selectedKeys.add(key);
+                added = true;
+            });
+
+            if (!added) {
+                return;
+            }
+
+            clearAvailableChecks();
+            renderAvailable();
+            renderSelected();
+        }
+
+        function removeOperation(rowKey) {
+            selectedOperations = selectedOperations.filter((operation) => operation.rowKey !== rowKey);
+
+            if (activeSelectedKey === rowKey) {
+                activeSelectedKey = selectedOperations[0]?.rowKey || "";
+            }
+
+            renderAvailable();
+            renderSelected();
+        }
+
+        function moveActive(direction) {
+            const index = selectedOperations.findIndex((operation) => operation.rowKey === activeSelectedKey);
+            const targetIndex = index + direction;
+
+            if (index < 0 || targetIndex < 0 || targetIndex >= selectedOperations.length) {
+                return;
+            }
+
+            const [operation] = selectedOperations.splice(index, 1);
+            selectedOperations.splice(targetIndex, 0, operation);
+            renderSelected();
+        }
+
+        function renderSelected() {
+            if (!selectedBody) {
+                return;
+            }
+
+            selectedBody.innerHTML = selectedOperations.length
+                ? selectedOperations.map((operation, index) => [
+                    '<tr data-special-selected="' + html(operation.rowKey) + '" class="' + (operation.rowKey === activeSelectedKey ? "is-selected" : "") + '">',
+                    '<td><span class="suite-row-actions"><button type="button" data-special-remove-row="' + html(operation.rowKey) + '" aria-label="刪除 ' + html(operation.name) + '"><span class="customer-action-icon trash" aria-hidden="true"></span></button></span></td>',
+                    '<td>' + (index + 1) + '</td>',
+                    '<td><strong>' + html(operation.name || operation.code || operation.manualText) + '</strong></td>',
+                    '<td><label class="special-price-field"><span>NT$</span><input type="number" min="0" step="1" inputmode="numeric" value="' + html(priceValue(operation.price)) + '" aria-label="編輯 ' + html(operation.name || operation.code || operation.manualText) + ' 金額" data-special-price="' + html(operation.rowKey) + '" /></label></td>',
+                    '</tr>'
+                ].join("")).join("")
+                : '<tr class="suite-empty-row"><td colspan="4">尚未選擇問卷項目</td></tr>';
+
+            updateTotals();
+            syncWizardLinks();
+        }
+
+        function updateTotals() {
+            const specialCount = selectedOperations.length;
+            const specialSubtotal = selectedOperations.reduce((sum, operation) => sum + operation.price, 0);
+            const finalPrice = Math.max(0, medicalSubtotal + specialSubtotal - discountAmount);
+
+            page.querySelector("[data-special-count]").textContent = String(specialCount);
+            page.querySelector("[data-special-subtotal]").textContent = money(specialSubtotal);
+            page.querySelector("[data-special-final-price]").textContent = money(finalPrice);
+            page.querySelector("[data-special-project-special-subtotal]").textContent = money(specialSubtotal);
+            page.querySelector("[data-special-project-discount]").textContent = money(discountAmount);
+            page.querySelector("[data-special-project-total]").textContent = money(finalPrice);
+        }
+
+        function updateSelectedPrice(rowKey, value) {
+            const operation = selectedOperations.find((item) => item.rowKey === rowKey);
+
+            if (!operation) {
+                return;
+            }
+
+            operation.price = Math.max(0, Math.round(Number(value) || 0));
+            updateTotals();
+            syncWizardLinks();
+        }
+
+        availableBody?.addEventListener("click", function (event) {
+            const row = event.target.closest("[data-special-available]");
+            const checkbox = row?.querySelector("[data-special-check]");
+
+            if (!checkbox || checkbox.disabled) {
+                return;
+            }
+
+            if (!event.target.closest("input")) {
+                checkbox.checked = !checkbox.checked;
+            }
+
+            const key = checkbox.getAttribute("data-special-check") || "";
+
+            if (checkbox.checked) {
+                checkedAvailableKeys.add(key);
+            } else {
+                checkedAvailableKeys.delete(key);
+            }
+
+            syncAvailableChecks();
+        });
+
+        selectAll?.addEventListener("change", function () {
+            const checkboxes = Array.from(availableBody?.querySelectorAll("[data-special-check]") || [])
+                .filter((checkbox) => !checkbox.disabled);
+
+            checkboxes.forEach((checkbox) => {
+                const key = checkbox.getAttribute("data-special-check") || "";
+                checkbox.checked = selectAll.checked;
+
+                if (checkbox.checked) {
+                    checkedAvailableKeys.add(key);
+                } else {
+                    checkedAvailableKeys.delete(key);
+                }
+            });
+
+            syncAvailableChecks();
+        });
+
+        categoryTabs?.addEventListener("click", function (event) {
+            const button = event.target.closest("[data-special-category]");
+
+            if (!button) {
+                return;
+            }
+
+            setActiveCategory(button.getAttribute("data-special-category") || "");
+            closeCategoryMenu();
+        });
+
+        categoryMenu?.addEventListener("click", function (event) {
+            const button = event.target.closest("[data-special-category-option]");
+
+            if (!button) {
+                return;
+            }
+
+            setActiveCategory(button.getAttribute("data-special-category-option") || "");
+            closeCategoryMenu();
+        });
+
+        categoryPicker?.addEventListener("click", function () {
+            toggleCategoryMenu();
+        });
+
+        document.addEventListener("click", function (event) {
+            if (!categoryControl || categoryControl.contains(event.target)) {
+                return;
+            }
+
+            closeCategoryMenu();
+        });
+
+        categorySearch?.addEventListener("input", function () {
+            activeCategory = categorySearch.value.trim();
+            syncCategoryButtons();
+            resetAvailablePaging(true);
+            renderAvailable();
+        });
+
+        searchInput?.addEventListener("input", function () {
+            resetAvailablePaging(true);
+            renderAvailable();
+        });
+        availablePageSizeSelect?.addEventListener("change", function () {
+            resetAvailablePaging(false);
+            renderAvailable();
+        });
+
+        selectedBody?.addEventListener("click", function (event) {
+            const removeButton = event.target.closest("[data-special-remove-row]");
+            const row = event.target.closest("[data-special-selected]");
+            const priceInput = event.target.closest("[data-special-price]");
+
+            if (row) {
+                activeSelectedKey = row.getAttribute("data-special-selected") || "";
+            }
+
+            if (priceInput) {
+                return;
+            }
+
+            if (removeButton) {
+                removeOperation(removeButton.getAttribute("data-special-remove-row") || "");
+                return;
+            }
+
+            renderSelected();
+        });
+        selectedBody?.addEventListener("input", function (event) {
+            const input = event.target.closest("[data-special-price]");
+
+            if (!input) {
+                return;
+            }
+
+            activeSelectedKey = input.getAttribute("data-special-price") || "";
+            updateSelectedPrice(activeSelectedKey, input.value);
+        });
+        selectedBody?.addEventListener("change", function (event) {
+            const input = event.target.closest("[data-special-price]");
+
+            if (!input) {
+                return;
+            }
+
+            input.value = priceValue(input.value);
+            updateSelectedPrice(input.getAttribute("data-special-price") || "", input.value);
+        });
+
+        page.querySelector("[data-special-add]")?.addEventListener("click", addOperation);
+        page.querySelector("[data-special-remove]")?.addEventListener("click", function () {
+            if (activeSelectedKey) {
+                removeOperation(activeSelectedKey);
+            }
+        });
+        page.querySelector("[data-special-move-up]")?.addEventListener("click", function () {
+            moveActive(-1);
+        });
+        page.querySelector("[data-special-move-down]")?.addEventListener("click", function () {
+            moveActive(1);
+        });
+        page.querySelector("[data-special-clear]")?.addEventListener("click", function () {
+            selectedOperations = [];
+            activeSelectedKey = "";
+            checkedAvailableKeys.clear();
+            renderAvailable();
+            renderSelected();
+        });
+
+        renderAvailable();
+        renderSelected();
+        loadAvailableOperations();
+    })();
+</script>

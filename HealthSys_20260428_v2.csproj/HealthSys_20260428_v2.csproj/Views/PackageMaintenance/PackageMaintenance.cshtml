@@ -1,0 +1,416 @@
+﻿@model HealthSys_20260428_v2.csproj.Models.PackageMaintenanceViewModel
+
+@{
+    ViewData["Title"] = "組套維護";
+
+    IDictionary<string, string> PageRoute(int page) => new Dictionary<string, string>
+    {
+        ["startDate"] = Model.StartDate.ToString("yyyy-MM-dd"),
+        ["endDate"] = Model.EndDate.ToString("yyyy-MM-dd"),
+        ["projectName"] = Model.ProjectName,
+        ["packageName"] = Model.PackageName,
+        ["schemeCode"] = Model.SchemeCode,
+        ["customerName"] = Model.CustomerName,
+        ["page"] = page.ToString(),
+        ["pageSize"] = Model.PageSize.ToString()
+    };
+
+    IReadOnlyList<int> VisiblePages()
+    {
+        const int maxVisiblePages = 7;
+        var pageCount = Model.TotalPages;
+
+        if (pageCount <= maxVisiblePages)
+        {
+            var pages = Enumerable.Range(1, pageCount).ToList();
+            while (pages.Count < maxVisiblePages)
+            {
+                pages.Add(0);
+            }
+
+            return pages;
+        }
+
+        if (Model.Page <= 4)
+        {
+            return new[] { 1, 2, 3, 4, 5, -1, pageCount };
+        }
+
+        if (Model.Page >= pageCount - 3)
+        {
+            return new[] { 1, -1, pageCount - 4, pageCount - 3, pageCount - 2, pageCount - 1, pageCount };
+        }
+
+        return new[] { 1, -1, Model.Page - 1, Model.Page, Model.Page + 1, -1, pageCount };
+    }
+
+    var firstItem = Model.TotalCount == 0 ? 0 : ((Model.Page - 1) * Model.PageSize) + 1;
+    var lastItem = Math.Min(Model.Page * Model.PageSize, Model.TotalCount);
+}
+
+<section class="package-maintenance-page"
+         aria-label="組套維護"
+         data-update-scheme-code-url="@Url.Action("UpdateSchemeCode", "PackageMaintenance")">
+    <form class="package-anti-forgery-form" aria-hidden="true">
+        @Html.AntiForgeryToken()
+    </form>
+
+    <dialog class="package-scheme-dialog" data-scheme-editor aria-labelledby="package-scheme-dialog-title">
+        <form class="package-scheme-dialog-form" data-scheme-editor-form>
+            <header class="package-scheme-dialog-header">
+                <div>
+                    <span class="package-scheme-dialog-eyebrow">組套資料</span>
+                    <h2 id="package-scheme-dialog-title">編輯自訂碼</h2>
+                </div>
+                <button class="package-scheme-dialog-close" type="button" data-scheme-editor-close aria-label="關閉">×</button>
+            </header>
+
+            <div class="package-scheme-dialog-details">
+                <div class="package-scheme-dialog-detail-wide"><span>專案名稱</span><strong data-editor-project-name></strong></div>
+                <div class="package-scheme-dialog-detail-wide"><span>組套名稱</span><strong data-editor-package-name></strong></div>
+                <div><span>檢查日期</span><strong data-editor-check-date></strong></div>
+                <div><span>公司名稱</span><strong data-editor-customer-name></strong></div>
+            </div>
+
+            <label class="package-scheme-dialog-field">
+                <span>自訂碼</span>
+                <input type="text" data-editor-scheme-code autocomplete="off" />
+            </label>
+
+            <p class="package-scheme-dialog-error" data-editor-error role="alert" hidden></p>
+
+            <footer class="package-scheme-dialog-actions">
+                <button class="ghost-button" type="button" data-scheme-editor-cancel>取消編輯</button>
+                <button class="primary-button" type="submit" data-scheme-editor-submit>更新</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <form class="package-filter-panel" method="get" asp-controller="PackageMaintenance" asp-action="PackageMaintenance">
+        <div class="package-filter-grid">
+            <label class="package-field">
+                <span>檢查日期（起）</span>
+                <input type="date" name="startDate" value="@Model.StartDate.ToString("yyyy-MM-dd")" />
+            </label>
+            <label class="package-field">
+                <span>檢查日期（迄）</span>
+                <input type="date" name="endDate" value="@Model.EndDate.ToString("yyyy-MM-dd")" />
+            </label>
+            <label class="package-field">
+                <span>公司名稱</span>
+                <input type="search" name="customerName" value="@Model.CustomerName" placeholder="輸入公司名稱" />
+            </label>
+            <label class="package-field">
+                <span>專案名稱</span>
+                <input type="search" name="projectName" value="@Model.ProjectName" placeholder="輸入專案名稱" />
+            </label>
+            <label class="package-field">
+                <span>組套名稱</span>
+                <input type="search" name="packageName" value="@Model.PackageName" placeholder="輸入組套名稱" />
+            </label>
+            <label class="package-field">
+                <span>自訂碼</span>
+                <input type="search" name="schemeCode" value="@Model.SchemeCode" placeholder="輸入自訂碼" />
+            </label>
+        </div>
+        <div class="package-filter-actions">
+            <button class="primary-button" type="submit">查詢</button>
+            <a class="ghost-button" asp-controller="PackageMaintenance" asp-action="PackageMaintenance">清除條件</a>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="package-alert" role="alert">@Model.ErrorMessage</div>
+    }
+
+    <section class="package-grid-panel" aria-label="組套查詢結果">
+        <div class="package-table-wrap">
+            <table class="package-table">
+                <thead>
+                    <tr>
+                        <th>自訂碼</th>
+                        <th>檢查日期</th>
+                        <th>公司名稱</th>
+                        <th>專案名稱</th>
+                        <th>組套名稱</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Items.Count == 0)
+                    {
+                        <tr class="package-empty-row">
+                            <td colspan="5">查無符合條件的組套資料</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <button class="package-edit-scheme-button @(string.IsNullOrWhiteSpace(item.SchemeCode) ? "is-empty" : "has-code")"
+                                            type="button"
+                                            data-edit-scheme-code
+                                            data-project-no="@item.ProjectNo"
+                                            data-lis-item-name="@item.LisItemName"
+                                            data-scheme-code="@item.SchemeCode"
+                                            data-project-name="@item.ProjectName"
+                                            data-package-name="@item.PackageName"
+                                            data-check-date="@(item.CheckDate?.ToString("yyyy-MM-dd") ?? "")"
+                                            data-customer-name="@item.CustomerName">
+                                        @(string.IsNullOrWhiteSpace(item.SchemeCode) ? "編輯" : item.SchemeCode)
+                                    </button>
+                                </td>
+                                <td>@(item.CheckDate?.ToString("yyyy-MM-dd") ?? "")</td>
+                                <td>@item.CustomerName</td>
+                                <td>@item.ProjectName</td>
+                                <td>@item.PackageName</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="package-grid-footer">
+            <span>顯示 @firstItem - @lastItem 筆，共 @Model.TotalCount 筆</span>
+            <div class="pagination-controls">
+                <form method="get" asp-controller="PackageMaintenance" asp-action="PackageMaintenance" class="package-page-size-form">
+                    <input type="hidden" name="startDate" value="@Model.StartDate.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="endDate" value="@Model.EndDate.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="projectName" value="@Model.ProjectName" />
+                    <input type="hidden" name="packageName" value="@Model.PackageName" />
+                    <input type="hidden" name="schemeCode" value="@Model.SchemeCode" />
+                    <input type="hidden" name="customerName" value="@Model.CustomerName" />
+                    <select class="page-select" name="pageSize" aria-label="每頁筆數" onchange="this.form.submit()">
+                        @foreach (var option in Model.PageSizeOptions)
+                        {
+                            <option value="@option" selected="@(option == Model.PageSize ? "selected" : null)">@option 筆/頁</option>
+                        }
+                    </select>
+                </form>
+
+                <nav class="package-pagination" aria-label="組套列表分頁">
+                    <a class="@(Model.Page <= 1 ? "is-disabled" : "")"
+                       asp-all-route-data="@PageRoute(Math.Max(1, Model.Page - 1))"
+                       aria-label="上一頁"
+                       aria-disabled="@(Model.Page <= 1 ? "true" : "false")">‹</a>
+                    @foreach (var pageNumber in VisiblePages())
+                    {
+                        if (pageNumber == 0)
+                        {
+                            <span class="pagination-placeholder" aria-hidden="true"></span>
+                        }
+                        else if (pageNumber == -1)
+                        {
+                            <span class="pagination-ellipsis" aria-hidden="true">...</span>
+                        }
+                        else
+                        {
+                            <a class="@(pageNumber == Model.Page ? "active" : "")"
+                               asp-all-route-data="@PageRoute(pageNumber)"
+                               aria-label="第 @pageNumber 頁"
+                               aria-current="@(pageNumber == Model.Page ? "page" : null)">@pageNumber</a>
+                        }
+                    }
+                    <a class="@(Model.Page >= Model.TotalPages ? "is-disabled" : "")"
+                       asp-all-route-data="@PageRoute(Math.Min(Model.TotalPages, Model.Page + 1))"
+                       aria-label="下一頁"
+                       aria-disabled="@(Model.Page >= Model.TotalPages ? "true" : "false")">›</a>
+                </nav>
+            </div>
+        </footer>
+    </section>
+</section>
+
+<style>
+    .package-maintenance-page { display: grid; gap: 18px; padding: 24px; color: var(--app-text, #172033); }
+    .package-filter-panel, .package-grid-panel { border: 1px solid var(--app-border, #dfe5ee); border-radius: 14px; background: var(--app-surface, #fff); box-shadow: 0 5px 20px rgba(24, 40, 72, .06); }
+    .package-anti-forgery-form { display: none; }
+    .package-filter-panel { display: flex; align-items: flex-end; gap: 10px; padding: 14px; }
+    .package-filter-grid { display: grid; flex: 1 1 auto; grid-template-columns: repeat(6, minmax(112px, 1fr)); gap: 10px; min-width: 0; }
+    .package-field { display: grid; gap: 7px; font-size: 14px; font-weight: 650; }
+    .package-field-without-title { align-self: end; }
+    .package-field input, .package-page-size-form select { width: 100%; min-height: 40px; padding: 8px 11px; border: 1px solid var(--app-border, #cfd7e3); border-radius: 8px; background: var(--app-surface, #fff); color: inherit; font: inherit; }
+    .package-field input:focus, .package-page-size-form select:focus { border-color: var(--app-accent, #1677e8); outline: 3px solid rgba(var(--app-accent-rgb, 22, 119, 232), .14); }
+    .package-filter-actions { display: flex; flex: 0 0 auto; gap: 8px; }
+    .package-filter-actions .primary-button, .package-filter-actions .ghost-button { min-width: auto; padding-inline: 14px; white-space: nowrap; }
+    .package-filter-actions a { text-decoration: none; }
+    .package-alert { padding: 12px 15px; border: 1px solid #f0b7b7; border-radius: 10px; background: #fff3f3; color: #a42626; }
+    .package-grid-panel { min-width: 0; overflow: hidden; }
+    .package-table-wrap { overflow-x: auto; }
+    .package-table { width: 100%; min-width: 920px; border-collapse: collapse; }
+    .package-table th { padding: 13px 16px; background: var(--app-surface-muted, #f5f7fa); color: var(--app-text-muted, #556174); text-align: left; font-size: 13px; white-space: nowrap; }
+    .package-table td { padding: 13px 16px; border-top: 1px solid var(--app-border, #e4e9f0); vertical-align: middle; }
+    .package-table tbody tr:hover { background: rgba(var(--app-accent-rgb, 22, 119, 232), .045); }
+    .package-edit-scheme-button { min-width: 52px; max-width: 150px; min-height: 30px; overflow: hidden; padding: 4px 10px; border-radius: 6px; font: inherit; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+    .package-edit-scheme-button.has-code { border: 1px solid #86b8ef; background: #eaf3ff; color: #0f67c7; }
+    .package-edit-scheme-button.has-code:hover { border-color: #1677e8; background: #dcecff; }
+    .package-edit-scheme-button.is-empty { border: 1px solid #f1bd72; background: #fff5e5; color: #b45f06; }
+    .package-edit-scheme-button.is-empty:hover { border-color: #dc8a22; background: #ffecd0; }
+    .package-scheme-dialog { width: min(620px, calc(100vw - 32px)); padding: 0; border: 0; border-radius: 16px; background: #fff; color: var(--app-text, #172033); box-shadow: 0 24px 70px rgba(15, 35, 65, .28); }
+    .package-scheme-dialog::backdrop { background: rgba(15, 35, 65, .48); backdrop-filter: blur(3px); }
+    .package-scheme-dialog-form { display: grid; gap: 20px; padding: 24px; }
+    .package-scheme-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+    .package-scheme-dialog-header h2 { margin: 3px 0 0; font-size: 23px; }
+    .package-scheme-dialog-eyebrow { color: var(--blue, #1677e8); font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+    .package-scheme-dialog-close { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: #f1f5f9; color: #526176; font-size: 24px; line-height: 1; cursor: pointer; }
+    .package-scheme-dialog-close:hover { background: #e5edf6; color: #172033; }
+    .package-scheme-dialog-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .package-scheme-dialog-details > div { min-width: 0; display: grid; gap: 5px; padding: 13px 14px; border: 1px solid #e4eaf2; border-radius: 10px; background: #f8fafc; }
+    .package-scheme-dialog-details .package-scheme-dialog-detail-wide { grid-column: 1 / -1; }
+    .package-scheme-dialog-details span, .package-scheme-dialog-field > span { color: #687386; font-size: 12px; font-weight: 700; }
+    .package-scheme-dialog-details strong { overflow-wrap: anywhere; font-size: 14px; }
+    .package-scheme-dialog-field { display: grid; gap: 8px; }
+    .package-scheme-dialog-field input { width: 100%; min-height: 44px; padding: 9px 12px; border: 1px solid #cfd7e3; border-radius: 9px; color: inherit; font: inherit; box-sizing: border-box; }
+    .package-scheme-dialog-field input:focus { border-color: var(--blue, #1677e8); outline: 3px solid rgba(22, 119, 232, .14); }
+    .package-scheme-dialog-error { margin: -8px 0 0; padding: 10px 12px; border: 1px solid #f0b7b7; border-radius: 8px; background: #fff3f3; color: #a42626; font-size: 13px; }
+    .package-scheme-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+    .package-scheme-code { color: var(--app-accent, #1677e8); font-weight: 700; }
+    .package-empty-row td { height: 160px; color: var(--app-text-muted, #687386); text-align: center; }
+    .package-grid-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 16px; border-top: 1px solid var(--app-border, #e4e9f0); }
+    .package-page-size-form { display: flex; }
+    .package-page-size-form select { min-height: 30px; }
+    .package-maintenance-page .pagination-controls { flex-wrap: nowrap; }
+    .package-maintenance-page .package-pagination { width: 326px; display: grid; grid-template-columns: repeat(9, 34px); gap: 3px; margin-left: 0; }
+    .package-maintenance-page .package-pagination a,
+    .package-maintenance-page .package-pagination .pagination-placeholder,
+    .package-maintenance-page .package-pagination .pagination-ellipsis { width: 34px; min-width: 34px; max-width: 34px; height: 30px; display: inline-grid; place-items: center; padding: 0; border: 1px solid #e0e6ee; border-radius: 6px; background: #fff; color: #374151; font-size: 13px; font-weight: 400; text-decoration: none; }
+    .package-maintenance-page .package-pagination a:hover:not(.is-disabled):not(.active) { border-color: #a9c9ee; background: #f5faff; color: var(--blue, #1677e8); }
+    .package-maintenance-page .package-pagination a.active { color: #fff; border-color: var(--blue, #1677e8); background: var(--blue, #1677e8); }
+    .package-maintenance-page .package-pagination .pagination-ellipsis { border-color: transparent; background: transparent; color: #64748b; font-weight: 900; }
+    .package-maintenance-page .package-pagination .pagination-placeholder { visibility: hidden; pointer-events: none; }
+    .package-pagination .is-disabled { pointer-events: none; opacity: .45; }
+    @@media (max-width: 1300px) {
+        .package-filter-panel { align-items: stretch; flex-direction: column; }
+        .package-filter-grid { grid-template-columns: repeat(4, minmax(150px, 1fr)); width: 100%; }
+        .package-filter-actions { justify-content: flex-end; }
+    }
+    @@media (max-width: 900px) { .package-filter-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
+    @@media (max-width: 680px) {
+        .package-maintenance-page { padding: 14px; }
+        .package-grid-footer { align-items: stretch; flex-direction: column; }
+        .package-filter-grid { grid-template-columns: 1fr; }
+        .package-maintenance-page .pagination-controls { justify-content: space-between; overflow-x: auto; }
+        .package-scheme-dialog-form { padding: 20px; }
+        .package-scheme-dialog-details { grid-template-columns: 1fr; }
+    }
+    .package-maintenance-page { min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; }
+    .package-filter-panel, .package-alert { flex: 0 0 auto; }
+    .package-grid-panel { flex: 1 1 auto; min-height: 360px; display: grid; grid-template-rows: minmax(0, 1fr) minmax(56px, 4%); }
+    .package-table-wrap { min-height: 0; overflow: auto; }
+    .package-table thead th { position: sticky; top: 0; z-index: 1; }
+    @@media (max-width: 1100px) { .package-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @@media (max-width: 850px) {
+        .package-filter-grid { grid-template-columns: minmax(0, 1fr); }
+        .package-grid-panel { grid-template-rows: minmax(0, 1fr) auto; }
+    }
+</style>
+
+<script>
+    (() => {
+        const page = document.querySelector(".package-maintenance-page");
+
+        if (!page) {
+            return;
+        }
+
+        const updateUrl = page.dataset.updateSchemeCodeUrl || "";
+        const antiForgeryToken = page.querySelector("input[name='__RequestVerificationToken']")?.value || "";
+        const editor = page.querySelector("[data-scheme-editor]");
+        const editorForm = page.querySelector("[data-scheme-editor-form]");
+        const schemeCodeInput = page.querySelector("[data-editor-scheme-code]");
+        const submitButton = page.querySelector("[data-scheme-editor-submit]");
+        const errorMessage = page.querySelector("[data-editor-error]");
+        let activeButton = null;
+
+        const setEditorText = (selector, value) => {
+            const target = page.querySelector(selector);
+            if (target) {
+                target.textContent = value || "—";
+            }
+        };
+
+        const closeEditor = () => {
+            if (editor?.open) {
+                editor.close();
+            }
+            activeButton = null;
+        };
+
+        page.addEventListener("click", (event) => {
+            const button = event.target.closest("[data-edit-scheme-code]");
+
+            if (!button || !editor || !schemeCodeInput) {
+                return;
+            }
+
+            activeButton = button;
+            setEditorText("[data-editor-project-name]", button.dataset.projectName);
+            setEditorText("[data-editor-package-name]", button.dataset.packageName);
+            setEditorText("[data-editor-check-date]", button.dataset.checkDate);
+            setEditorText("[data-editor-customer-name]", button.dataset.customerName);
+            schemeCodeInput.value = button.dataset.schemeCode || "";
+            errorMessage.hidden = true;
+            errorMessage.textContent = "";
+            editor.showModal();
+            window.setTimeout(() => schemeCodeInput.focus(), 0);
+        });
+
+        page.querySelectorAll("[data-scheme-editor-close], [data-scheme-editor-cancel]").forEach((button) => {
+            button.addEventListener("click", closeEditor);
+        });
+
+        editor?.addEventListener("click", (event) => {
+            if (event.target === editor) {
+                closeEditor();
+            }
+        });
+
+        editorForm?.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            if (!activeButton || !updateUrl || !schemeCodeInput || !submitButton) {
+                return;
+            }
+
+            const projectNo = activeButton.dataset.projectNo || "";
+            const lisItemName = activeButton.dataset.lisItemName || "";
+            const formData = new FormData();
+            formData.append("__RequestVerificationToken", antiForgeryToken);
+            formData.append("projectNo", projectNo);
+            formData.append("lisItemName", lisItemName);
+            formData.append("schemeCode", schemeCodeInput.value.trim());
+            submitButton.disabled = true;
+            submitButton.textContent = "更新中...";
+            errorMessage.hidden = true;
+
+            try {
+                const response = await fetch(updateUrl, {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.saved) {
+                    throw new Error(result.message || "自訂碼更新失敗。");
+                }
+
+                window.location.reload();
+            } catch (error) {
+                errorMessage.textContent = error instanceof Error ? error.message : "自訂碼更新失敗，請稍後再試。";
+                errorMessage.hidden = false;
+                submitButton.disabled = false;
+                submitButton.textContent = "更新";
+            }
+        });
+    })();
+</script>
+
+
+
+

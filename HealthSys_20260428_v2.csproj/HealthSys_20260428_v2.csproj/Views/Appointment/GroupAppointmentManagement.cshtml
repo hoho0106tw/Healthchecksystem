@@ -1,0 +1,911 @@
+@model HealthSys_20260428_v2.csproj.Models.GroupAppointmentManagementViewModel
+
+@{
+    ViewData["Title"] = Model.Title;
+    var selectedGroup = Model.SelectedGroup;
+    var initialPageSize = Model.PageSizeOptions.Contains(10) ? 10 : Model.PageSizeOptions.FirstOrDefault();
+    initialPageSize = initialPageSize > 0 ? initialPageSize : 10;
+    var initialVisibleCount = Math.Min(initialPageSize, Model.Groups.Count);
+    var totalGroupCount = Model.TotalGroupCount > 0 ? Model.TotalGroupCount : Model.Groups.Count;
+    var initialPageCount = Math.Max(1, (int)Math.Ceiling(Model.Groups.Count / (double)initialPageSize));
+    var initialRenderedPageCount = Math.Min(initialPageCount, 7);
+    var selectedCustomerNo = Model.CustomerOptions.FirstOrDefault(option => option.IsSelected)?.Value ?? "";
+    var selectedReserveStatus = Model.CheckInStatusOptions.FirstOrDefault(option => option.IsSelected)?.Value ?? "";
+    var appointmentListDefaultDate = DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+    string ToAppointmentListQueryDate(string? value)
+    {
+        return DateTime.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDate)
+            || DateTime.TryParse(value, System.Globalization.CultureInfo.CurrentCulture, System.Globalization.DateTimeStyles.None, out parsedDate)
+            ? parsedDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+            : appointmentListDefaultDate;
+    }
+    var hasSelectedGroup = selectedGroup is not null;
+    var selectedStatusClass = selectedGroup is not null ? $"appointment-status {selectedGroup.StatusTone}" : "appointment-status";
+}
+
+<section class="appointment-page group-appointment-page" id="group-appointment" aria-label="團體預約管理">
+    <header class="appointment-page-header">
+        <div>
+            <nav class="breadcrumb" aria-label="頁面路徑">
+                <span>首頁</span>
+                <span>預約管理</span>
+                <span>團體預約管理</span>
+                <span>查詢 / 團體清單</span>
+            </nav>
+        </div>
+    </header>
+
+    <div class="group-appointment-layout@(hasSelectedGroup ? " has-detail" : "")" data-group-layout>
+        <div class="group-appointment-main">
+            <form class="panel group-filter-panel" method="get" asp-controller="Appointment" asp-action="GroupAppointmentManagement" aria-label="團體預約查詢條件" data-group-filter-form>
+                <label class="field-group group-customer-filter">
+                    <span>企業名稱</span>
+                    <select name="customerNo" aria-label="企業名稱">
+                        @foreach (var option in Model.CustomerOptions)
+                        {
+                            <option value="@option.Value" selected="@option.IsSelected">@option.Text</option>
+                        }
+                    </select>
+                </label>
+                <label class="field-group">
+                    <span>專案名稱</span>
+                    <input type="search" name="projectName" value="@Model.ProjectNameKeyword" placeholder="請輸入專案名稱" aria-label="專案名稱" />
+                </label>
+                <label class="field-group">
+                    <span>健檢日期區間</span>
+                    <span class="date-range-control">
+                        <input type="date" name="checkDateStart" value="@Model.FilterStartDate" aria-label="預約日期起日" data-date-picker />
+                        <span aria-hidden="true">~</span>
+                        <input type="date" name="checkDateEnd" value="@Model.FilterEndDate" aria-label="預約日期迄日" data-date-picker />
+                    </span>
+                </label>
+                <label class="field-group group-status-filter">
+                    <span>狀態</span>
+                    <select name="reserveStatus" aria-label="狀態">
+                        @foreach (var option in Model.CheckInStatusOptions)
+                        {
+                            <option value="@option.Value" selected="@option.IsSelected">@option.Text</option>
+                        }
+                    </select>
+                </label>
+                <div class="group-filter-actions" aria-label="查詢操作">
+                    <button class="primary-button" type="submit">
+                        <span class="refresh-mini-icon" aria-hidden="true"></span>
+                        <span>查詢</span>
+                    </button>
+                    <a class="primary-button group-add-button" asp-controller="Appointment" asp-action="CreateGroupAppointment">
+                        <span class="plus-icon" aria-hidden="true"></span>
+                        <span>新增團體預約</span>
+                    </a>
+                </div>
+            </form>
+            <section class="panel group-table-panel" aria-label="團體預約清單" data-group-table-panel>
+                <div class="group-summary-grid" aria-label="團體預約統計">
+                    @foreach (var card in Model.SummaryCards)
+                    {
+                        <article class="group-summary-card @card.Tone">
+                            <span class="group-summary-icon @card.Icon" aria-hidden="true"></span>
+                            <div>
+                                <span>@card.Label</span>
+                                <strong>@card.Value <small>@card.Unit</small></strong>
+                            </div>
+                        </article>
+                    }
+                </div>
+
+                <div class="appointment-table-wrap group-table-wrap">
+                    <table class="appointment-table group-appointment-table">
+                        <thead>
+                            <tr>
+                                <th>選取</th>
+                                <th>客戶編號</th>
+                                <th>企業名稱</th>
+                                <th>專案代號</th>
+                                <th>專案名稱</th>
+                                <th>健檢日期</th>
+                                <th>截止日期</th>
+                                <th>預估人數</th>
+                                <th>預約取消</th>
+                                <th>預約人數</th>
+                                <th>佔名額</th>
+                                <th>已掛號</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var group in Model.Groups)
+                            {
+                                <tr class="@(group.Selected ? "is-selected" : "")" data-group-row tabindex="0" aria-selected="@(group.Selected ? "true" : "false")" data-customer-no="@group.CustomerNo" data-customer-name="@group.CustomerName" data-project-no="@group.ProjectNo" data-project-name="@group.ProjectName" data-check-date="@group.CheckDate" data-end-date="@group.EndDate" data-estimated-count="@group.EstimatedCount" data-cancelled-count="@group.CancelledCount" data-reserved-count="@group.ReservedCount" data-occupied-count="@group.OccupiedCount" data-registered-count="@group.RegisteredCount" data-status="@group.Status" data-status-tone="@group.StatusTone" data-registration-rate="@group.RegistrationRateText" data-can-register="@(group.CanRegister ? "true" : "false")">
+                                    <td><span class="checkbox" aria-hidden="true"></span></td>
+                                                                        <td>
+                                        <a class="group-customer-link"
+                                           asp-controller="Appointment"
+                                           asp-action="GroupAppointmentManagement"
+                                           asp-route-customerNo="@selectedCustomerNo"
+                                           asp-route-projectName="@Model.ProjectNameKeyword"
+                                           asp-route-checkDateStart="@Model.FilterStartDate"
+                                           asp-route-checkDateEnd="@Model.FilterEndDate"
+                                           asp-route-reserveStatus="@selectedReserveStatus"
+                                           asp-route-selectedCustomerNo="@group.CustomerNo"
+                                           asp-route-selectedProjectNo="@group.ProjectNo"
+                                           data-group-detail-trigger
+                                           aria-label="查看 @group.CustomerNo 團體預約摘要">@group.CustomerNo</a>
+                                    </td>
+                                    <td>@group.CustomerName</td>
+                                    <td>@group.ProjectNo</td>
+                                    <td>@group.ProjectName</td>
+                                    <td>@group.CheckDate</td>
+                                    <td>@group.EndDate</td>
+                                    <td><span class="group-count-pill group-count-estimated">@group.EstimatedCount</span></td>
+                                    <td><span class="group-count-pill group-count-cancelled">@group.CancelledCount</span></td>
+                                    <td><span class="group-count-pill group-count-reserved">@group.ReservedCount</span></td>
+                                    <td><span class="group-count-pill group-count-occupied">@group.OccupiedCount</span></td>
+                                    <td><span class="group-count-pill group-count-checked">@group.RegisteredCount</span></td>
+                                    <td><span class="appointment-status @group.StatusTone">@group.Status</span></td>
+                                    <td>
+                                        <div class="group-row-actions">
+                                            <a class="small-action-button"
+                                               asp-controller="Appointment"
+                                               asp-action="AppointmentManagement"
+                                               asp-fragment="today-appointment-list"
+                                               asp-route-projectNo="@group.ProjectNo"
+                                               asp-route-customerName="@group.CustomerName"
+                                               asp-route-checkDateStart="@ToAppointmentListQueryDate(group.CheckDate)"
+                                               asp-route-checkDateEnd="@ToAppointmentListQueryDate(group.EndDate)"
+                                               data-ignore-row-select
+                                               aria-label="以 @group.CustomerName 的團體條件查看預約清單">
+                                                <span class="eye-mini-icon" aria-hidden="true"></span>
+                                                <span>查看清單</span>
+                                            </a>
+                                            <button class="small-action-button" type="button">
+                                                <span class="upload-mini-icon" aria-hidden="true"></span>
+                                                <span>匯入名冊</span>
+                                            </button>
+                                            <button class="small-action-button checkin-action" type="button" disabled="@(!group.CanRegister)">
+                                                <span class="group-checkin-mini-icon" aria-hidden="true"></span>
+                                                <span>掛號</span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <footer class="table-footer group-table-footer">
+                    @if (Model.Groups.Any())
+                    {
+                        <span data-group-page-summary>顯示第 1 至 @initialVisibleCount 筆，共 @totalGroupCount 筆</span>
+                    }
+                    else
+                    {
+                        <span data-group-page-summary>顯示 0 筆，共 0 筆</span>
+                    }
+                    <div class="pagination-controls">
+                        <div class="pagination" aria-label="分頁" data-group-pagination>
+                            <button type="button" disabled aria-label="上一頁">‹</button>
+                            @for (var pageNumber = 1; pageNumber <= initialRenderedPageCount; pageNumber++)
+                            {
+                                <button type="button" class="@(pageNumber == 1 ? "active" : null)" aria-current="@(pageNumber == 1 ? "page" : null)">@pageNumber</button>
+                            }
+                            <button type="button" disabled="@(initialPageCount <= 1)" aria-label="下一頁">›</button>
+                        </div>
+                        <label class="page-size-control">
+                            <span>每頁顯示</span>
+                            <select aria-label="每頁顯示筆數" data-group-page-size>
+                                @foreach (var pageSize in Model.PageSizeOptions)
+                                {
+                                    <option value="@pageSize" selected="@(pageSize == initialPageSize ? "selected" : null)">@pageSize</option>
+                                }
+                            </select>
+                            <span>筆</span>
+                        </label>
+                    </div>
+                </footer>
+            </section>
+        </div>
+
+        <aside class="group-appointment-side" aria-label="團體預約側欄資訊" data-group-detail-panel hidden="@(!hasSelectedGroup)">
+            <section class="panel group-detail-panel" aria-labelledby="group-detail-title">
+                <h2 id="group-detail-title">團體預約的摘要</h2>
+                <div class="group-company-head">
+                    <span class="company-avatar" aria-hidden="true"></span>
+                    <div>
+                        <strong data-group-detail="customerName">@(selectedGroup?.CustomerName ?? "")</strong>
+                        <span data-group-detail="projectName">@(selectedGroup?.ProjectName ?? "")</span>
+                    </div>
+                    <span class="@selectedStatusClass" data-group-detail-status>@(selectedGroup?.Status ?? "")</span>
+                </div>
+                <dl class="group-detail-list">
+                    <div>
+                        <dt>客戶編號</dt>
+                        <dd data-group-detail="customerNo">@(selectedGroup?.CustomerNo ?? "")</dd>
+                    </div>
+                    <div>
+                        <dt>專案代號</dt>
+                        <dd data-group-detail="projectNo">@(selectedGroup?.ProjectNo ?? "")</dd>
+                    </div>
+                    <div>
+                        <dt>健檢日期</dt>
+                        <dd data-group-detail="checkDate">@(selectedGroup?.CheckDate ?? "")</dd>
+                    </div>
+                    <div>
+                        <dt>截止日期</dt>
+                        <dd data-group-detail="endDate">@(selectedGroup?.EndDate ?? "")</dd>
+                    </div>
+                    <div>
+                        <dt>預約取消</dt>
+                        <dd><span class="group-count-pill group-count-cancelled" data-group-detail="cancelledCount">@(selectedGroup is not null ? $"{selectedGroup.CancelledCount} 人" : "")</span></dd>
+                    </div>
+                    <div>
+                        <dt>佔名額</dt>
+                        <dd><span class="group-count-pill group-count-occupied" data-group-detail="occupiedCount">@(selectedGroup is not null ? $"{selectedGroup.OccupiedCount} 人" : "")</span></dd>
+                    </div>
+                </dl>
+                <div class="group-headcount-grid" aria-label="團體人數統計">
+                    <article class="group-headcount-card group-headcount-estimated">
+                        <span>預估人數</span>
+                        <strong class="group-headcount-value group-count-estimated"><span data-group-detail="estimatedCount">@(selectedGroup?.EstimatedCount.ToString() ?? "")</span> <small>人</small></strong>
+                    </article>
+                    <article class="group-headcount-card group-headcount-reserved">
+                        <span>預約人數</span>
+                        <strong class="group-headcount-value group-count-reserved"><span data-group-detail="reservedCount">@(selectedGroup?.ReservedCount.ToString() ?? "")</span> <small>人</small></strong>
+                    </article>
+                    <article class="group-headcount-card group-headcount-checked">
+                        <span>已掛號</span>
+                        <strong class="group-headcount-value group-count-checked"><span data-group-detail="registeredCount">@(selectedGroup?.RegisteredCount.ToString() ?? "")</span> <small>人</small> <em data-group-detail="registrationRate">@(selectedGroup is not null ? $"({selectedGroup.RegistrationRateText})" : "")</em></strong>
+                    </article>
+                </div>
+                <button class="primary-button wide-action" type="button" data-group-detail-checkin disabled="@(!(selectedGroup?.CanRegister ?? false))">
+                    <span class="group-checkin-mini-icon" aria-hidden="true"></span>
+                    <span>進入掛號</span>
+                </button>
+            </section>
+            @if (Model.Activities.Any())
+            {
+                <section class="panel group-activity-panel" aria-labelledby="group-activity-title">
+                    <div class="group-side-heading">
+                        <h2 id="group-activity-title">近期狀態記錄</h2>
+                        <a href="#">查看全部</a>
+                    </div>
+                    <div class="group-activity-list">
+                        @foreach (var activity in Model.Activities)
+                        {
+                            <article class="group-activity-item">
+                                <span class="activity-dot @activity.Tone" aria-hidden="true"></span>
+                                <strong>@activity.Title</strong>
+                                <span>@activity.Actor</span>
+                                <time>@activity.Time</time>
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+
+            <section class="panel group-quick-panel" aria-labelledby="group-quick-title">
+                <h2 id="group-quick-title">快速操作</h2>
+                <div class="group-quick-actions">
+                    <button type="button">
+                        <span class="qr-mini-icon" aria-hidden="true"></span>
+                        <strong>下載報到QR碼</strong>
+                    </button>
+                    <button type="button">
+                        <span class="mail-mini-icon" aria-hidden="true"></span>
+                        <strong>寄送通知信</strong>
+                    </button>
+                    <button type="button">
+                        <span class="file-mini-icon" aria-hidden="true"></span>
+                        <strong>下載名冊範本</strong>
+                    </button>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <div class="group-detail-frame-modal" data-group-detail-frame-modal hidden>
+        <button class="group-detail-frame-backdrop" type="button" data-group-detail-frame-close aria-label="關閉團體預約摘要"></button>
+        <div class="group-detail-frame-shell" role="dialog" aria-modal="true" aria-labelledby="group-detail-frame-dialog-title">
+            <span id="group-detail-frame-dialog-title" class="sr-only">團體預約的摘要</span>
+            <div data-group-detail-frame-host></div>
+        </div>
+    </div>
+</section>
+
+<script>
+    (() => {
+        const page = document.getElementById("group-appointment");
+
+        if (!page) {
+            return;
+        }
+
+        const rows = Array.from(page.querySelectorAll("[data-group-row]"));
+        const filterForm = page.querySelector("[data-group-filter-form]");
+        const tablePanel = page.querySelector("[data-group-table-panel]");
+        const datePickers = Array.from(page.querySelectorAll("[data-date-picker]"));
+        const pagination = page.querySelector("[data-group-pagination]");
+        const pageSizeSelect = page.querySelector("[data-group-page-size]");
+        const pageSummary = page.querySelector("[data-group-page-summary]");
+        const layout = page.querySelector('[data-group-layout]');
+        const detailPanel = page.querySelector('[data-group-detail-panel]');
+        const detailStatus = page.querySelector('[data-group-detail-status]');
+        const detailCheckinButton = page.querySelector('[data-group-detail-checkin]');
+        const detailFrameModal = page.querySelector('[data-group-detail-frame-modal]');
+        const detailFrameHost = page.querySelector('[data-group-detail-frame-host]');
+        const detailFrameCloseButtons = Array.from(page.querySelectorAll('[data-group-detail-frame-close]'));
+        const narrowDetailMedia = window.matchMedia ? window.matchMedia('(max-width: 1180px)') : { matches: false };
+        let previousFocus = null;
+        let activeExternalFrameModal = null;
+        let activeFrameDocument = document;
+        let activeFrameKeydownHandler = null;
+        const filterCompactWidth = 1120;
+        const filterNarrowWidth = 640;
+        const refreshStorage = (() => {
+            try {
+                return window.sessionStorage;
+            } catch {
+                return null;
+            }
+        })();
+        let activePage = 1;
+
+        const getFilterLayoutWidth = () => {
+            const filterWidth = filterForm?.getBoundingClientRect().width ?? 0;
+            const pageWidth = page.getBoundingClientRect().width;
+
+            return Math.max(0, filterWidth || pageWidth || window.innerWidth || 0);
+        };
+
+        const applyResponsiveFilterLayout = () => {
+            const layoutWidth = getFilterLayoutWidth();
+
+            page.classList.toggle('is-filter-compact', layoutWidth > 0 && layoutWidth <= filterCompactWidth);
+            page.classList.toggle('is-filter-narrow', layoutWidth > 0 && layoutWidth <= filterNarrowWidth);
+        };
+
+        applyResponsiveFilterLayout();
+        window.requestAnimationFrame?.(applyResponsiveFilterLayout);
+        window.addEventListener('resize', applyResponsiveFilterLayout);
+        window.addEventListener('pageshow', applyResponsiveFilterLayout);
+        window.setTimeout(applyResponsiveFilterLayout, 150);
+        window.setTimeout(applyResponsiveFilterLayout, 400);
+
+        if (filterForm && 'ResizeObserver' in window) {
+            const filterResizeObserver = new ResizeObserver(applyResponsiveFilterLayout);
+            filterResizeObserver.observe(filterForm);
+            filterResizeObserver.observe(page);
+            page.groupFilterResizeObserver = filterResizeObserver;
+        }
+        const getPageSize = () => {
+            const parsedSize = Number.parseInt(pageSizeSelect?.value || "", 10);
+
+            return Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : 10;
+        };
+
+        const getPageCount = () => Math.max(1, Math.ceil(rows.length / getPageSize()));
+
+        const clampPage = (pageNumber) => Math.min(Math.max(pageNumber, 1), getPageCount());
+
+        const updatePageSummary = (startIndex, visibleCount) => {
+            if (!pageSummary) {
+                return;
+            }
+
+            if (!rows.length) {
+                pageSummary.textContent = "顯示 0 筆，共 0 筆";
+                return;
+            }
+
+            pageSummary.textContent = `顯示第 ${startIndex + 1} 至 ${startIndex + visibleCount} 筆，共 ${rows.length} 筆`;
+        };
+
+        const getVisiblePageNumbers = () => {
+            const pageCount = getPageCount();
+            const maxVisiblePages = 7;
+
+            if (pageCount <= maxVisiblePages) {
+                return Array.from({ length: pageCount }, (_, index) => index + 1);
+            }
+
+            if (activePage <= 4) {
+                return [1, 2, 3, 4, 5, "ellipsis-end", pageCount];
+            }
+
+            if (activePage >= pageCount - 3) {
+                return [1, "ellipsis-start", pageCount - 4, pageCount - 3, pageCount - 2, pageCount - 1, pageCount];
+            }
+
+            return [1, "ellipsis-start", activePage - 1, activePage, activePage + 1, "ellipsis-end", pageCount];
+        };
+
+        const createPageButton = (label, pageNumber, options = {}) => {
+            const button = document.createElement("button");
+
+            button.type = "button";
+            button.textContent = label;
+
+            if (options.ariaLabel) {
+                button.setAttribute("aria-label", options.ariaLabel);
+            }
+
+            if (options.active) {
+                button.classList.add("active");
+                button.setAttribute("aria-current", "page");
+            }
+
+            if (options.disabled) {
+                button.disabled = true;
+            }
+
+            if (typeof pageNumber === "number" && !options.disabled) {
+                button.addEventListener("click", () => setActivePage(pageNumber));
+            }
+
+            return button;
+        };
+
+        const renderPagination = () => {
+            if (!pagination) {
+                return;
+            }
+
+            const pageCount = getPageCount();
+            const buttons = [
+                createPageButton("‹", activePage - 1, {
+                    ariaLabel: "上一頁",
+                    disabled: activePage === 1
+                })
+            ];
+
+            getVisiblePageNumbers().forEach((pageNumber) => {
+                if (typeof pageNumber !== "number") {
+                    buttons.push(createPageButton("...", null, {
+                        ariaLabel: "省略頁碼",
+                        disabled: true
+                    }));
+                    return;
+                }
+
+                buttons.push(createPageButton(String(pageNumber), pageNumber, {
+                    active: pageNumber === activePage,
+                    ariaLabel: `第 ${pageNumber} 頁`
+                }));
+            });
+
+            buttons.push(createPageButton("›", activePage + 1, {
+                ariaLabel: "下一頁",
+                disabled: activePage === pageCount
+            }));
+
+            if (typeof pagination.replaceChildren === "function") {
+                pagination.replaceChildren(...buttons);
+            } else {
+                pagination.innerHTML = "";
+                buttons.forEach((button) => pagination.appendChild(button));
+            }
+        };
+
+        const setActivePage = (pageNumber) => {
+            activePage = clampPage(pageNumber);
+
+            const pageSize = getPageSize();
+            const startIndex = (activePage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, rows.length);
+
+            rows.forEach((row, index) => {
+                row.hidden = index < startIndex || index >= endIndex;
+            });
+
+            updatePageSummary(startIndex, endIndex - startIndex);
+            renderPagination();
+        };
+
+        const getText = (value, fallback = '') => {
+            const text = String(value ?? '').trim();
+            return text || fallback;
+        };
+
+        const getGroupData = (row) => ({
+            customerNo: getText(row?.dataset.customerNo),
+            customerName: getText(row?.dataset.customerName, '未命名企業'),
+            projectNo: getText(row?.dataset.projectNo),
+            projectName: getText(row?.dataset.projectName, '未命名專案'),
+            checkDate: getText(row?.dataset.checkDate),
+            endDate: getText(row?.dataset.endDate),
+            estimatedCount: getText(row?.dataset.estimatedCount, '0'),
+            cancelledCount: getText(row?.dataset.cancelledCount, '0'),
+            reservedCount: getText(row?.dataset.reservedCount, '0'),
+            occupiedCount: getText(row?.dataset.occupiedCount, '0'),
+            registeredCount: getText(row?.dataset.registeredCount, '0'),
+            status: getText(row?.dataset.status),
+            statusTone: getText(row?.dataset.statusTone),
+            registrationRate: getText(row?.dataset.registrationRate, '0%'),
+            canRegister: row?.dataset.canRegister === 'true'
+        });
+
+        const escapeHtml = (value) => String(value ?? '').replace(/[&<>\x22']/g, (character) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '\x22': '&quot;',
+            '\'': '&#39;'
+        }[character] || character));
+
+        const setDetailText = (field, value) => {
+            page.querySelectorAll(`[data-group-detail='${field}']`).forEach((target) => {
+                target.textContent = value;
+            });
+        };
+
+        const updateInlineDetail = (data) => {
+            if (!detailPanel) {
+                return;
+            }
+
+            setDetailText('customerName', data.customerName);
+            setDetailText('projectName', data.projectName);
+            setDetailText('customerNo', data.customerNo);
+            setDetailText('projectNo', data.projectNo);
+            setDetailText('checkDate', data.checkDate);
+            setDetailText('endDate', data.endDate);
+            setDetailText('cancelledCount', `${data.cancelledCount} 人`);
+            setDetailText('occupiedCount', `${data.occupiedCount} 人`);
+            setDetailText('estimatedCount', data.estimatedCount);
+            setDetailText('reservedCount', data.reservedCount);
+            setDetailText('registeredCount', data.registeredCount);
+            setDetailText('registrationRate', `(${data.registrationRate})`);
+
+            if (detailStatus) {
+                detailStatus.className = `appointment-status ${data.statusTone}`.trim();
+                detailStatus.textContent = data.status;
+            }
+
+            if (detailCheckinButton) {
+                detailCheckinButton.disabled = !data.canRegister;
+            }
+
+            detailPanel.hidden = false;
+            layout?.classList.add('has-detail');
+        };
+
+        const hideInlineDetail = () => {
+            detailPanel?.setAttribute('hidden', '');
+            layout?.classList.remove('has-detail');
+        };
+
+        const renderDetailContent = (data) => {
+            const registrationRate = escapeHtml(data.registrationRate);
+            const disabledAttribute = data.canRegister ? '' : ' disabled';
+
+            return `<article class="group-detail-modal-content">
+<header class="group-detail-modal-header"><h2>團體預約的摘要</h2><div class="group-detail-window-controls" aria-label="摘要視窗控制"><button class="group-detail-window-button" type="button" data-window-toggle-size aria-label="放大" title="放大">□</button><button class="group-detail-window-button group-detail-window-close" type="button" data-close aria-label="關閉" title="關閉">×</button></div></header>
+<section class="group-detail-modal-body">
+<div class="group-detail-modal-company"><span class="group-detail-modal-avatar" aria-hidden="true"></span><div><strong>${escapeHtml(data.customerName)}</strong><span>${escapeHtml(data.projectName)}</span></div><span class="group-detail-modal-status ${escapeHtml(data.statusTone)}">${escapeHtml(data.status)}</span></div>
+<dl class="group-detail-modal-list">
+<div><dt>客戶編號</dt><dd>${escapeHtml(data.customerNo)}</dd></div>
+<div><dt>專案代號</dt><dd>${escapeHtml(data.projectNo)}</dd></div>
+<div><dt>健檢日期</dt><dd>${escapeHtml(data.checkDate)}</dd></div>
+<div><dt>截止日期</dt><dd>${escapeHtml(data.endDate)}</dd></div>
+<div><dt>預約取消</dt><dd>${escapeHtml(data.cancelledCount)} 人</dd></div>
+<div><dt>佔名額</dt><dd>${escapeHtml(data.occupiedCount)} 人</dd></div>
+</dl>
+<div class="group-detail-modal-stats"><article class="teal"><span>預估人數</span><strong>${escapeHtml(data.estimatedCount)} <small>人</small></strong></article><article class="cyan"><span>預約人數</span><strong>${escapeHtml(data.reservedCount)} <small>人</small></strong></article><article class="green"><span>已掛號</span><strong>${escapeHtml(data.registeredCount)} <small>人</small> <small>(${registrationRate})</small></strong></article></div>
+</section>
+<footer class="group-detail-modal-footer"><button class="group-detail-modal-primary" type="button"${disabledAttribute}>進入掛號</button></footer>
+</article>`;
+        };
+        const getFrameHostDocument = () => {
+            try {
+                const parentDocument = window.parent && window.parent !== window
+                    ? window.parent.document
+                    : null;
+
+                if (parentDocument?.body) {
+                    return parentDocument;
+                }
+            } catch {
+            }
+
+            return document;
+        };
+
+        const getParentFrameStyleText = () => `
+.healthsys-group-detail-frame-modal{position:fixed;inset:0;z-index:2147483000;display:grid;align-items:center;justify-items:center;padding:clamp(12px,3vw,28px);isolation:isolate}
+.healthsys-group-detail-frame-backdrop{position:absolute;inset:0;z-index:0;border:0;background:rgba(15,23,42,.34)}
+.healthsys-group-detail-frame-shell{position:relative;z-index:1;width:min(920px,calc(100vw - 24px));height:min(860px,calc(100dvh - 24px));min-height:min(620px,calc(100dvh - 24px));border:1px solid #cbd5e1;border-radius:8px;background:#fff;box-shadow:0 22px 58px rgba(15,23,42,.28);overflow:hidden}
+.healthsys-group-detail-frame-shell [data-group-detail-frame-host]{width:100%;height:100%;min-height:0}
+body.group-detail-frame-open{overflow:hidden}
+.healthsys-group-detail-frame-modal.is-expanded{padding:4px}
+.healthsys-group-detail-frame-modal.is-expanded .healthsys-group-detail-frame-shell,.healthsys-group-detail-frame-modal.is-maximized .healthsys-group-detail-frame-shell{width:calc(100vw - 8px);height:calc(100dvh - 8px);min-height:0}
+.group-detail-modal-content{height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:#fff;color:#0f172a;font-family:'Segoe UI','Noto Sans TC','Microsoft JhengHei',Arial,sans-serif}
+.group-detail-modal-header{min-height:46px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 8px 0 14px;border-bottom:1px solid #cbd5e1;background:#f8fafc;user-select:none}
+.group-detail-modal-header h2{margin:0;font-size:15px;line-height:1.25;font-weight:900}
+.group-detail-window-controls{display:flex;align-items:center;gap:2px}
+.group-detail-window-button{width:38px;height:34px;border:0;border-radius:4px;background:transparent;color:#334155;font-size:18px;font-weight:900;line-height:1;cursor:pointer}
+.group-detail-window-button:hover{background:#e2e8f0}
+.group-detail-window-close:hover{background:#dc2626;color:#fff}
+.group-detail-modal-body{min-height:0;display:grid;align-content:start;gap:16px;padding:18px;overflow:auto;background:#f5f8fc}
+.group-detail-modal-company{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px;border:1px solid #e5edf6;border-radius:8px;background:#fff}
+.group-detail-modal-avatar{width:48px;height:48px;border-radius:50%;background:#1677e8;position:relative}
+.group-detail-modal-avatar:before{content:'';position:absolute;inset:12px;background:#fff;clip-path:polygon(14% 92%,14% 12%,58% 12%,58% 36%,86% 36%,86% 92%,74% 92%,74% 50%,58% 50%,58% 92%)}
+.group-detail-modal-company strong{display:block;font-size:16px;font-weight:900}
+.group-detail-modal-company span:not(.group-detail-modal-avatar):not(.group-detail-modal-status){display:block;margin-top:5px;color:#526172;font-size:13px;font-weight:800}
+.group-detail-modal-status{display:inline-flex;align-items:center;min-height:28px;padding:0 11px;border-radius:999px;font-size:13px;font-weight:900}
+.group-detail-modal-status.in-progress{color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe}
+.group-detail-modal-status.waiting{color:#b45309;background:#fff7ed;border:1px solid #fed7aa}
+.group-detail-modal-status.completed{color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0}
+.group-detail-modal-status.cancelled{color:#be123c;background:#fff1f2;border:1px solid #fecdd3}
+.group-detail-modal-list{display:grid;gap:10px;margin:0}
+.group-detail-modal-list div{display:grid;grid-template-columns:94px minmax(0,1fr);gap:10px;padding:10px 12px;border:1px solid #edf2f7;border-radius:7px;background:#fff}
+.group-detail-modal-list dt,.group-detail-modal-list dd{margin:0;font-size:14px;line-height:1.35;font-weight:800}
+.group-detail-modal-list dt{color:#64748b}
+.group-detail-modal-list dd{color:#0f172a;overflow-wrap:anywhere}
+.group-detail-modal-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #e5edf6;border-radius:8px;overflow:hidden}
+.group-detail-modal-stats article{min-height:76px;display:grid;place-items:center;gap:7px;padding:10px;background:#fff;border-right:1px solid #e5edf6;text-align:center}
+.group-detail-modal-stats article:last-child{border-right:0}
+.group-detail-modal-stats span{color:#475569;font-size:13px;font-weight:900}
+.group-detail-modal-stats strong{font-size:22px;line-height:1;font-weight:900}
+.group-detail-modal-stats small{font-size:12px;font-weight:900}
+.group-detail-modal-stats .teal strong{color:#0f766e}
+.group-detail-modal-stats .cyan strong{color:#0284c7}
+.group-detail-modal-stats .green strong{color:#15803d}
+.group-detail-modal-footer{padding:14px 18px 18px;background:#fff}
+.group-detail-modal-primary{width:100%;height:42px;border:0;border-radius:6px;background:#1677e8;color:#fff;font-size:14px;font-weight:900}
+.group-detail-modal-primary:disabled{background:#cbd5e1;color:#f8fafc}
+@@media(max-width:640px){.healthsys-group-detail-frame-modal.is-expanded,.healthsys-group-detail-frame-modal.is-maximized{padding:0}.healthsys-group-detail-frame-modal.is-expanded .healthsys-group-detail-frame-shell,.healthsys-group-detail-frame-modal.is-maximized .healthsys-group-detail-frame-shell{width:100vw;height:100dvh;border-radius:0}.group-detail-modal-company{grid-template-columns:48px minmax(0,1fr)}.group-detail-modal-status{grid-column:1/-1;justify-self:start}.group-detail-modal-stats{grid-template-columns:1fr}.group-detail-modal-stats article{border-right:0;border-bottom:1px solid #e5edf6}.group-detail-modal-stats article:last-child{border-bottom:0}}
+`;
+        const ensureParentFrameStyles = (hostDocument) => {
+            if (hostDocument === document) {
+                return;
+            }
+
+            let style = hostDocument.getElementById('healthsys-group-detail-frame-style');
+
+            if (!style) {
+                style = hostDocument.createElement('style');
+                style.id = 'healthsys-group-detail-frame-style';
+
+                if (hostDocument.head) {
+                    hostDocument.head.appendChild(style);
+                } else {
+                    hostDocument.body.appendChild(style);
+                }
+            }
+
+            style.textContent = getParentFrameStyleText();
+        };
+
+        const createParentFrameModal = (hostDocument) => {
+            const modal = hostDocument.createElement('div');
+            modal.className = 'healthsys-group-detail-frame-modal is-expanded';
+            modal.setAttribute('data-healthsys-group-detail-frame-modal', '');
+
+            const backdrop = hostDocument.createElement('button');
+            backdrop.className = 'healthsys-group-detail-frame-backdrop';
+            backdrop.type = 'button';
+            backdrop.setAttribute('aria-label', '關閉團體預約摘要');
+            backdrop.addEventListener('click', closeDetailFrame);
+
+            const shell = hostDocument.createElement('div');
+            shell.className = 'healthsys-group-detail-frame-shell';
+            shell.setAttribute('role', 'dialog');
+            shell.setAttribute('aria-modal', 'true');
+            shell.setAttribute('aria-label', '團體預約的摘要');
+
+            const host = hostDocument.createElement('div');
+            host.setAttribute('data-group-detail-frame-host', '');
+
+            shell.appendChild(host);
+            modal.append(backdrop, shell);
+            hostDocument.body.appendChild(modal);
+
+            return { modal, host };
+        };
+
+        const updateDetailWindowButton = (modal, button) => {
+            if (!button) {
+                return;
+            }
+
+            const isMaximized = modal?.classList.contains('is-maximized') ?? false;
+            button.textContent = isMaximized ? '❐' : '□';
+            button.setAttribute('aria-label', isMaximized ? '還原' : '放大');
+            button.setAttribute('title', isMaximized ? '還原' : '放大');
+        };
+
+        const wireDetailWindowControls = (frameHost, modal) => {
+            frameHost.querySelector('[data-close]')?.addEventListener('click', closeDetailFrame);
+
+            const toggleButton = frameHost.querySelector('[data-window-toggle-size]');
+            updateDetailWindowButton(modal, toggleButton);
+            toggleButton?.addEventListener('click', () => {
+                modal?.classList.toggle('is-maximized');
+                updateDetailWindowButton(modal, toggleButton);
+            });
+        };
+
+        const closeDetailFrame = () => {
+            if (activeFrameKeydownHandler) {
+                activeFrameDocument?.removeEventListener('keydown', activeFrameKeydownHandler);
+                activeFrameKeydownHandler = null;
+            }
+
+            if (activeExternalFrameModal) {
+                activeExternalFrameModal.remove();
+                activeExternalFrameModal = null;
+            }
+
+            if (detailFrameModal && detailFrameHost) {
+                detailFrameModal.hidden = true;
+                detailFrameModal.classList.remove('is-expanded');
+                detailFrameModal.classList.remove('is-maximized');
+                detailFrameHost.innerHTML = '';
+            }
+
+            activeFrameDocument?.body?.classList.remove('group-detail-frame-open');
+            document.body.classList.remove('group-detail-frame-open');
+            activeFrameDocument = document;
+
+            if (previousFocus && typeof previousFocus.focus === 'function') {
+                previousFocus.focus();
+            }
+        };
+
+        const openDetailFrame = (data, trigger) => {
+            const nextFocus = trigger || document.activeElement;
+            closeDetailFrame();
+            previousFocus = nextFocus;
+
+            const hostDocument = getFrameHostDocument();
+            activeFrameDocument = hostDocument;
+            let frameHost = detailFrameHost;
+
+            if (hostDocument !== document) {
+                ensureParentFrameStyles(hostDocument);
+                const parentFrame = createParentFrameModal(hostDocument);
+                activeExternalFrameModal = parentFrame.modal;
+                frameHost = parentFrame.host;
+            } else if (!detailFrameModal || !detailFrameHost) {
+                return;
+            } else {
+                detailFrameHost.innerHTML = '';
+                detailFrameModal.classList.add('is-expanded');
+                detailFrameModal.hidden = false;
+            }
+
+            if (frameHost) {
+                frameHost.innerHTML = renderDetailContent(data);
+                wireDetailWindowControls(frameHost, activeExternalFrameModal || detailFrameModal);
+            }
+
+            activeFrameKeydownHandler = (event) => {
+                if (event.key === 'Escape') {
+                    closeDetailFrame();
+                }
+            };
+            hostDocument.addEventListener('keydown', activeFrameKeydownHandler);
+            hostDocument.body.classList.add('group-detail-frame-open');
+            document.body.classList.add('group-detail-frame-open');
+        };
+
+        const openGroupDetail = (row, trigger) => {
+            const data = getGroupData(row);
+
+            rows.forEach((candidate) => {
+                const isSelected = candidate === row;
+                candidate.classList.toggle('is-selected', isSelected);
+                candidate.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            });
+
+            if (narrowDetailMedia.matches) {
+                hideInlineDetail();
+                openDetailFrame(data, trigger);
+                return;
+            }
+
+            closeDetailFrame();
+            updateInlineDetail(data);
+        };
+        const playRefresh = () => {
+            page.classList.add("is-refreshing");
+            tablePanel?.classList.add("is-refreshing");
+            window.setTimeout(() => {
+                page.classList.remove("is-refreshing");
+                tablePanel?.classList.remove("is-refreshing");
+            }, 900);
+        };
+
+        if (refreshStorage && refreshStorage.getItem("group-appointment-refresh") === "1") {
+            refreshStorage.removeItem("group-appointment-refresh");
+            playRefresh();
+        }
+
+        filterForm?.addEventListener("submit", () => {
+            if (refreshStorage) {
+                refreshStorage.setItem("group-appointment-refresh", "1");
+            }
+            playRefresh();
+        });
+
+        datePickers.forEach((picker) => {
+            picker.addEventListener("click", () => {
+                if (typeof picker.showPicker === "function") {
+                    try {
+                        picker.showPicker();
+                    } catch {
+                        picker.focus();
+                    }
+                }
+            });
+        });
+        const isRowSelectionBlocked = (target) => {
+            if (!(target instanceof Element)) {
+                return false;
+            }
+
+            return Boolean(target.closest('button, input, select, textarea, label, [role="button"], [data-ignore-row-select], a:not([data-group-detail-trigger])'));
+        };
+
+        page.addEventListener('click', (event) => {
+            const target = event.target instanceof Element ? event.target : null;
+            const trigger = target?.closest('[data-group-detail-trigger]') ?? null;
+            const row = trigger?.closest('[data-group-row]') ?? target?.closest('[data-group-row]') ?? null;
+
+            if (!row || !page.contains(row) || (!trigger && isRowSelectionBlocked(target))) {
+                return;
+            }
+
+            if (trigger) {
+                event.preventDefault();
+            }
+
+            openGroupDetail(row, trigger || row);
+        });
+
+        page.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') {
+                return;
+            }
+
+            const row = event.target instanceof Element
+                ? event.target.closest('[data-group-row]')
+                : null;
+
+            if (!row || !page.contains(row) || isRowSelectionBlocked(event.target)) {
+                return;
+            }
+
+            event.preventDefault();
+            openGroupDetail(row, row);
+        });
+
+        detailFrameCloseButtons.forEach((button) => {
+            button.addEventListener('click', closeDetailFrame);
+        });
+
+        window.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && (activeExternalFrameModal || (detailFrameModal && !detailFrameModal.hidden))) {
+                closeDetailFrame();
+            }
+        });
+
+
+        if (typeof narrowDetailMedia.addEventListener === 'function') {
+            narrowDetailMedia.addEventListener('change', (event) => {
+                if (event.matches) {
+                    hideInlineDetail();
+                }
+            });
+        } else if (typeof narrowDetailMedia.addListener === 'function') {
+            narrowDetailMedia.addListener((event) => {
+                if (event.matches) {
+                    hideInlineDetail();
+                }
+            });
+        }
+        pageSizeSelect?.addEventListener("change", () => setActivePage(1));
+        setActivePage(activePage);
+    })();
+</script>

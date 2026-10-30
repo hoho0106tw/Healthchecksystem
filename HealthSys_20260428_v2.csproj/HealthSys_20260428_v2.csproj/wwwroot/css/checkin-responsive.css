@@ -1,0 +1,120 @@
+.checkin-operation-page {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.checkin-operation-page > .appointment-page-header,
+.checkin-operation-page > .today-checkin-dashboard {
+    flex: 0 0 auto;
+}
+
+.checkin-operation-page .appointment-list-layout {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    align-items: stretch;
+}
+
+.checkin-operation-page .appointment-list-main {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.checkin-operation-page .appointment-filter-panel,
+.checkin-operation-page .checkin-operation-message {
+    flex: 0 0 auto;
+}
+
+.checkin-operation-page .appointment-table-panel {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 360px;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) minmax(48px, 4%);
+}
+
+.checkin-operation-page .appointment-table-frame {
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+}
+
+@media (max-width: 1100px) {
+    .checkin-operation-page .appointment-filter-panel,
+    .today-appointment-page.checkin-operation-page .today-checkin-filter {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .checkin-operation-page .search-field,
+    .checkin-operation-page .appointment-filter-actions {
+        grid-column: 1 / -1;
+    }
+
+    .today-appointment-page.checkin-operation-page .today-checkin-filter .appointment-filter-search-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 900px) {
+    .checkin-operation-page .appointment-page-header {
+        flex-wrap: wrap;
+    }
+
+    .checkin-operation-page .checkin-summary-grid.today-checkin-dashboard {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .checkin-operation-page .appointment-filter-panel,
+    .today-appointment-page.checkin-operation-page .today-checkin-filter {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .today-appointment-page.checkin-operation-page .appointment-table-wrap {
+        overflow-x: auto;
+        padding-bottom: 0;
+    }
+
+    .checkin-operation-page .appointment-table-scrollbar {
+        display: none !important;
+    }
+
+    .checkin-operation-page .today-appointment-table th:nth-child(n + 2):nth-child(-n + 5),
+    .checkin-operation-page .today-appointment-table td:nth-child(n + 2):nth-child(-n + 5) {
+        left: auto;
+    }
+
+    .checkin-operation-page .today-appointment-table td:nth-child(n + 2):nth-child(-n + 5) {
+        position: static;
+    }
+
+    .checkin-operation-page .today-appointment-table th:nth-child(n + 2):nth-child(-n + 5) {
+        position: sticky;
+        top: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    .checkin-operation-page .checkin-summary-grid.today-checkin-dashboard {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .checkin-operation-page .appointment-time-range {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .checkin-operation-page .appointment-batch-toolbar,
+    .checkin-operation-page .table-footer {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .checkin-operation-page .table-footer .pagination-controls {
+        flex-wrap: wrap;
+    }
+}

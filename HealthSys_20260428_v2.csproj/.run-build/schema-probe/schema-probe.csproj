@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="HealthSys_20260428_v2" HintPath="../appointment-self-pay-persist-final/HealthSys_20260428_v2.dll" />
+    <Reference Include="Oracle.ManagedDataAccess" HintPath="../appointment-self-pay-persist-final/Oracle.ManagedDataAccess.dll" />
+    <Reference Include="DBUser" HintPath="../appointment-self-pay-persist-final/DBUser.dll" />
+    <Reference Include="FemhSecurityLibrary" HintPath="../appointment-self-pay-persist-final/FemhSecurityLibrary.dll" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,13 @@
+{
+  "Inai": {
+    "Endpoint": "https://webap.femh.org.tw:9015/AZUREOPENAIAPI/openai/v1/",
+    "Model": "gpt-5.2-chat",
+    "ApiKey": "SE1TOmQ0M2ZlODVhLTNmOTAtNGQwZC04MDRmLTE0ZDdhZTE1MDUzMg==",
+    "ApiKeyEnvironmentVariable": "",
+    "AuthMode": "ApiKeyOnly",
+    "ApiKeyFormat": "Plain",
+    "RequestTimeoutSeconds": 90,
+    "ChatLogEnabled": false,
+    "ChatLogDbWriteEnabled": false
+  }
+}

@@ -1,0 +1,143 @@
+﻿@model HealthSys_20260428_v2.csproj.Models.UserRoleViewModels
+
+@{
+    Layout = null;
+    var editRole = ViewData["EditRole"] as HealthSys_20260428_v2.csproj.Models.StaffRoleViewModel;
+    ViewData["Title"] = editRole == null ? "新增角色" : "修改角色";
+}
+
+<!DOCTYPE html>
+<html lang="zh-TW" class="role-frame-root">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Health Checkup System</title>
+    <link rel="stylesheet" href="~/css/ui.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/theme-controls.css" asp-append-version="true" />
+<script src="~/js/theme-frame.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/css/user-role-dialog.css" asp-append-version="true" />
+    <script src="~/js/user-role-dialog.js" asp-append-version="true"></script>
+</head>
+<body class="hc role-frame-body">
+    <main class="role-frame" aria-labelledby="add-role-title">
+        <header class="role-frame-header">
+            <h1 id="add-role-title">@ViewData["Title"]</h1>
+            <button class="role-frame-close-button" type="button" data-role-frame-close aria-label="關閉新增角色視窗">
+                <span class="cancel-icon" aria-hidden="true"></span>
+            </button>
+        </header>
+
+        <form class="role-frame-form" method="post" action="@Url.Action("SaveRole", "UserRole")" data-role-frame-form>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="IsEdit" value="@(editRole != null ? "true" : "false")" />
+            <div class="role-frame-fields">
+                <label class="role-field">
+                    <span>角色名稱 <em>*</em></span>
+                    <input type="text" name="RoleName" value="@editRole?.Name" autocomplete="off" required autofocus />
+                </label>
+
+                <label class="role-field">
+                    <span>角色代碼 <em>*</em></span>
+                    <input type="text" name="RoleCode" value="@editRole?.Code" readonly="@(editRole != null)" pattern="[A-Za-z0-9_]+" placeholder="例如：ADMIN_STAFF" autocomplete="off" required />
+                </label>
+
+                <label class="role-field">
+                    <span>角色描述</span>
+                    <textarea name="RoleDescription" rows="4" placeholder="請輸入角色描述（選填）">@editRole?.Description</textarea>
+                </label>
+
+                <label class="role-switch-field">
+                    <span>啟用狀態</span>
+                    <span class="role-switch-control">
+                        <input type="checkbox" name="IsEnabled" value="true" checked />
+                        <span aria-hidden="true"></span>
+                        <strong>啟用</strong>
+                    </span>
+                </label>
+
+                <label class="role-field">
+                    <span>複製權限來源</span>
+                    <select name="PermissionTemplate" disabled>
+                        <option>@(editRole == null ? "不複製，全部權限預設關閉" : "保留目前權限（停用時保留紀錄）")</option>
+                    </select>
+                </label>
+                <p role="status" data-role-error hidden></p>
+            </div>
+
+            <footer class="role-frame-footer">
+                <button class="ghost-button" type="button" data-role-frame-cancel>取消</button>
+                <button class="primary-button" type="submit">@(editRole == null ? "建立角色" : "儲存角色")</button>
+            </footer>
+        </form>
+    </main>
+
+    <script>
+        (function () {
+            const form = document.querySelector("[data-role-frame-form]");
+            const closeButtons = Array.from(document.querySelectorAll("[data-role-frame-close], [data-role-frame-cancel]"));
+            const roleNameInput = form.querySelector("[name='RoleName']");
+            const roleDescriptionInput = form.querySelector("[name='RoleDescription']");
+            let previousRoleName = roleNameInput.value.trim();
+
+            function syncRoleDescription() {
+                const roleName = roleNameInput.value.trim();
+                if (!roleName || !previousRoleName || roleName === previousRoleName) return;
+                const description = roleDescriptionInput.value;
+                roleDescriptionInput.value = description.trim()
+                    ? description.split(previousRoleName).join(roleName) : roleName;
+                previousRoleName = roleName;
+            }
+            roleNameInput.addEventListener("change", syncRoleDescription);
+
+            function postToParent(message) {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(message, window.location.origin);
+                }
+            }
+
+            function closeFrame() {
+                postToParent({ type: "healthsys:role-frame-close" });
+            }
+
+            closeButtons.forEach(function (button) {
+                button.addEventListener("click", closeFrame);
+            });
+
+            form.addEventListener("submit", async function (event) {
+                event.preventDefault();
+
+                if (!form.reportValidity()) {
+                    return;
+                }
+
+                syncRoleDescription();
+                const formData = new FormData(form);
+                const enabled = form.querySelector("[name='IsEnabled']").checked;
+                formData.set("IsEnabled", String(enabled));
+                if (!enabled && !window.confirm("確定停用此角色？角色會從啟用清單移除，原有權限紀錄會保留。")) return;
+                const submit = form.querySelector("[type='submit']");
+                const error = form.querySelector("[data-role-error]");
+                submit.disabled = true;
+                error.hidden = true;
+                try {
+                    const response = await fetch(form.action, { method: "POST", body: formData });
+                    const result = await response.json().catch(() => null);
+                    if (!response.ok || !result?.saved) throw new Error(result?.message || "儲存失敗，請稍後重試。");
+                    const isEdit = formData.get("IsEdit") === "true";
+                    if (window.parent === window) {
+                        await window.showUserRoleResult({ title: "角色設定已儲存", message: "更新已成功套用。" });
+                        window.location.assign('@Url.Action("SystemSettings", "UserRole")' + '?roleCode=' + encodeURIComponent(result.roleCode));
+                    } else {
+                        postToParent({ type: "healthsys:role-created", role: result.role, roleCode: result.roleCode, enabled: result.enabled, isEdit });
+                    }
+                } catch (failure) {
+                    error.textContent = failure.message || "儲存失敗，請稍後重試。";
+                    error.hidden = false;
+                    await window.showUserRoleResult({ title: "角色儲存未完成", message: error.textContent, success: false });
+                } finally { submit.disabled = false; }
+            });
+        })();
+    </script>
+</body>
+</html>
+

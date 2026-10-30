@@ -1,0 +1,1470 @@
+@model HealthSys_20260428_v2.csproj.Models.UserRoleViewModels
+
+@{
+    ViewData["Title"] = "角色權限設定";
+    var selectedRole = Model.RoleItems.FirstOrDefault(role => role.Active) ?? Model.RoleItems.FirstOrDefault();
+    var selectedRoleCode = selectedRole?.Code ?? "";
+    var permissionInputIndex = 0;
+    string RoleColorStyle(string color) => string.IsNullOrWhiteSpace(color) ? "" : $"--role-color: {color};";
+}
+
+<link rel="stylesheet" href="~/css/account-permissions.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/user-role-dialog.css" asp-append-version="true" />
+<script src="~/js/user-role-dialog.js" asp-append-version="true"></script>
+<section class="permission-page" id="account-permissions" aria-label="帳號權限" data-staff-delete-url="@Url.Action("DeleteStaff", "UserRole")" data-staff-update-url="@Url.Action("UpdateStaff", "UserRole")">
+    <div hidden data-antiforgery-source>
+        @Html.AntiForgeryToken()
+    </div>
+    <header class="permission-page-header" data-tab-header="permissions">
+        <div class="permission-page-actions">
+            <button class="ghost-button permission-export-button" type="button">
+                <span class="download-mini-icon" aria-hidden="true"></span>
+                <span>匯出設定</span>
+            </button>
+            <button class="primary-button permission-save-button" type="submit" form="role-permission-form">
+                <span class="save-mini-icon" aria-hidden="true"></span>
+                <span>儲存變更</span>
+            </button>
+        </div>
+    </header>
+
+    <nav class="permission-tabs" aria-label="系統設定分頁">
+        <a class="permission-tab is-active" href="#account-permissions" aria-current="page" data-settings-tab="permissions">權限設定</a>
+        <a class="permission-tab" href="#staff-settings" data-settings-tab="staff">人員設定</a>
+    </nav>
+
+    <div class="permission-workspace" data-settings-panel="permissions">
+        <aside class="permission-role-panel" aria-labelledby="role-list-title">
+            <div class="permission-role-list-header">
+                <h2 id="role-list-title">角色管理</h2>
+                <button class="permission-add-role" type="button" aria-label="新增角色" data-open-role-frame data-role-frame-url="@Url.Action("AddRoleFrame", "UserRole")">
+                    <span class="plus-icon" aria-hidden="true"></span>
+                </button>
+            </div>
+            <div class="permission-role-list" aria-label="角色清單">
+                @foreach (var role in Model.RoleItems)
+                {
+                    <button class="permission-role-card @(role.Active ? "is-active" : "")" type="button" aria-pressed="@(role.Active ? "true" : "false")" data-role-card="@role.Name" data-role-code="@role.Code" title="@(role.Description + "（連按兩下或按 F2 修改角色／停用）")" style="@RoleColorStyle(role.Color)">
+                        <span class="permission-role-icon @role.Icon @role.Tone" aria-hidden="true"></span>
+                        <span class="permission-role-name">@role.Name</span>
+                        <span class="permission-role-count @role.Tone" data-role-count="@role.Name" data-role-user-count="@role.StaffCount">@role.StaffCount 人</span>
+                    </button>
+                }
+            </div>
+            <p class="permission-selected-role">已選擇：<strong>@selectedRole?.Name</strong></p>
+        </aside>
+
+        <form id="role-permission-form" class="permission-matrix-panel" method="post" action="@Url.Action("SaveRolePermissions", "UserRole")" aria-labelledby="permission-matrix-title" data-role-permission-form>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="RoleCode" value="@selectedRoleCode" data-selected-role-code />
+            <h2 id="permission-matrix-title" class="sr-only">模組功能權限表</h2>
+            <div class="permission-matrix-toolbar">
+                <span class="permission-save-status" data-permission-save-status aria-live="polite"></span>
+                <div class="permission-toolbar-actions">
+                    <button class="ghost-button permission-expand-all" type="button" data-permission-expand-all>
+                        <span class="expand-mini-icon" aria-hidden="true"></span>
+                        <span>展開全部</span>
+                    </button>
+                    <button class="ghost-button permission-collapse-all" type="button" data-permission-collapse-all>
+                        <span class="collapse-mini-icon" aria-hidden="true"></span>
+                        <span>收合全部</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="permission-table-wrap">
+                <table class="permission-table">
+                    <thead>
+                        <tr>
+                            <th>模組 / 功能</th>
+                            <th>檢視</th>
+                            <th>審核</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < Model.PermissionModules.Count; i++)
+                        {
+                            var module = Model.PermissionModules[i];
+                            var moduleId = $"permission-module-{i}";
+                            var moduleItemIndex = permissionInputIndex++;
+                            <tr class="permission-module-row" data-permission-module="@moduleId" data-permission-text="@module.Name">
+                                <td>
+                                    <input type="hidden" name="PermissionItems[@moduleItemIndex].Code" value="@module.Code" />
+                                    <input type="hidden" name="PermissionItems[@moduleItemIndex].ParentCode" value="" />
+                                    <input type="hidden" name="PermissionItems[@moduleItemIndex].Name" value="@module.Name" />
+                                    <input type="hidden" name="PermissionItems[@moduleItemIndex].DisplayOrder" value="@module.DisplayOrder" />
+                                    <span class="permission-name-cell">
+                                        <button class="permission-tree-toggle" type="button" aria-expanded="true" aria-label="收合 @module.Name" data-permission-toggle="@moduleId">
+                                            <span class="tree-chevron" aria-hidden="true"></span>
+                                        </button>
+                                        <span class="permission-cube-icon" aria-hidden="true"></span>
+                                        <strong>@module.Name</strong>
+                                    </span>
+                                </td>
+                                <td>
+                                    <label class="permission-setting">
+                                        <input type="checkbox" name="PermissionItems[@moduleItemIndex].CanView" value="true" checked="@module.CanView" aria-label="@($"{module.Name} 檢視")" />
+                                        <span class="permission-setting-control" aria-hidden="true"></span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <label class="permission-setting">
+                                        <input type="checkbox" name="PermissionItems[@moduleItemIndex].CanReview" value="true" checked="@module.CanReview" aria-label="@($"{module.Name} 審核")" />
+                                        <span class="permission-setting-control" aria-hidden="true"></span>
+                                    </label>
+                                </td>
+                            </tr>
+
+                            foreach (var function in module.Functions)
+                            {
+                                var functionItemIndex = permissionInputIndex++;
+                                <tr class="permission-function-row" data-permission-child="@moduleId" data-permission-text="@function.Name @module.Name">
+                                    <td>
+                                        <input type="hidden" name="PermissionItems[@functionItemIndex].Code" value="@function.Code" />
+                                        <input type="hidden" name="PermissionItems[@functionItemIndex].ParentCode" value="@function.ParentCode" />
+                                        <input type="hidden" name="PermissionItems[@functionItemIndex].Name" value="@function.Name" />
+                                        <input type="hidden" name="PermissionItems[@functionItemIndex].DisplayOrder" value="@function.DisplayOrder" />
+                                        <span class="permission-name-cell">
+                                            <span class="permission-indent" aria-hidden="true"></span>
+                                            <span class="permission-leaf-dot" aria-hidden="true"></span>
+                                            <span>@function.Name</span>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <label class="permission-setting">
+                                            <input type="checkbox" name="PermissionItems[@functionItemIndex].CanView" value="true" checked="@function.CanView" aria-label="@($"{function.Name} 檢視")" />
+                                            <span class="permission-setting-control" aria-hidden="true"></span>
+                                        </label>
+                                    </td>
+                                    <td>
+                                        <label class="permission-setting">
+                                            <input type="checkbox" name="PermissionItems[@functionItemIndex].CanReview" value="true" checked="@function.CanReview" aria-label="@($"{function.Name} 審核")" />
+                                            <span class="permission-setting-control" aria-hidden="true"></span>
+                                        </label>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <footer class="permission-legend" aria-label="權限狀態說明">
+                <span>
+                    <span class="permission-state is-enabled" aria-hidden="true"></span>
+                    <strong>已啟用</strong>
+                </span>
+                <span>
+                    <span class="permission-state is-disabled" aria-hidden="true"></span>
+                    <strong>未啟用</strong>
+                </span>
+            </footer>
+        </form>
+    </div>
+
+    <section class="staff-settings-panel" id="staff-settings" aria-labelledby="staff-list-title" data-settings-panel="staff" hidden>
+        <h2 id="staff-list-title">人員清單</h2>
+
+        <div class="staff-list-content">
+            <section class="staff-filter-panel" aria-label="人員清單篩選">
+                <label class="staff-search-field">
+                    <span class="sr-only">搜尋員編或姓名</span>
+                    <input type="search" placeholder="員編 / 姓名" aria-label="搜尋員編或姓名" data-staff-search />
+                </label>
+                <label class="staff-select-field">
+                    <span class="sr-only">角色</span>
+                    <select aria-label="角色" data-staff-role-filter>
+                        <option value="">全部角色</option>
+                        @foreach (var role in Model.StaffFilterRoles)
+                        {
+                            <option value="@role.Code">@role.Name</option>
+                        }
+                    </select>
+                </label>
+                <label class="staff-select-field">
+                    <span class="sr-only">狀態</span>
+                    <select aria-label="狀態" data-staff-status-filter>
+                        <option>全部狀態</option>
+                        <option>啟用</option>
+                        <option>停用</option>
+                    </select>
+                </label>
+                <button class="ghost-button staff-search-button" type="button" data-staff-filter-apply>
+                    <span>搜尋</span>
+                </button>
+                <button class="primary-button staff-add-button" type="button" data-open-employee-frame data-employee-frame-url="@Url.Action("AddEmployeeFrame", "UserRole")">
+                    <span class="plus-icon" aria-hidden="true"></span>
+                    <span>新增人員</span>
+                </button>
+            </section>
+
+            <section class="staff-table-panel" aria-label="人員清單資料">
+                <div class="staff-table-wrap">
+                    <table class="staff-table">
+                        <thead>
+                            <tr>
+                                <th>姓名</th>
+                                <th>部門</th>
+                                <th>職稱</th>
+                                <th>狀態</th>
+                                <th>角色</th>
+                                <th>加入日期</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var staff in Model.StaffUsers)
+                            {
+                                var roleNames = string.Join(" ", staff.Roles.Select(role => role.Name));
+                                var staffRoleNames = string.Join("|", staff.Roles.Select(role => role.Name));
+                                var staffRoleCodes = string.Join("|", staff.Roles.Select(role => role.Code));
+                                <tr data-staff-row data-staff-no="@staff.StaffNo" data-staff-name="@staff.Name" data-staff-department="@staff.Department" data-staff-position="@staff.Position" data-staff-status="@staff.Status" data-staff-roles="@staffRoleNames" data-staff-role-codes="@staffRoleCodes" data-staff-keywords="@($"{staff.StaffNo} {staff.Name} {staff.Department} {staff.Position} {staff.Status} {roleNames}")">
+                                    <td>
+                                        <span class="staff-person">
+                                            <span class="staff-avatar" aria-hidden="true">@staff.Initial</span>
+                                            <span>@staff.Name</span>
+                                        </span>
+                                    </td>
+                                    <td>@staff.Department</td>
+                                    <td>@staff.Position</td>
+                                    <td>
+                                        <span class="staff-status @staff.StatusTone">
+                                            <span aria-hidden="true"></span>
+                                            @staff.Status
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="staff-role-badges">
+                                            @foreach (var role in staff.Roles)
+                                            {
+                                                <span class="staff-role-badge @role.Tone" data-role-code="@role.Code" style="@RoleColorStyle(role.Color)">@role.Name</span>
+                                            }
+                                        </span>
+                                    </td>
+                                    <td>@staff.JoinedAt</td>
+                                    <td>
+                                        <span class="staff-row-actions">
+                                            <button class="staff-edit-button" type="button" aria-label="編輯 @staff.Name">編輯</button>
+                                            <form class="staff-delete-form" method="post" asp-controller="UserRole" asp-action="DeleteStaff" data-staff-delete-form data-staff-delete-name="@staff.Name">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="staffNo" value="@staff.StaffNo" />
+                                                <button class="staff-delete-button" type="submit" aria-label="刪除 @staff.Name">刪除</button>
+                                            </form>
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                            <tr class="staff-empty-row" data-staff-empty-row hidden>
+                                <td colspan="7">查無符合條件的人員</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <footer class="staff-table-footer">
+                    <span data-staff-page-summary>顯示第 1 到 8 筆，共 8 筆</span>
+                    <nav class="staff-pagination" aria-label="人員清單分頁" data-staff-pagination>
+                        <button type="button" disabled aria-label="上一頁">‹</button>
+                        <button type="button" class="active" aria-current="page">1</button>
+                        <button type="button" disabled aria-label="下一頁">›</button>
+                    </nav>
+                    <label class="staff-page-size">
+                        <span class="sr-only">每頁筆數</span>
+                        <select aria-label="每頁筆數" data-staff-page-size>
+                            <option value="10">10 筆/頁</option>
+                            <option value="20">20 筆/頁</option>
+                            <option value="50">50 筆/頁</option>
+                        </select>
+                    </label>
+                </footer>
+            </section>
+        </div>
+    </section>
+</section>
+
+<div class="role-frame-modal" data-role-frame-modal hidden>
+    <button class="role-frame-backdrop" type="button" data-close-role-frame aria-label="關閉新增角色視窗"></button>
+    <div class="role-frame-shell" role="dialog" aria-modal="true" aria-labelledby="role-frame-dialog-title">
+        <span id="role-frame-dialog-title" class="sr-only">新增角色</span>
+        <div data-role-frame-host></div>
+    </div>
+</div>
+
+<div class="employee-frame-modal" data-employee-frame-modal hidden>
+    <button class="employee-frame-backdrop" type="button" data-close-employee-frame aria-label="關閉新增人員視窗"></button>
+    <div class="employee-frame-shell" role="dialog" aria-modal="true" aria-labelledby="employee-frame-dialog-title">
+        <span id="employee-frame-dialog-title" class="sr-only">新增人員</span>
+        <div data-employee-frame-host></div>
+    </div>
+</div>
+
+<div class="staff-edit-modal" data-staff-edit-modal hidden>
+    <button class="staff-edit-backdrop" type="button" data-staff-edit-cancel aria-label="關閉編輯人員視窗"></button>
+    <form class="staff-edit-dialog" method="post" action="@Url.Action("UpdateStaff", "UserRole")" role="dialog" aria-modal="true" aria-labelledby="staff-edit-title" data-staff-edit-form>
+        @Html.AntiForgeryToken()
+        <header class="staff-edit-header">
+            <div>
+                <h2 id="staff-edit-title">編輯人員</h2>
+                <span data-staff-edit-name></span>
+            </div>
+            <button class="staff-edit-close-button" type="button" data-staff-edit-cancel aria-label="關閉編輯人員視窗">
+                <span class="cancel-icon" aria-hidden="true"></span>
+            </button>
+        </header>
+
+        <div class="staff-edit-content">
+            <section class="staff-edit-section" aria-labelledby="staff-edit-status-title">
+                <h3 id="staff-edit-status-title">帳號狀態</h3>
+                <div class="staff-edit-status-options">
+                    <label><input type="radio" name="StaffEditStatus" value="啟用" /> 啟用</label>
+                    <label><input type="radio" name="StaffEditStatus" value="停用" /> 停用</label>
+                </div>
+            </section>
+
+            <section class="staff-edit-section" aria-labelledby="staff-edit-role-title">
+                <h3 id="staff-edit-role-title">目前角色</h3>
+                <div class="staff-edit-role-options" data-staff-edit-role-list>
+                    @foreach (var role in Model.StaffFilterRoles)
+                    {
+                        <label>
+                            <input type="checkbox" name="StaffEditRoles" value="@role.Code" data-role-name="@role.Name" data-role-tone="@role.Tone" data-role-color="@role.Color" />
+                            <span>@role.Name</span>
+                        </label>
+                    }
+                </div>
+                <p class="staff-edit-error" data-staff-edit-error hidden>請至少選擇一個角色</p>
+            </section>
+        </div>
+
+        <footer class="staff-edit-footer">
+            <button class="ghost-button" type="button" data-staff-edit-cancel>取消</button>
+            <button class="primary-button" type="submit" data-staff-edit-confirm>確認</button>
+        </footer>
+    </form>
+</div>
+
+<div class="appointment-confirm-modal danger" data-staff-delete-confirm-modal hidden>
+    <button class="appointment-confirm-backdrop" type="button" data-staff-delete-confirm-close aria-label="關閉刪除確認視窗"></button>
+    <div class="appointment-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="staff-delete-confirm-title" aria-describedby="staff-delete-confirm-message">
+        <h2 id="staff-delete-confirm-title">刪除人員</h2>
+        <p id="staff-delete-confirm-message" data-staff-delete-confirm-message></p>
+        <p class="appointment-confirm-warning">刪除後，此人員資料將從清單中移除。</p>
+        <div class="appointment-confirm-actions">
+            <button class="ghost-button" type="button" data-staff-delete-confirm-close>取消</button>
+            <button class="primary-button" type="button" data-staff-delete-confirm-submit>確認刪除</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const page = document.querySelector(".permission-page");
+
+        if (!page) {
+            return;
+        }
+
+        const toggleButtons = Array.from(page.querySelectorAll("[data-permission-toggle]"));
+        const expandedModules = new Map(toggleButtons.map((button) => [button.dataset.permissionToggle, true]));
+        const tabs = Array.from(page.querySelectorAll("[data-settings-tab]"));
+        const panels = Array.from(page.querySelectorAll("[data-settings-panel]"));
+        const permissionHeader = page.querySelector("[data-tab-header='permissions']");
+        const rolePermissionForm = page.querySelector("[data-role-permission-form]");
+        const selectedRoleCodeInput = page.querySelector("[data-selected-role-code]");
+        const permissionSaveStatus = page.querySelector("[data-permission-save-status]");
+        const permissionRows = Array.from(rolePermissionForm?.querySelectorAll(".permission-module-row, .permission-function-row") || []);
+        let activePermissionRoleCode = "";
+        let permissionDirty = false;
+        let permissionBusy = false;
+        let permissionLoaded = false;
+        let permissionBaseline = "";
+
+        function permissionSnapshot() {
+            return JSON.stringify(permissionRows.map(row => [row.querySelector("input[name$='.CanView']").checked,
+                row.querySelector("input[name$='.CanReview']").checked]));
+        }
+
+        function setPermissionBusy(busy) {
+            permissionBusy = busy;
+            permissionRows.forEach(row => row.querySelectorAll("input[type='checkbox']").forEach(input => input.disabled = busy || !permissionLoaded));
+            page.querySelector(".permission-save-button").disabled = busy || !permissionLoaded;
+        }
+
+        function applyPermissions(items) {
+            const state = new Map((items || []).map(item => [item.code, item]));
+            permissionRows.forEach(row => {
+                const item = state.get(row.querySelector("input[name$='.Code']").value);
+                row.querySelector("input[name$='.CanView']").checked = item?.canView === true;
+                row.querySelector("input[name$='.CanReview']").checked = item?.canReview === true;
+            });
+            permissionBaseline = permissionSnapshot();
+            permissionDirty = false;
+        }
+        const roleFrameModal = document.querySelector("[data-role-frame-modal]");
+        const roleFrameHost = document.querySelector("[data-role-frame-host]");
+        const openRoleFrameButton = page.querySelector("[data-open-role-frame]");
+        const closeRoleFrameButtons = Array.from(document.querySelectorAll("[data-close-role-frame]"));
+        const employeeFrameModal = document.querySelector("[data-employee-frame-modal]");
+        const employeeFrameHost = document.querySelector("[data-employee-frame-host]");
+        const openEmployeeFrameButton = page.querySelector("[data-open-employee-frame]");
+        const closeEmployeeFrameButtons = Array.from(document.querySelectorAll("[data-close-employee-frame]"));
+        const staffEditModal = document.querySelector("[data-staff-edit-modal]");
+        const staffEditForm = document.querySelector("[data-staff-edit-form]");
+        const staffEditName = document.querySelector("[data-staff-edit-name]");
+        const staffEditRoleList = document.querySelector("[data-staff-edit-role-list]");
+        const staffEditError = document.querySelector("[data-staff-edit-error]");
+        const staffEditConfirm = document.querySelector("[data-staff-edit-confirm]");
+        const closeStaffEditButtons = Array.from(document.querySelectorAll("[data-staff-edit-cancel]"));
+        const staffDeleteConfirmModal = document.querySelector("[data-staff-delete-confirm-modal]");
+        const staffDeleteConfirmMessage = document.querySelector("[data-staff-delete-confirm-message]");
+        const staffDeleteConfirmSubmit = document.querySelector("[data-staff-delete-confirm-submit]");
+        const staffDeleteConfirmCloseButtons = Array.from(document.querySelectorAll("[data-staff-delete-confirm-close]"));
+        let staffRows = Array.from(page.querySelectorAll("[data-staff-row]"));
+        const staffSearchInput = page.querySelector("[data-staff-search]");
+        const staffRoleFilter = page.querySelector("[data-staff-role-filter]");
+        const staffStatusFilter = page.querySelector("[data-staff-status-filter]");
+        const staffFilterApply = page.querySelector("[data-staff-filter-apply]");
+        const staffPageSize = page.querySelector("[data-staff-page-size]");
+        const staffPageSummary = page.querySelector("[data-staff-page-summary]");
+        const staffPagination = page.querySelector("[data-staff-pagination]");
+        const staffEmptyRow = page.querySelector("[data-staff-empty-row]");
+        let staffCurrentPage = 1;
+        let selectedStaffRow = null;
+        let editingStaffRow = null;
+        let pendingStaffDeleteForm = null;
+        let previousFocus = null;
+
+        function setActiveSettingsTab(tabName) {
+            tabs.forEach((tab) => {
+                const active = tab.dataset.settingsTab === tabName;
+                tab.classList.toggle("is-active", active);
+
+                if (active) {
+                    tab.setAttribute("aria-current", "page");
+                } else {
+                    tab.removeAttribute("aria-current");
+                }
+            });
+
+            panels.forEach((panel) => {
+                panel.hidden = panel.dataset.settingsPanel !== tabName;
+            });
+
+            if (permissionHeader) {
+                permissionHeader.hidden = tabName !== "permissions";
+            }
+
+            page.classList.toggle("is-staff-tab", tabName === "staff");
+            page.classList.toggle("is-permission-tab", tabName === "permissions");
+        }
+
+        function setPermissionSaveStatus(message, state) {
+            if (!permissionSaveStatus) {
+                return;
+            }
+
+            permissionSaveStatus.textContent = message || "";
+            permissionSaveStatus.dataset.state = state || "";
+            permissionSaveStatus.hidden = !message;
+        }
+
+        async function selectRoleCard(card) {
+            if (!card || permissionBusy || (permissionLoaded && activePermissionRoleCode === card.dataset.roleCode)) {
+                return;
+            }
+            if (permissionDirty && !window.confirm("此角色有未儲存的變更，確定放棄並切換角色？")) return;
+            permissionLoaded = false;
+            setPermissionBusy(true);
+            const roleCode = card.dataset.roleCode;
+            try {
+                const url = new URL('@Url.Action("RolePermissions", "UserRole")', window.location.href);
+                url.searchParams.set("roleCode", roleCode);
+                const response = await fetch(url, { cache: "no-store" });
+                if (!response.ok) throw new Error("讀取失敗");
+                const result = await response.json();
+                applyPermissions(result.permissionItems);
+                permissionLoaded = true;
+
+            page.querySelectorAll(".permission-role-card").forEach((roleCard) => {
+                const active = roleCard === card;
+                roleCard.classList.toggle("is-active", active);
+                roleCard.setAttribute("aria-pressed", String(active));
+            });
+
+            const selectedRoleName = page.querySelector(".permission-selected-role strong");
+            const roleName = (card.dataset.roleCard || card.querySelector(".permission-role-name")?.textContent || "").trim();
+            activePermissionRoleCode = roleCode;
+
+            if (selectedRoleName) {
+                selectedRoleName.textContent = roleName;
+            }
+
+            if (selectedRoleCodeInput) {
+                selectedRoleCodeInput.value = roleCode;
+            }
+
+                setPermissionSaveStatus("", "");
+            } catch {
+                setPermissionSaveStatus("讀取角色權限失敗，請重新選取角色。", "error");
+            } finally { setPermissionBusy(false); }
+        }
+
+        function rememberRolePermissions() {
+            permissionDirty = permissionLoaded && permissionSnapshot() !== permissionBaseline;
+        }
+
+        async function saveRolePermissions() {
+            if (!rolePermissionForm || permissionBusy || !permissionLoaded) {
+                return;
+            }
+
+            if (!activePermissionRoleCode) {
+                setPermissionSaveStatus("請先選擇角色", "error");
+                return;
+            }
+            rememberRolePermissions();
+            const savingRoleCode = activePermissionRoleCode;
+            // Capture enabled checkboxes before disabling the controls during the request.
+            const postedPermissions = new FormData(rolePermissionForm);
+            setPermissionBusy(true);
+
+            setPermissionSaveStatus("儲存中...", "pending");
+
+            try {
+                const response = await fetch(rolePermissionForm.action, {
+                    method: rolePermissionForm.method || "post",
+                    body: postedPermissions,
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+
+                const result = await response.json().catch(() => null);
+                if (!response.ok || !result?.saved || !result?.persisted)
+                    throw new Error(result?.message || "套用失敗，請稍後重試；目前修改仍保留在畫面中。");
+                if (activePermissionRoleCode === savingRoleCode) {
+                    applyPermissions(result.permissionItems);
+                    setPermissionSaveStatus("儲存完成，已重新讀取資料庫", "success");
+                    const roleName = page.querySelector(".permission-selected-role strong")?.textContent || savingRoleCode;
+                    await window.showUserRoleResult({ title: "權限已成功套用", message: `「${roleName}」的功能設定已儲存。\n畫面已同步最新資料。` });
+                }
+            } catch (failure) {
+                if (activePermissionRoleCode === savingRoleCode) setPermissionSaveStatus("儲存失敗", "error");
+                await window.showUserRoleResult({ title: "暫時無法套用", message: failure.message || "儲存失敗，請稍後重試。", success: false });
+            } finally { setPermissionBusy(false); }
+        }
+
+        function rowsForModule(moduleId) {
+            return Array.from(page.querySelectorAll(`[data-permission-child="${moduleId}"]`));
+        }
+
+        function normalizeStaffValue(value) {
+            return String(value || "").trim().toLowerCase();
+        }
+
+        function getSpecificFilterValue(select) {
+            const value = select ? select.value : "";
+            return value.startsWith("全部") ? "" : value;
+        }
+
+        function getStaffPageSize() {
+            const parsed = Number.parseInt(staffPageSize ? staffPageSize.value : "10", 10);
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+        }
+
+        function staffRowMatches(row) {
+            const keyword = normalizeStaffValue(staffSearchInput ? staffSearchInput.value : "");
+            const roleCode = staffRoleFilter?.value || "";
+            const status = getSpecificFilterValue(staffStatusFilter);
+
+            if (roleCode && !getStaffRoleCodes(row).includes(roleCode)) {
+                return false;
+            }
+
+            if (status && row.dataset.staffStatus !== status) {
+                return false;
+            }
+
+            if (keyword && !normalizeStaffValue(row.dataset.staffKeywords).includes(keyword)) {
+                return false;
+            }
+
+            return true;
+        }
+
+        function createStaffPageButton(label, pageNumber, options) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+            button.disabled = Boolean(options?.disabled);
+
+            if (options?.active) {
+                button.classList.add("active");
+                button.setAttribute("aria-current", "page");
+            }
+
+            if (options?.ariaLabel) {
+                button.setAttribute("aria-label", options.ariaLabel);
+            }
+
+            button.addEventListener("click", function () {
+                if (button.disabled || pageNumber === staffCurrentPage) {
+                    return;
+                }
+
+                staffCurrentPage = pageNumber;
+                renderStaffRows(false);
+            });
+
+            return button;
+        }
+
+        function renderStaffPagination(pageCount) {
+            if (!staffPagination) {
+                return;
+            }
+
+            staffPagination.innerHTML = "";
+            staffPagination.appendChild(createStaffPageButton("‹", Math.max(1, staffCurrentPage - 1), {
+                disabled: staffCurrentPage <= 1,
+                ariaLabel: "上一頁"
+            }));
+
+            for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+                staffPagination.appendChild(createStaffPageButton(String(pageNumber), pageNumber, {
+                    active: pageNumber === staffCurrentPage,
+                    ariaLabel: `第 ${pageNumber} 頁`
+                }));
+            }
+
+            staffPagination.appendChild(createStaffPageButton("›", Math.min(pageCount, staffCurrentPage + 1), {
+                disabled: staffCurrentPage >= pageCount,
+                ariaLabel: "下一頁"
+            }));
+        }
+
+        function selectStaffRow(selectedRow) {
+            selectedStaffRow = selectedRow;
+            staffRows.forEach((row) => {
+                const selected = row === selectedRow;
+                row.classList.toggle("is-selected", selected);
+                row.setAttribute("aria-selected", String(selected));
+            });
+        }
+
+        function renderStaffRows(resetPage) {
+            if (!staffRows.length) {
+                return;
+            }
+
+            if (resetPage) {
+                staffCurrentPage = 1;
+            }
+
+            const pageSize = getStaffPageSize();
+            const filteredRows = staffRows.filter(staffRowMatches);
+            const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+            staffCurrentPage = Math.min(Math.max(staffCurrentPage, 1), pageCount);
+
+            const startIndex = (staffCurrentPage - 1) * pageSize;
+            const pageRows = filteredRows.slice(startIndex, startIndex + pageSize);
+
+            staffRows.forEach((row) => {
+                row.hidden = true;
+                row.tabIndex = 0;
+            });
+
+            pageRows.forEach((row) => {
+                row.hidden = false;
+            });
+
+            if (!pageRows.includes(selectedStaffRow)) {
+                selectStaffRow(pageRows[0] || null);
+            }
+
+            if (staffEmptyRow) {
+                staffEmptyRow.hidden = filteredRows.length > 0;
+            }
+
+            if (staffPageSummary) {
+                const firstItem = filteredRows.length ? startIndex + 1 : 0;
+                const lastItem = filteredRows.length ? startIndex + pageRows.length : 0;
+                staffPageSummary.textContent = `顯示第 ${firstItem} 到 ${lastItem} 筆，共 ${filteredRows.length} 筆`;
+            }
+
+            renderStaffPagination(pageCount);
+        }
+
+        function openRoleFrame(roleCode) {
+            if (!roleFrameModal || !roleFrameHost || !openRoleFrameButton?.dataset.roleFrameUrl) {
+                return;
+            }
+            if (permissionBusy) return;
+            if (permissionDirty && !window.confirm("此角色有未儲存的權限修改，完成角色管理後將重新讀取資料，確定繼續？")) return;
+
+            previousFocus = document.activeElement;
+            roleFrameHost.innerHTML = "";
+
+            const iframe = document.createElement("iframe");
+            const editing = typeof roleCode === "string" && roleCode;
+            iframe.title = editing ? "修改角色" : "新增角色";
+            const url = new URL(openRoleFrameButton.dataset.roleFrameUrl, window.location.href);
+            if (editing) url.searchParams.set("roleCode", roleCode);
+            iframe.src = url.toString();
+            iframe.loading = "eager";
+            iframe.setAttribute("data-role-frame", "");
+            roleFrameHost.appendChild(iframe);
+
+            roleFrameModal.hidden = false;
+            document.body.classList.add("role-frame-open");
+        }
+
+        function openEmployeeFrame() {
+            if (!employeeFrameModal || !employeeFrameHost || !openEmployeeFrameButton?.dataset.employeeFrameUrl) {
+                return;
+            }
+
+            previousFocus = document.activeElement;
+            employeeFrameHost.innerHTML = "";
+
+            const iframe = document.createElement("iframe");
+            iframe.title = "新增人員";
+            iframe.src = new URL(openEmployeeFrameButton.dataset.employeeFrameUrl, window.location.href).toString();
+            iframe.loading = "eager";
+            iframe.setAttribute("data-employee-frame", "");
+            employeeFrameHost.appendChild(iframe);
+
+            employeeFrameModal.hidden = false;
+            document.body.classList.add("employee-frame-open");
+        }
+
+        function closeRoleFrame() {
+            if (!roleFrameModal || !roleFrameHost) {
+                return;
+            }
+
+            roleFrameModal.hidden = true;
+            roleFrameHost.innerHTML = "";
+            document.body.classList.remove("role-frame-open");
+
+            if (previousFocus && typeof previousFocus.focus === "function") {
+                previousFocus.focus();
+            }
+        }
+
+        function closeEmployeeFrame() {
+            if (!employeeFrameModal || !employeeFrameHost) {
+                return;
+            }
+
+            employeeFrameModal.hidden = true;
+            employeeFrameHost.innerHTML = "";
+            document.body.classList.remove("employee-frame-open");
+
+            if (previousFocus && typeof previousFocus.focus === "function") {
+                previousFocus.focus();
+            }
+        }
+
+        function closeStaffEdit() {
+            if (!staffEditModal) {
+                return;
+            }
+
+            staffEditModal.hidden = true;
+            editingStaffRow = null;
+            document.body.classList.remove("staff-edit-open");
+
+            if (previousFocus && typeof previousFocus.focus === "function") {
+                previousFocus.focus();
+            }
+        }
+
+        function closeStaffDeleteConfirm() {
+            if (!staffDeleteConfirmModal) {
+                return;
+            }
+
+            staffDeleteConfirmModal.hidden = true;
+            pendingStaffDeleteForm = null;
+
+            if (previousFocus && typeof previousFocus.focus === "function") {
+                previousFocus.focus();
+            }
+        }
+
+        function openStaffDeleteConfirm(deleteForm) {
+            if (!deleteForm) {
+                return;
+            }
+
+            if (!staffDeleteConfirmModal || !staffDeleteConfirmMessage || !staffDeleteConfirmSubmit) {
+                submitStaffDelete(deleteForm);
+                return;
+            }
+
+            const staffName = deleteForm.dataset.staffDeleteName || "此人員";
+
+            pendingStaffDeleteForm = deleteForm;
+            previousFocus = document.activeElement;
+            staffDeleteConfirmMessage.textContent = `是否確認刪除 ${staffName}？`;
+            staffDeleteConfirmModal.hidden = false;
+            staffDeleteConfirmSubmit.focus();
+        }
+
+        function removeDeletedStaffRow(deleteForm) {
+            const staffRow = deleteForm?.closest("[data-staff-row]");
+
+            if (!staffRow) {
+                return;
+            }
+
+            const roleNames = getStaffRoleNames(staffRow);
+
+            staffRow.remove();
+            staffRows = staffRows.filter((row) => row !== staffRow);
+            adjustRoleCounts(roleNames, -1);
+            renderStaffRows(false);
+        }
+
+        async function submitStaffDelete(deleteForm) {
+            if (!deleteForm) {
+                return;
+            }
+
+            if (staffDeleteConfirmSubmit) {
+                staffDeleteConfirmSubmit.disabled = true;
+            }
+
+            try {
+                const response = await fetch(deleteForm.action, {
+                    method: deleteForm.method || "post",
+                    body: new FormData(deleteForm),
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const result = await response.json();
+                const deletedCount = Number.parseInt(result?.deletedCount || "0", 10);
+
+                if (result?.deleted === true || deletedCount >= 1) {
+                    removeDeletedStaffRow(deleteForm);
+                }
+            } catch {
+                return;
+            } finally {
+                if (staffDeleteConfirmSubmit) {
+                    staffDeleteConfirmSubmit.disabled = false;
+                }
+
+                closeStaffDeleteConfirm();
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function normalizeRoleColor(color) {
+            const value = String(color || "").trim();
+
+            if (!value || value.length > 80) {
+                return "";
+            }
+
+            if (/^#[0-9a-f]{3,4}([0-9a-f]{3,4})?$/i.test(value) || /^[a-z]{1,32}$/i.test(value)) {
+                return value;
+            }
+
+            if (/^(rgba?|hsla?)\([0-9a-z\s,./%+-]+\)$/i.test(value)) {
+                return value;
+            }
+
+            return "";
+        }
+
+        function roleStyleAttribute(color) {
+            const roleColor = normalizeRoleColor(color);
+
+            return roleColor ? ' style="--role-color: ' + escapeHtml(roleColor) + ';"' : "";
+        }
+
+        function setRoleColor(element, color) {
+            const roleColor = normalizeRoleColor(color);
+
+            if (roleColor) {
+                element.style.setProperty("--role-color", roleColor);
+            }
+        }
+
+        function getStaffRoleNames(row) {
+            const roleValue = row?.dataset.staffRoles || "";
+
+            if (roleValue) {
+                return roleValue
+                    .split("|")
+                    .map((roleName) => roleName.trim())
+                    .filter(Boolean);
+            }
+
+            return Array.from(row?.querySelectorAll(".staff-role-badge") || [])
+                .map((badge) => badge.textContent.trim())
+                .filter(Boolean);
+        }
+
+        function getStaffRoleCodes(row) {
+            const codeValue = row?.dataset.staffRoleCodes || "";
+
+            if (codeValue) {
+                return codeValue
+                    .split("|")
+                    .map((roleCode) => roleCode.trim())
+                    .filter(Boolean);
+            }
+
+            return Array.from(row?.querySelectorAll(".staff-role-badge") || [])
+                .map((badge) => (badge.dataset.roleCode || badge.textContent).trim())
+                .filter(Boolean);
+        }
+
+        function getStaffName(row) {
+            return row?.dataset.staffName || row?.querySelector(".staff-person span:last-child")?.textContent.trim() || "";
+        }
+
+        function renderAntiForgeryInput() {
+            const token = document.querySelector("input[name='__RequestVerificationToken']")?.value || "";
+
+            return token
+                ? '<input name="__RequestVerificationToken" type="hidden" value="' + escapeHtml(token) + '" />'
+                : "";
+        }
+
+        function renderStaffDeleteForm(staffNo, staffName) {
+            const deleteUrl = page.dataset.staffDeleteUrl || "";
+
+            return [
+                '<form class="staff-delete-form" method="post" action="' + escapeHtml(deleteUrl) + '" data-staff-delete-form data-staff-delete-name="' + escapeHtml(staffName) + '">',
+                renderAntiForgeryInput(),
+                '<input type="hidden" name="staffNo" value="' + escapeHtml(staffNo) + '" />',
+                '<button class="staff-delete-button" type="submit" aria-label="刪除 ' + escapeHtml(staffName) + '">刪除</button>',
+                "</form>"
+            ].join("");
+        }
+
+        function getStaffStatusTone(status) {
+            return status === "停用" ? "inactive" : "active";
+        }
+
+        function renderStaffEditRoleOptions(selectedRoleCodes) {
+            if (!staffEditRoleList) {
+                return;
+            }
+
+            const selectedRoles = new Set(selectedRoleCodes || []);
+            staffEditRoleList.querySelectorAll("input[name='StaffEditRoles']").forEach(input => {
+                input.checked = selectedRoles.has(input.value);
+            });
+        }
+
+        function getSelectedStaffEditRoles() {
+            return Array.from(staffEditRoleList?.querySelectorAll("input[name='StaffEditRoles']:checked") || [])
+                .map((input) => ({
+                    name: input.dataset.roleName || "",
+                    code: input.value,
+                    tone: input.dataset.roleTone || "gray",
+                    color: input.dataset.roleColor || ""
+                }))
+                .filter((role) => role.name);
+        }
+
+        function syncStaffEditConfirmState(showError) {
+            const hasRole = getSelectedStaffEditRoles().length > 0;
+
+            if (staffEditConfirm) {
+                staffEditConfirm.disabled = !hasRole;
+            }
+
+            if (staffEditError) {
+                staffEditError.hidden = hasRole || !showError;
+            }
+
+            return hasRole;
+        }
+
+        function refreshStaffRowKeywords(row) {
+            const roleText = getStaffRoleNames(row).join(" ");
+
+            row.dataset.staffKeywords = [
+                row.dataset.staffNo,
+                getStaffName(row),
+                row.dataset.staffDepartment,
+                row.dataset.staffPosition,
+                row.dataset.staffStatus,
+                roleText
+            ].join(" ");
+        }
+
+        function updateStaffStatusCell(row, status) {
+            const statusCell = row.cells[3];
+            const statusTone = getStaffStatusTone(status);
+
+            row.dataset.staffStatus = status;
+
+            if (statusCell) {
+                statusCell.innerHTML = [
+                    '<span class="staff-status ' + statusTone + '">',
+                    '<span aria-hidden="true"></span>',
+                    escapeHtml(status),
+                    "</span>"
+                ].join("");
+            }
+        }
+
+        function updateStaffRoleCell(row, roles) {
+            const roleCell = row.cells[4];
+            const roleNames = roles.map((role) => role.name);
+            const roleCodes = roles.map((role) => role.code || role.name);
+
+            row.dataset.staffRoles = roleNames.join("|");
+            row.dataset.staffRoleCodes = roleCodes.join("|");
+
+            if (roleCell) {
+                roleCell.innerHTML = [
+                    '<span class="staff-role-badges">',
+                    roles.map((role) => '<span class="staff-role-badge ' + escapeHtml(role.tone || "gray") + '" data-role-code="' + escapeHtml(role.code || role.name) + '"' + roleStyleAttribute(role.color) + '>' + escapeHtml(role.name) + "</span>").join(""),
+                    "</span>"
+                ].join("");
+            }
+        }
+
+        function openStaffEdit(row) {
+            if (!row || !staffEditModal || !staffEditForm) {
+                return;
+            }
+
+            editingStaffRow = row;
+            previousFocus = document.activeElement;
+
+            if (staffEditName) {
+                staffEditName.textContent = getStaffName(row);
+            }
+
+            staffEditForm.querySelectorAll("input[name='StaffEditStatus']").forEach((input) => {
+                input.checked = input.value === (row.dataset.staffStatus || "啟用");
+            });
+
+            renderStaffEditRoleOptions(getStaffRoleCodes(row));
+            syncStaffEditConfirmState(false);
+
+            staffEditModal.hidden = false;
+            document.body.classList.add("staff-edit-open");
+            staffEditForm.querySelector("input:checked, input, button")?.focus();
+        }
+
+        function createStaffEditFormData(selectedStatus, selectedRoles) {
+            const formData = new FormData(staffEditForm);
+
+            formData.set("StaffNo", editingStaffRow?.dataset.staffNo || "");
+            formData.set("StaffName", getStaffName(editingStaffRow));
+            formData.set("Department", editingStaffRow?.dataset.staffDepartment || "");
+            formData.set("Position", editingStaffRow?.dataset.staffPosition || "");
+            formData.set("Status", selectedStatus);
+            formData.delete("RoleNames");
+            formData.delete("RoleCodes");
+
+            selectedRoles.forEach((role) => {
+                formData.append("RoleNames", role.name);
+                formData.append("RoleCodes", role.code || role.name);
+            });
+
+            return formData;
+        }
+
+        async function applyStaffEdit() {
+            if (!editingStaffRow) {
+                return;
+            }
+
+            if (!syncStaffEditConfirmState(true)) {
+                return;
+            }
+
+            const selectedStatus = staffEditForm?.querySelector("input[name='StaffEditStatus']:checked")?.value || "啟用";
+            const oldRoleNames = getStaffRoleNames(editingStaffRow);
+            const selectedRoles = getSelectedStaffEditRoles();
+            const selectedRoleNames = selectedRoles.map((role) => role.name);
+            const updateUrl = page.dataset.staffUpdateUrl || staffEditForm?.action || "";
+
+            if (!updateUrl) {
+                return;
+            }
+
+            if (staffEditConfirm) {
+                staffEditConfirm.disabled = true;
+            }
+
+            try {
+                const response = await fetch(updateUrl, {
+                    method: staffEditForm?.method || "post",
+                    body: createStaffEditFormData(selectedStatus, selectedRoles),
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+
+                const result = await response.json().catch(() => null);
+                if (!response.ok) throw new Error(result?.message || "更新失敗，請稍後重試。");
+                const updatedCount = Number.parseInt(result?.updatedCount || "0", 10);
+
+                if (result?.saved !== true && result?.updated !== true && updatedCount < 1) {
+                    throw new Error(result?.message || "未能更新人員設定，請重新確認後再試。");
+                }
+
+                updateStaffStatusCell(editingStaffRow, selectedStatus);
+                updateStaffRoleCell(editingStaffRow, selectedRoles);
+                refreshStaffRowKeywords(editingStaffRow);
+                adjustRoleCounts(oldRoleNames, -1);
+                adjustRoleCounts(selectedRoleNames, 1);
+                closeStaffEdit();
+                renderStaffRows(false);
+                await window.showUserRoleResult({ title: "人員設定已更新", message: "角色與帳號狀態已儲存並套用。" });
+            } catch (failure) {
+                await window.showUserRoleResult({ title: "更新未完成", message: failure.message || "更新失敗，請稍後重試。", success: false });
+            } finally {
+                if (staffEditConfirm) {
+                    staffEditConfirm.disabled = false;
+                }
+            }
+        }
+
+        function adjustRoleCounts(roleNames, delta) {
+            const uniqueRoleNames = Array.from(new Set((roleNames || []).filter(Boolean)));
+            const countBadges = Array.from(page.querySelectorAll("[data-role-count]"));
+
+            uniqueRoleNames.forEach((roleName) => {
+                const countBadge = countBadges.find((badge) => badge.dataset.roleCount === roleName);
+                if (!countBadge) {
+                    return;
+                }
+
+                const currentCount = Number.parseInt(countBadge.dataset.roleUserCount || "0", 10);
+                const nextCount = Math.max(0, (Number.isFinite(currentCount) ? currentCount : 0) + delta);
+                countBadge.dataset.roleUserCount = String(nextCount);
+                countBadge.textContent = `${nextCount} 人`;
+            });
+        }
+
+        function addCreatedEmployee(employee) {
+            if (!employee || !employee.staffNo || !employee.name) {
+                closeEmployeeFrame();
+                return;
+            }
+
+            const tableBody = page.querySelector(".staff-table tbody");
+            if (!tableBody) {
+                closeEmployeeFrame();
+                return;
+            }
+
+            const statusTone = employee.status === "停用" ? "inactive" : "active";
+            const roleText = (employee.roles || []).map((role) => role.name).join(" ");
+            const roleValue = (employee.roles || []).map((role) => role.name).join("|");
+            const roleCodeValue = (employee.roles || []).map((role) => role.code || role.name).join("|");
+            const row = document.createElement("tr");
+            row.setAttribute("data-staff-row", "");
+            row.dataset.staffNo = employee.staffNo || "";
+            row.dataset.staffName = employee.name;
+            row.dataset.staffDepartment = employee.department || "";
+            row.dataset.staffPosition = employee.position || "";
+            row.dataset.staffStatus = employee.status || "";
+            row.dataset.staffRoles = roleValue;
+            row.dataset.staffRoleCodes = roleCodeValue;
+            row.dataset.staffKeywords = [
+                employee.staffNo,
+                employee.name,
+                employee.department,
+                employee.position,
+                employee.status,
+                roleText
+            ].join(" ");
+            row.innerHTML = [
+                "<td>",
+                '<span class="staff-person">',
+                '<span class="staff-avatar" aria-hidden="true">' + escapeHtml(employee.name.charAt(0)) + "</span>",
+                "<span>" + escapeHtml(employee.name) + "</span>",
+                "</span>",
+                "</td>",
+                "<td>" + escapeHtml(employee.department) + "</td>",
+                "<td>" + escapeHtml(employee.position) + "</td>",
+                "<td>",
+                '<span class="staff-status ' + statusTone + '">',
+                '<span aria-hidden="true"></span>',
+                escapeHtml(employee.status),
+                "</span>",
+                "</td>",
+                "<td>",
+                '<span class="staff-role-badges">',
+                (employee.roles || []).map((role) => '<span class="staff-role-badge ' + escapeHtml(role.tone || "gray") + '" data-role-code="' + escapeHtml(role.code || role.name) + '"' + roleStyleAttribute(role.color) + '>' + escapeHtml(role.name) + "</span>").join(""),
+                "</span>",
+                "</td>",
+                "<td>" + escapeHtml(employee.joinedAt) + "</td>",
+                "<td>",
+                '<span class="staff-row-actions">',
+                '<button class="staff-edit-button" type="button" aria-label="編輯 ' + escapeHtml(employee.name) + '">編輯</button>',
+                renderStaffDeleteForm(employee.staffNo || "", employee.name),
+                "</span>",
+                "</td>"
+            ].join("");
+
+            tableBody.insertBefore(row, staffEmptyRow || null);
+            staffRows = Array.from(page.querySelectorAll("[data-staff-row]"));
+            adjustRoleCounts((employee.roles || []).map((role) => role.name), 1);
+            closeEmployeeFrame();
+            setActiveSettingsTab("staff");
+            renderStaffRows(true);
+        }
+
+        function applyModuleState(moduleId) {
+            const button = page.querySelector(`[data-permission-toggle="${moduleId}"]`);
+            const moduleRow = page.querySelector(`[data-permission-module="${moduleId}"]`);
+            const expanded = expandedModules.get(moduleId);
+
+            if (button) {
+                button.setAttribute("aria-expanded", String(expanded));
+                button.setAttribute("aria-label", `${expanded ? "收合" : "展開"} ${moduleRow ? moduleRow.textContent.trim() : "模組"}`);
+            }
+
+            rowsForModule(moduleId).forEach((row) => {
+                row.hidden = !expanded;
+            });
+        }
+
+        toggleButtons.forEach((button) => {
+            button.addEventListener("click", function () {
+                const moduleId = button.dataset.permissionToggle;
+                expandedModules.set(moduleId, !expandedModules.get(moduleId));
+                applyModuleState(moduleId);
+            });
+        });
+
+        page.querySelector("[data-permission-expand-all]")?.addEventListener("click", function () {
+            toggleButtons.forEach((button) => {
+                expandedModules.set(button.dataset.permissionToggle, true);
+                applyModuleState(button.dataset.permissionToggle);
+            });
+        });
+
+        page.querySelector("[data-permission-collapse-all]")?.addEventListener("click", function () {
+            toggleButtons.forEach((button) => {
+                expandedModules.set(button.dataset.permissionToggle, false);
+                applyModuleState(button.dataset.permissionToggle);
+            });
+        });
+
+        toggleButtons.forEach((button) => applyModuleState(button.dataset.permissionToggle));
+
+        staffRoleFilter?.addEventListener("change", function () {
+            renderStaffRows(true);
+        });
+
+        staffStatusFilter?.addEventListener("change", function () {
+            renderStaffRows(true);
+        });
+
+        staffPageSize?.addEventListener("change", function () {
+            renderStaffRows(true);
+        });
+
+        staffFilterApply?.addEventListener("click", function () {
+            renderStaffRows(true);
+        });
+
+        staffSearchInput?.addEventListener("keydown", function (event) {
+            if (event.key !== "Enter") {
+                return;
+            }
+
+            event.preventDefault();
+            renderStaffRows(true);
+        });
+
+        staffSearchInput?.addEventListener("search", function () {
+            renderStaffRows(true);
+        });
+
+        openRoleFrameButton?.addEventListener("click", openRoleFrame);
+        openEmployeeFrameButton?.addEventListener("click", openEmployeeFrame);
+        closeRoleFrameButtons.forEach((button) => {
+            button.addEventListener("click", closeRoleFrame);
+        });
+        closeEmployeeFrameButtons.forEach((button) => {
+            button.addEventListener("click", closeEmployeeFrame);
+        });
+        closeStaffEditButtons.forEach((button) => {
+            button.addEventListener("click", closeStaffEdit);
+        });
+        staffEditRoleList?.addEventListener("change", function () {
+            syncStaffEditConfirmState(true);
+        });
+        staffEditForm?.addEventListener("submit", function (event) {
+            event.preventDefault();
+            applyStaffEdit();
+        });
+        rolePermissionForm?.addEventListener("submit", function (event) {
+            event.preventDefault();
+            saveRolePermissions();
+        });
+        rolePermissionForm?.addEventListener("change", function () {
+            rememberRolePermissions();
+            setPermissionSaveStatus(permissionDirty ? "此角色有未儲存的變更" : "", "");
+        });
+        staffDeleteConfirmCloseButtons.forEach((button) => {
+            button.addEventListener("click", closeStaffDeleteConfirm);
+        });
+        staffDeleteConfirmSubmit?.addEventListener("click", function () {
+            const deleteForm = pendingStaffDeleteForm;
+
+            submitStaffDelete(deleteForm);
+        });
+        page.addEventListener("submit", function (event) {
+            const deleteForm = event.target instanceof Element
+                ? event.target.closest("[data-staff-delete-form]")
+                : null;
+
+            if (!deleteForm || !page.contains(deleteForm)) {
+                return;
+            }
+
+            event.preventDefault();
+            openStaffDeleteConfirm(deleteForm);
+        });
+        page.addEventListener("click", function (event) {
+            if (!(event.target instanceof Element)) {
+                return;
+            }
+
+            const roleCard = event.target.closest(".permission-role-card");
+
+            if (roleCard && page.contains(roleCard)) {
+                selectRoleCard(roleCard);
+                return;
+            }
+
+            const clickedStaffRow = event.target.closest("[data-staff-row]");
+            if (clickedStaffRow && page.contains(clickedStaffRow)) {
+                selectStaffRow(clickedStaffRow);
+            }
+
+            const editButton = event.target.closest(".staff-edit-button");
+
+            if (!editButton || !page.contains(editButton)) {
+                return;
+            }
+
+            const staffRow = editButton.closest("[data-staff-row]");
+
+            if (staffRow) {
+                openStaffEdit(staffRow);
+            }
+        });
+
+        page.addEventListener("keydown", function (event) {
+            if (!(event.target instanceof Element) || !event.target.matches("[data-staff-row]")) {
+                return;
+            }
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                selectStaffRow(event.target);
+            }
+        });
+
+        window.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && roleFrameModal && !roleFrameModal.hidden) {
+                closeRoleFrame();
+            }
+
+            if (event.key === "Escape" && employeeFrameModal && !employeeFrameModal.hidden) {
+                closeEmployeeFrame();
+            }
+
+            if (event.key === "Escape" && staffEditModal && !staffEditModal.hidden) {
+                closeStaffEdit();
+            }
+
+            if (event.key === "Escape" && staffDeleteConfirmModal && !staffDeleteConfirmModal.hidden) {
+                closeStaffDeleteConfirm();
+            }
+        });
+
+        window.addEventListener("message", async function (event) {
+            if (event.origin !== window.location.origin || !event.data) {
+                return;
+            }
+
+            if (event.data.type === "healthsys:role-frame-close") {
+                closeRoleFrame();
+            }
+
+            if (event.data.type === "healthsys:role-created") {
+                if (event.source !== roleFrameHost?.querySelector("iframe")?.contentWindow) return;
+                permissionDirty = false;
+                closeRoleFrame();
+                await window.showUserRoleResult({
+                    title: !event.data.enabled ? "角色已停用" : event.data.isEdit ? "角色已更新" : "角色建立成功",
+                    message: !event.data.enabled ? "角色已從啟用清單移除，原有設定紀錄已保留。"
+                        : event.data.isEdit ? "角色名稱與描述已儲存，確認後將更新畫面。" : "角色已建立，全部功能預設關閉。\n接下來可設定此角色的功能權限。"
+                });
+                const url = new URL(window.location.href);
+                if (event.data.enabled) url.searchParams.set("roleCode", event.data.roleCode);
+                else url.searchParams.delete("roleCode");
+                window.location.assign(url);
+            }
+
+            if (event.data.type === "healthsys:employee-frame-close") {
+                closeEmployeeFrame();
+            }
+
+            if (event.data.type === "healthsys:employee-created") {
+                addCreatedEmployee(event.data.employee);
+            }
+        });
+
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", function (event) {
+                event.preventDefault();
+                setActiveSettingsTab(tab.dataset.settingsTab);
+
+                if (tab.hash) {
+                    history.replaceState(null, "", tab.hash);
+                }
+            });
+        });
+
+        page.addEventListener("dblclick", event => {
+            const card = event.target.closest(".permission-role-card");
+            if (card) openRoleFrame(card.dataset.roleCode);
+        });
+        page.addEventListener("keydown", event => {
+            const card = event.target.closest(".permission-role-card");
+            if (card && event.key === "F2") { event.preventDefault(); openRoleFrame(card.dataset.roleCode); }
+        });
+        window.addEventListener("beforeunload", event => {
+            if (permissionDirty || permissionBusy) { event.preventDefault(); event.returnValue = ""; }
+        });
+        const requestedRole = new URL(window.location.href).searchParams.get("roleCode");
+        selectRoleCard(Array.from(page.querySelectorAll(".permission-role-card")).find(card => card.dataset.roleCode === requestedRole)
+            || page.querySelector(".permission-role-card.is-active") || page.querySelector(".permission-role-card"));
+        if (!page.querySelector(".permission-role-card")) setPermissionBusy(false);
+        setActiveSettingsTab(window.location.hash === "#staff-settings" ? "staff" : "permissions");
+        renderStaffRows(true);
+    })();
+</script>

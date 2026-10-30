@@ -1,0 +1,915 @@
+@model HealthSys_20260428_v2.csproj.Models.CreateGroupAppointmentViewModel
+
+@{
+    ViewData["Title"] = "新增團體預約";
+    var rosterMembers = Model.Members.ToArray();
+    var hasRosterMembers = rosterMembers.Any();
+    var clearRosterUrl = Url.Action("CreateGroupAppointment", "Appointment") ?? "";
+}
+
+<section class="appointment-page group-create-page" aria-label="新增團體預約" data-create-appointment-url="@Url.Action("CreateAppointment", "Appointment")" data-roster-key="@Model.RosterKey">
+    <div class="group-create-layout">
+        <main class="group-import-main">
+            <section class="panel group-import-panel" aria-label="匯入團體預約名單">
+                <form class="group-import-upload-form" asp-controller="Appointment" asp-action="CreateGroupAppointment" method="post" enctype="multipart/form-data" data-group-import-form>
+                    @Html.AntiForgeryToken()
+                    <div class="group-import-heading group-import-heading-actions">
+                        <div class="group-flow-actions">
+                            <a class="ghost-button" asp-controller="Appointment" asp-action="GroupAppointmentManagement">
+                                <span class="back-arrow-icon" aria-hidden="true"></span>
+                                <span>返回團體清單</span>
+                            </a>
+                            <label class="primary-button" for="group-roster-file">
+                                <span class="upload-mini-icon" aria-hidden="true"></span>
+                                <span>上傳團體預約名單</span>
+                            </label>
+                        </div>
+                        <div class="group-import-actions">
+                            <a class="ghost-button" asp-controller="Appointment" asp-action="DownloadGroupRosterTemplate">
+                                <span class="download-mini-icon" aria-hidden="true"></span>
+                                <span>下載匯入範本</span>
+                            </a>
+                            <button class="primary-button" type="button">
+                                <span>下一步：批次預約</span>
+                                <span class="next-arrow-icon" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <input class="sr-only" id="group-roster-file" name="rosterFile" type="file" accept=".xlsx,.csv" data-group-roster-input />
+
+                    @if (!hasRosterMembers)
+                    {
+                        <label class="group-upload-dropzone" for="group-roster-file" aria-label="上傳團體預約名單" data-group-dropzone>
+                            <span class="upload-cloud-icon" aria-hidden="true"></span>
+                            <strong>團體匯入名單</strong>
+                            <span>支援 Excel (.xlsx) / CSV (.csv)，依標題自動對應欄位</span>
+                            <span class="group-upload-hint">可拖曳檔案到這裡，快速匯入團體預約清單</span>
+                        </label>
+                    }
+                </form>
+                @if (!hasRosterMembers)
+                {
+                    @if (!string.IsNullOrWhiteSpace(Model.ImportMessage))
+                    {
+                        <p class="import-message">@Model.ImportMessage</p>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(Model.UploadedFileName))
+                    {
+                        <div class="uploaded-file-row">
+                            <span class="excel-mini-icon" aria-hidden="true"></span>
+                            <strong>@Model.UploadedFileName</strong>
+                            @if (!string.IsNullOrWhiteSpace(Model.UploadedFileSizeText))
+                            {
+                                <span>@Model.UploadedFileSizeText</span>
+                            }
+                        </div>
+                    }
+                }
+
+                @if (hasRosterMembers)
+                {
+                    <div class="roster-stat-grid" aria-label="匯入結果統計">
+                    @foreach (var stat in Model.RosterStats)
+                    {
+                        <article class="roster-stat-card @stat.Tone">
+                            <span class="roster-stat-icon @stat.Icon" aria-hidden="true"></span>
+                            <div>
+                                <span>@stat.Label</span>
+                                <strong>@stat.Value <small>@stat.Unit</small></strong>
+                            </div>
+                        </article>
+                    }
+                </div>
+
+                <div class="roster-toolbar">
+                    <label class="roster-search">
+                        <span class="search-button-icon" aria-hidden="true"></span>
+                        <input type="search" placeholder="搜尋身分證、病歷號、姓名、公司" aria-label="搜尋身分證、病歷號、姓名、公司" />
+                    </label>
+                    <select aria-label="匯入狀態">
+                        <option>全部狀態</option>
+                        <option>匯入成功</option>
+                        <option>待確認</option>
+                        <option>格式錯誤</option>
+                    </select>
+                    <button class="ghost-button roster-query-button" type="button" data-roster-query>
+                        <span class="filter-mini-icon" aria-hidden="true"></span>
+                        <span>查詢</span>
+                    </button>
+                    <button class="ghost-button roster-clear-button" type="button" data-roster-clear data-roster-clear-url="@clearRosterUrl" aria-label="清除團體匯入名單">
+                        <span class="reset-mini-icon" aria-hidden="true"></span>
+                        <span>清除</span>
+                    </button>
+                </div>
+
+                <div class="appointment-table-frame roster-table-frame">
+                    <div class="roster-data-grid" data-roster-grid>
+                        <div class="roster-fixed-pane" data-roster-fixed-pane>
+                            <table class="appointment-table roster-table roster-fixed-table">
+                                <thead>
+                                    <tr>
+                                        <th class="roster-select-column">
+                                            <label class="roster-select-all">
+                                                <input class="roster-select-checkbox" type="checkbox" data-roster-select-all aria-label="全選團體預約名單" />
+                                                <span class="roster-select-heading">選取</span>
+                                            </label>
+                                        </th>
+                                        <th class="roster-edit-column">編輯</th>
+                                        <th>列號</th>
+                                        <th>身分證號</th>
+                                        <th>病歷號</th>
+                                        <th>姓名</th>
+                                        <th>性別</th>
+                                        <th>生日</th>
+                                        <th>聯絡電話</th>
+                                        <th>手機</th>
+                                        <th>預約日期</th>
+                                        <th>匯入狀態</th>
+                                        <th>錯誤／確認原因</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                        @for (var index = 0; index < rosterMembers.Length; index += 1)
+                                        {
+                                            var member = rosterMembers[index];
+                                            var hasFormatError = string.Equals(member.Tone, "error", StringComparison.OrdinalIgnoreCase);
+                                            var canLookupPatient = !string.IsNullOrWhiteSpace(member.ChartNo) || !string.IsNullOrWhiteSpace(member.IdNo);
+                                            <tr data-roster-row data-roster-index="@index" hidden="@(index >= Model.PreviewRowLimit)">
+                                                <td>
+                                                    <label class="roster-row-select">
+                                                        <input class="roster-select-checkbox" type="checkbox" data-roster-select-row disabled="@hasFormatError" aria-label="選取名單第 @(index + 1) 筆" />
+                                                        <span class="sr-only">選取名單第 @(index + 1) 筆</span>
+                                                    </label>
+                                                </td>
+                                                <td>
+                                                    <button class="roster-reserve-button" type="button"
+                                                            data-roster-reserve
+                                                            disabled="@(!canLookupPatient)"
+                                                            title="@(canLookupPatient ? "查詢病人主檔並建立預約" : "缺少病歷號與身分證號")"
+                                                            data-roster-name="@member.Name"
+                                                            data-roster-id-no="@member.IdNo"
+                                                            data-roster-chart-no="@member.ChartNo"
+                                                            data-roster-sex="@member.Sex"
+                                                            data-roster-birthday="@member.Birthday"
+                                                            data-roster-phone="@member.Phone"
+                                                            data-roster-mobile="@member.Mobile"
+                                                            data-roster-email="@member.Email"
+                                                            data-roster-check-date="@member.CheckDate"
+                                                            data-roster-work-area="@member.WorkArea"
+                                                            data-roster-address="@member.Address"
+                                                            data-roster-company="@member.CompanyBranch"
+                                                            data-roster-note="@member.Note"
+                                                            data-roster-package-name="@member.PublicPackageName"
+                                                            data-roster-add-ons="@member.SelfPayAddOns">預約</button>
+                                                </td>
+                                                <td>@(index + 1)</td>
+                                                <td>@member.IdNo</td>
+                                                <td>@member.ChartNo</td>
+                                                <td>@member.Name</td>
+                                                <td>@member.Sex</td>
+                                                <td>@member.Birthday</td>
+                                                <td>@member.Phone</td>
+                                                <td>@member.Mobile</td>
+                                                <td>@member.CheckDate</td>
+                                                <td>
+                                                    <span class="roster-status @member.Tone" title="@member.ValidationMessage">@member.Status</span>
+                                                </td>
+                                                <td class="@(string.IsNullOrWhiteSpace(member.ValidationMessage) ? "" : "roster-validation-message")">@member.ValidationMessage</td>
+                                            </tr>
+                                        }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="appointment-table-wrap roster-table-wrap roster-scroll-pane" data-roster-table-wrap>
+                            <table class="appointment-table roster-table roster-scroll-table">
+                                <thead>
+                                    <tr>
+                                        <th>居住地址</th>
+                                        <th>E-MAIL</th>
+                                        <th>是否家屬</th>
+                                        <th>家屬備註</th>
+                                        <th>當次備註</th>
+                                        <th>健檢專案 / 方案</th>
+                                        <th>其他組套</th>
+                                        <th>公司名稱</th>
+                                        <th>職位</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                        @for (var index = 0; index < rosterMembers.Length; index += 1)
+                                        {
+                                            var member = rosterMembers[index];
+                                            <tr data-roster-floating-row data-roster-index="@index" hidden="@(index >= Model.PreviewRowLimit)">
+                                                <td>@member.Address</td>
+                                                <td>@member.Email</td>
+                                                <td>@member.IsDependent</td>
+                                                <td>@member.DependentEmployeeId</td>
+                                                <td>@member.Note</td>
+                                                <td>@member.PublicPackageName</td>
+                                                <td>@member.SelfPayAddOns</td>
+                                                <td>@member.CompanyBranch</td>
+                                                <td>@member.JobTitleSeatNo</td>
+                                            </tr>
+                                        }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="appointment-table-scrollbar roster-table-scrollbar" data-roster-table-scrollbar tabindex="0" aria-label="團體預約匯入後段欄位水平捲動">
+                        <div class="appointment-table-scrollbar-content roster-table-scrollbar-content" data-roster-table-scrollbar-content></div>
+                    </div>
+                </div>
+                <footer class="table-footer roster-table-footer">
+                    <div class="roster-grid-statusbar" aria-label="匯入狀態">
+                        @if (!string.IsNullOrWhiteSpace(Model.ImportMessage))
+                        {
+                            <span class="roster-statusbar-message">@Model.ImportMessage</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.UploadedFileName))
+                        {
+                            <span class="roster-statusbar-file">
+                                <span class="excel-mini-icon" aria-hidden="true"></span>
+                                <strong>@Model.UploadedFileName</strong>
+                                @if (!string.IsNullOrWhiteSpace(Model.UploadedFileSizeText))
+                                {
+                                    <small>@Model.UploadedFileSizeText</small>
+                                }
+                            </span>
+                        }
+                        @if (Model.TotalCount > 0)
+                        {
+                            <span data-roster-page-info>顯示第 1 - @Model.VisibleCount 筆，共 @Model.TotalCount 筆</span>
+                        }
+                        else
+                        {
+                            <span data-roster-page-info>顯示 0 筆，共 0 筆</span>
+                        }
+                    </div>
+                    <div class="pagination-controls">
+                        <div class="pagination" aria-label="分頁" data-roster-pagination>
+                            <button type="button" data-roster-prev disabled aria-label="上一頁">‹</button>
+                            <span data-roster-page-buttons></span>
+                            <button type="button" data-roster-next disabled aria-label="下一頁">›</button>
+                        </div>
+                        <select class="page-select" aria-label="每頁筆數" data-roster-page-size>
+                            @foreach (var pageSize in Model.PageSizeOptions)
+                            {
+                                <option value="@pageSize" selected="@(pageSize == Model.PreviewRowLimit)">@pageSize / 頁</option>
+                            }
+                        </select>
+                    </div>
+                </footer>
+                }
+            </section>
+</main>
+
+    </div>
+</section>
+
+<script>
+    (function () {
+        const form = document.querySelector("[data-group-import-form]");
+        const input = document.querySelector("[data-group-roster-input]");
+        const dropzone = document.querySelector("[data-group-dropzone]");
+        const clearButton = document.querySelector("[data-roster-clear]");
+        const rosterReserveButtons = Array.from(document.querySelectorAll("[data-roster-reserve]"));
+        const rosterRows = Array.from(document.querySelectorAll("[data-roster-row]"));
+        const rosterFloatingRows = Array.from(document.querySelectorAll("[data-roster-floating-row]"));
+        const pageInfo = document.querySelector("[data-roster-page-info]");
+        const pageSizeSelect = document.querySelector("[data-roster-page-size]");
+        const pageButtonsHost = document.querySelector("[data-roster-page-buttons]");
+        const prevButton = document.querySelector("[data-roster-prev]");
+        const nextButton = document.querySelector("[data-roster-next]");
+        const selectAllCheckbox = document.querySelector("[data-roster-select-all]");
+        const rosterCheckboxes = Array.from(document.querySelectorAll("[data-roster-select-row]"));
+        const tableWrap = document.querySelector("[data-roster-table-wrap]");
+        const fixedPane = document.querySelector("[data-roster-fixed-pane]");
+        const horizontalScrollbar = document.querySelector("[data-roster-table-scrollbar]");
+        const horizontalScrollbarContent = document.querySelector("[data-roster-table-scrollbar-content]");
+        const page = document.querySelector(".group-create-page");
+        const createAppointmentUrl = page ? page.dataset.createAppointmentUrl || "" : "";
+        const rosterKey = page ? page.dataset.rosterKey || "" : "";
+        const fixedTable = document.querySelector(".roster-fixed-table");
+        const scrollTable = document.querySelector(".roster-scroll-table");
+        const rosterColumnResizeGroups = [
+            {
+                table: fixedTable,
+                columns: [
+                    { variableName: "--roster-fixed-select-width", minWidth: 36, fallbackWidth: 40 },
+                    { variableName: "--roster-fixed-edit-width", minWidth: 48, fallbackWidth: 58 },
+                    { variableName: "--roster-fixed-row-width", minWidth: 40, fallbackWidth: 44 },
+                    { variableName: "--roster-fixed-id-width", minWidth: 80, fallbackWidth: 104 },
+                    { variableName: "--roster-fixed-chart-width", minWidth: 88, fallbackWidth: 104 },
+                    { variableName: "--roster-fixed-name-width", minWidth: 64, fallbackWidth: 74 },
+                    { variableName: "--roster-fixed-sex-width", minWidth: 40, fallbackWidth: 40 },
+                    { variableName: "--roster-fixed-birthday-width", minWidth: 76, fallbackWidth: 84 },
+                    { variableName: "--roster-fixed-phone-width", minWidth: 100, fallbackWidth: 116 },
+                    { variableName: "--roster-fixed-mobile-width", minWidth: 104, fallbackWidth: 120 },
+                    { variableName: "--roster-fixed-date-width", minWidth: 96, fallbackWidth: 112 },
+                    { variableName: "--roster-fixed-status-width", minWidth: 90, fallbackWidth: 112 },
+                    { variableName: "--roster-fixed-validation-width", minWidth: 180, fallbackWidth: 240 }
+                ]
+            },
+            {
+                table: scrollTable,
+                columns: [
+                    { variableName: "--roster-scroll-address-width", minWidth: 140, fallbackWidth: 220 },
+                    { variableName: "--roster-scroll-email-width", minWidth: 160, fallbackWidth: 240 },
+                    { variableName: "--roster-scroll-dependent-width", minWidth: 72, fallbackWidth: 92 },
+                    { variableName: "--roster-scroll-dependent-note-width", minWidth: 96, fallbackWidth: 132 },
+                    { variableName: "--roster-scroll-note-width", minWidth: 110, fallbackWidth: 168 },
+                    { variableName: "--roster-scroll-package-width", minWidth: 140, fallbackWidth: 208 },
+                    { variableName: "--roster-scroll-addon-width", minWidth: 120, fallbackWidth: 168 },
+                    { variableName: "--roster-scroll-company-width", minWidth: 120, fallbackWidth: 158 },
+                    { variableName: "--roster-scroll-job-width", minWidth: 90, fallbackWidth: 118 }
+                ]
+            }
+        ];
+        let currentRosterPage = 1;
+        let rosterSelectionAnchorIndex = null;
+        let isSyncingRosterHorizontalScroll = false;
+
+        if (!form || !input) {
+            return;
+        }
+
+        function getRosterPageSize() {
+            const pageSize = Number.parseInt(pageSizeSelect ? pageSizeSelect.value : "20", 10);
+            return Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 20;
+        }
+
+        function getRosterPageCount() {
+            return Math.max(1, Math.ceil(rosterRows.length / getRosterPageSize()));
+        }
+
+        function appendRosterPageButton(pageNumber) {
+            if (!pageButtonsHost) {
+                return;
+            }
+
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = String(pageNumber);
+            button.classList.toggle("active", pageNumber === currentRosterPage);
+
+            if (pageNumber === currentRosterPage) {
+                button.setAttribute("aria-current", "page");
+            }
+
+            button.addEventListener("click", function () {
+                currentRosterPage = pageNumber;
+                renderRosterPage();
+            });
+
+            pageButtonsHost.appendChild(button);
+        }
+
+        function appendRosterPageEllipsis() {
+            if (!pageButtonsHost) {
+                return;
+            }
+
+            const ellipsis = document.createElement("span");
+            ellipsis.className = "pagination-ellipsis";
+            ellipsis.textContent = "...";
+            pageButtonsHost.appendChild(ellipsis);
+        }
+
+        function renderRosterPageButtons(pageCount) {
+            if (!pageButtonsHost) {
+                return;
+            }
+
+            pageButtonsHost.innerHTML = "";
+
+            if (pageCount <= 7) {
+                for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+                    appendRosterPageButton(pageNumber);
+                }
+                return;
+            }
+
+            const visiblePages = [1, currentRosterPage - 1, currentRosterPage, currentRosterPage + 1, pageCount]
+                .filter(function (pageNumber, index, pages) {
+                    return pageNumber >= 1 && pageNumber <= pageCount && pages.indexOf(pageNumber) === index;
+                })
+                .sort(function (left, right) { return left - right; });
+
+            visiblePages.forEach(function (pageNumber, index) {
+                if (index > 0 && pageNumber - visiblePages[index - 1] > 1) {
+                    appendRosterPageEllipsis();
+                }
+
+                appendRosterPageButton(pageNumber);
+            });
+        }
+
+        function getRosterFixedColumnsWidth() {
+            const fixedPaneWidth = fixedPane ? fixedPane.getBoundingClientRect().width : 0;
+
+            if (fixedPaneWidth > 0) {
+                return fixedPaneWidth;
+            }
+
+            const page = document.querySelector(".group-create-page") || document.documentElement;
+            const styles = getComputedStyle(page);
+            const fixedWidthNames = [
+                "--roster-fixed-select-width",
+                "--roster-fixed-edit-width",
+                "--roster-fixed-row-width",
+                "--roster-fixed-id-width",
+                "--roster-fixed-chart-width",
+                "--roster-fixed-name-width",
+                "--roster-fixed-sex-width",
+                "--roster-fixed-birthday-width",
+                "--roster-fixed-phone-width",
+                "--roster-fixed-mobile-width",
+                "--roster-fixed-date-width"
+            ];
+
+            return fixedWidthNames.reduce(function (total, name) {
+                return total + (Number.parseFloat(styles.getPropertyValue(name)) || 0);
+            }, 0);
+        }
+
+        function syncRosterHorizontalScrollbarSize() {
+            if (!tableWrap || !horizontalScrollbar || !horizontalScrollbarContent) {
+                return;
+            }
+
+            const fixedColumnsWidth = getRosterFixedColumnsWidth();
+            const visibleScrollWidth = tableWrap.clientWidth;
+            const scrollableContentWidth = tableWrap.scrollWidth;
+            const hasHorizontalOverflow = tableWrap.scrollWidth > tableWrap.clientWidth + 1 && visibleScrollWidth > 0;
+
+            horizontalScrollbar.hidden = !hasHorizontalOverflow;
+            horizontalScrollbar.style.left = fixedColumnsWidth + "px";
+            horizontalScrollbarContent.style.width = Math.max(scrollableContentWidth, visibleScrollWidth) + "px";
+
+            if (hasHorizontalOverflow) {
+                horizontalScrollbar.scrollLeft = tableWrap.scrollLeft;
+            }
+        }
+
+        function syncFromRosterTableScroll() {
+            if (!horizontalScrollbar || isSyncingRosterHorizontalScroll) {
+                return;
+            }
+
+            isSyncingRosterHorizontalScroll = true;
+            horizontalScrollbar.scrollLeft = tableWrap ? tableWrap.scrollLeft : 0;
+            isSyncingRosterHorizontalScroll = false;
+        }
+
+        function syncFromRosterHorizontalScrollbar() {
+            if (!tableWrap || isSyncingRosterHorizontalScroll) {
+                return;
+            }
+
+            isSyncingRosterHorizontalScroll = true;
+            tableWrap.scrollLeft = horizontalScrollbar ? horizontalScrollbar.scrollLeft : 0;
+            isSyncingRosterHorizontalScroll = false;
+        }
+
+        function bindRosterHorizontalScrollbar() {
+            if (!tableWrap || !horizontalScrollbar || !horizontalScrollbarContent) {
+                return;
+            }
+
+            tableWrap.addEventListener("scroll", syncFromRosterTableScroll);
+            horizontalScrollbar.addEventListener("scroll", syncFromRosterHorizontalScrollbar);
+            tableWrap.addEventListener("wheel", function (event) {
+                const horizontalDelta = event.shiftKey ? event.deltaY : event.deltaX;
+
+                if (!horizontalDelta || horizontalScrollbar.hidden) {
+                    return;
+                }
+
+                const maxScrollLeft = tableWrap.scrollWidth - tableWrap.clientWidth;
+                const nextScrollLeft = Math.min(Math.max(tableWrap.scrollLeft + horizontalDelta, 0), maxScrollLeft);
+
+                if (nextScrollLeft === tableWrap.scrollLeft) {
+                    return;
+                }
+
+                tableWrap.scrollLeft = nextScrollLeft;
+                event.preventDefault();
+            }, { passive: false });
+
+            window.addEventListener("resize", syncRosterHorizontalScrollbarSize);
+
+            if ("ResizeObserver" in window) {
+                const resizeObserver = new ResizeObserver(syncRosterHorizontalScrollbarSize);
+                resizeObserver.observe(tableWrap);
+            }
+        }
+
+        function getRosterCssPixelValue(variableName, fallbackWidth) {
+            if (!page) {
+                return fallbackWidth;
+            }
+
+            const value = Number.parseFloat(getComputedStyle(page).getPropertyValue(variableName));
+            return Number.isFinite(value) && value > 0 ? value : fallbackWidth;
+        }
+
+        function setRosterCssPixelValue(variableName, value) {
+            if (!page) {
+                return;
+            }
+
+            page.style.setProperty(variableName, Math.round(value) + "px");
+        }
+
+        function bindRosterColumnResize() {
+            if (!page) {
+                return;
+            }
+
+            rosterColumnResizeGroups.forEach(function (group) {
+                if (!group.table) {
+                    return;
+                }
+
+                const headers = Array.from(group.table.querySelectorAll("thead th"));
+
+                group.columns.forEach(function (column, index) {
+                    const header = headers[index];
+
+                    if (!header) {
+                        return;
+                    }
+
+                    const handle = document.createElement("span");
+                    handle.className = "roster-column-resize-handle";
+                    handle.setAttribute("aria-hidden", "true");
+                    header.appendChild(handle);
+
+                    handle.addEventListener("pointerdown", function (event) {
+                        if (event.button !== undefined && event.button !== 0) {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        const startX = event.clientX;
+                        const startWidth = getRosterCssPixelValue(column.variableName, column.fallbackWidth);
+                        const minWidth = column.minWidth || 56;
+
+                        header.classList.add("is-resizing");
+                        document.body.classList.add("is-roster-column-resizing");
+
+                        if (handle.setPointerCapture) {
+                            handle.setPointerCapture(event.pointerId);
+                        }
+
+                        function updateColumnWidth(moveEvent) {
+                            const nextWidth = Math.max(minWidth, startWidth + moveEvent.clientX - startX);
+                            setRosterCssPixelValue(column.variableName, nextWidth);
+                            syncRosterHorizontalScrollbarSize();
+                        }
+
+                        function finishResize(endEvent) {
+                            handle.removeEventListener("pointermove", updateColumnWidth);
+                            handle.removeEventListener("pointerup", finishResize);
+                            handle.removeEventListener("pointercancel", finishResize);
+
+                            if (handle.releasePointerCapture && endEvent && handle.hasPointerCapture && handle.hasPointerCapture(endEvent.pointerId)) {
+                                handle.releasePointerCapture(endEvent.pointerId);
+                            }
+
+                            header.classList.remove("is-resizing");
+                            document.body.classList.remove("is-roster-column-resizing");
+                            syncRosterHorizontalScrollbarSize();
+                        }
+
+                        handle.addEventListener("pointermove", updateColumnWidth);
+                        handle.addEventListener("pointerup", finishResize);
+                        handle.addEventListener("pointercancel", finishResize);
+                    });
+                });
+            });
+        }
+
+        function setRosterRowPairClass(index, className, isActive) {
+            const fixedRow = rosterRows[index];
+            const floatingRow = rosterFloatingRows[index];
+
+            if (fixedRow) {
+                fixedRow.classList.toggle(className, isActive);
+            }
+
+            if (floatingRow) {
+                floatingRow.classList.toggle(className, isActive);
+            }
+        }
+
+        function shouldIgnoreRosterRowClick(event) {
+            return !!(event.target && event.target.closest && event.target.closest("button, a, input, select, textarea, label"));
+        }
+
+        function getRosterRowCheckbox(index) {
+            const fixedRow = rosterRows[index];
+            return fixedRow ? fixedRow.querySelector("[data-roster-select-row]") : null;
+        }
+
+        function clearRosterSelection() {
+            rosterCheckboxes.forEach(function (checkbox) {
+                checkbox.checked = false;
+            });
+        }
+
+        function setRosterRangeSelection(startIndex, endIndex, isChecked, preserveExisting) {
+            const lowerIndex = Math.min(startIndex, endIndex);
+            const upperIndex = Math.max(startIndex, endIndex);
+
+            if (!preserveExisting) {
+                clearRosterSelection();
+            }
+
+            rosterRows.forEach(function (row, index) {
+                if (index < lowerIndex || index > upperIndex) {
+                    return;
+                }
+
+                const checkbox = getRosterRowCheckbox(index);
+
+                if (checkbox && !checkbox.disabled) {
+                    checkbox.checked = isChecked;
+                }
+            });
+
+            rosterSelectionAnchorIndex = endIndex;
+            updateRosterSelectionState();
+        }
+
+        function setRosterSingleSelection(index, isChecked) {
+            const targetCheckbox = getRosterRowCheckbox(index);
+
+            rosterCheckboxes.forEach(function (checkbox) {
+                checkbox.checked = checkbox === targetCheckbox && isChecked;
+            });
+
+            rosterSelectionAnchorIndex = isChecked ? index : null;
+            updateRosterSelectionState();
+        }
+
+        function applyRosterSelection(index, event, options) {
+            const checkbox = getRosterRowCheckbox(index);
+            const isCheckboxAction = !!(options && options.checkboxMode);
+
+            if (!checkbox || checkbox.disabled) {
+                return;
+            }
+
+            if (event && event.shiftKey && rosterSelectionAnchorIndex !== null) {
+                const nextChecked = isCheckboxAction ? checkbox.checked : true;
+                const preserveExisting = isCheckboxAction || !!(event.ctrlKey || event.metaKey);
+                setRosterRangeSelection(rosterSelectionAnchorIndex, index, nextChecked, preserveExisting);
+                return;
+            }
+
+            if (isCheckboxAction) {
+                rosterSelectionAnchorIndex = index;
+                updateRosterSelectionState();
+                return;
+            }
+
+            if (event && (event.ctrlKey || event.metaKey)) {
+                checkbox.checked = !checkbox.checked;
+                rosterSelectionAnchorIndex = index;
+                updateRosterSelectionState();
+                return;
+            }
+
+            setRosterSingleSelection(index, true);
+        }
+
+        function toggleRosterRowSelection(index, event) {
+            applyRosterSelection(index, event, { checkboxMode: false });
+        }
+
+        function getGroupAppointmentReturnUrl() {
+            const returnUrl = new URL(window.location.href);
+
+            if (rosterKey) {
+                returnUrl.searchParams.set("rosterKey", rosterKey);
+            }
+
+            return returnUrl.pathname + returnUrl.search + returnUrl.hash;
+        }
+
+        function setRosterAppointmentParam(url, name, value) {
+            const normalizedValue = String(value || "").trim();
+
+            if (normalizedValue) {
+                url.searchParams.set(name, normalizedValue);
+            }
+        }
+
+        function openRosterAppointment(button) {
+            if (!createAppointmentUrl || !button) {
+                return;
+            }
+
+            const url = new URL(createAppointmentUrl, window.location.href);
+            setRosterAppointmentParam(url, "source", "groupRoster");
+            setRosterAppointmentParam(url, "returnUrl", getGroupAppointmentReturnUrl());
+            setRosterAppointmentParam(url, "name", button.dataset.rosterName);
+            setRosterAppointmentParam(url, "idNo", button.dataset.rosterIdNo);
+            setRosterAppointmentParam(url, "chartNo", button.dataset.rosterChartNo);
+            setRosterAppointmentParam(url, "sex", button.dataset.rosterSex);
+            setRosterAppointmentParam(url, "birthDate", button.dataset.rosterBirthday);
+            setRosterAppointmentParam(url, "phone", button.dataset.rosterPhone);
+            setRosterAppointmentParam(url, "mobile", button.dataset.rosterMobile);
+            setRosterAppointmentParam(url, "email", button.dataset.rosterEmail);
+            setRosterAppointmentParam(url, "checkDate", button.dataset.rosterCheckDate);
+            setRosterAppointmentParam(url, "workArea", button.dataset.rosterWorkArea);
+            setRosterAppointmentParam(url, "address", button.dataset.rosterAddress);
+            setRosterAppointmentParam(url, "company", button.dataset.rosterCompany);
+            setRosterAppointmentParam(url, "note", button.dataset.rosterNote);
+            setRosterAppointmentParam(url, "packageName", button.dataset.rosterPackageName);
+            setRosterAppointmentParam(url, "addOns", button.dataset.rosterAddOns);
+            window.location.assign(url.toString());
+        }
+        function bindRosterRowSync() {
+            function bindRow(row, index) {
+                if (!row) {
+                    return;
+                }
+
+                row.addEventListener("mouseenter", function () {
+                    setRosterRowPairClass(index, "is-row-hovered", true);
+                });
+
+                row.addEventListener("mouseleave", function () {
+                    setRosterRowPairClass(index, "is-row-hovered", false);
+                });
+
+                row.addEventListener("click", function (event) {
+                    if (shouldIgnoreRosterRowClick(event)) {
+                        return;
+                    }
+
+                    toggleRosterRowSelection(index, event);
+                });
+            }
+
+            rosterRows.forEach(bindRow);
+            rosterFloatingRows.forEach(bindRow);
+        }
+
+        function updateRosterSelectionState() {
+            const selectedCount = rosterCheckboxes.filter(function (checkbox) { return checkbox.checked; }).length;
+
+            rosterRows.forEach(function (row, index) {
+                const checkbox = getRosterRowCheckbox(index);
+                const isSelected = !!checkbox && checkbox.checked;
+                row.classList.toggle("is-selected", isSelected);
+
+                if (rosterFloatingRows[index]) {
+                    rosterFloatingRows[index].classList.toggle("is-selected", isSelected);
+                }
+            });
+
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = rosterCheckboxes.length > 0 && selectedCount === rosterCheckboxes.length;
+                selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < rosterCheckboxes.length;
+                selectAllCheckbox.disabled = rosterCheckboxes.length === 0;
+            }
+        }
+
+        function renderRosterPage() {
+            const pageSize = getRosterPageSize();
+            const totalRows = rosterRows.length;
+            const pageCount = getRosterPageCount();
+
+            currentRosterPage = Math.min(Math.max(currentRosterPage, 1), pageCount);
+
+            const startIndex = (currentRosterPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, totalRows);
+
+            rosterRows.forEach(function (row, index) {
+                const isHidden = index < startIndex || index >= endIndex;
+                row.hidden = isHidden;
+
+                if (rosterFloatingRows[index]) {
+                    rosterFloatingRows[index].hidden = isHidden;
+                }
+            });
+
+            if (pageInfo) {
+                pageInfo.textContent = totalRows > 0
+                    ? "顯示第 " + (startIndex + 1) + " - " + endIndex + " 筆，共 " + totalRows + " 筆"
+                    : "顯示 0 筆，共 0 筆";
+            }
+
+            if (prevButton) {
+                prevButton.disabled = currentRosterPage <= 1 || totalRows === 0;
+            }
+
+            if (nextButton) {
+                nextButton.disabled = currentRosterPage >= pageCount || totalRows === 0;
+            }
+
+            renderRosterPageButtons(pageCount);
+            updateRosterSelectionState();
+            syncRosterHorizontalScrollbarSize();
+        }
+
+        bindRosterHorizontalScrollbar();
+        bindRosterColumnResize();
+        bindRosterRowSync();
+
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener("click", function (event) {
+                event.stopPropagation();
+                const shouldSelectAll = selectAllCheckbox.checked;
+
+                rosterCheckboxes.forEach(function (checkbox) {
+                    checkbox.checked = shouldSelectAll;
+                });
+
+                rosterSelectionAnchorIndex = shouldSelectAll && rosterCheckboxes.length > 0 ? rosterCheckboxes.length - 1 : null;
+                updateRosterSelectionState();
+            });
+        }
+        rosterCheckboxes.forEach(function (checkbox, index) {
+            checkbox.addEventListener("click", function (event) {
+                event.stopPropagation();
+                applyRosterSelection(index, event, { checkboxMode: true });
+            });
+        });
+
+        input.addEventListener("change", function () {
+            if (input.files && input.files.length > 0) {
+                form.submit();
+            }
+        });
+
+        rosterReserveButtons.forEach(function (button) {
+            button.addEventListener("click", function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                openRosterAppointment(button);
+            });
+        });
+
+        if (clearButton) {
+            clearButton.addEventListener("click", function () {
+                const clearUrl = clearButton.dataset.rosterClearUrl;
+
+                if (clearUrl) {
+                    window.location.assign(clearUrl);
+                }
+            });
+        }
+
+        if (dropzone) {
+            dropzone.addEventListener("dragover", function (event) {
+                event.preventDefault();
+                dropzone.classList.add("is-dragover");
+            });
+
+            dropzone.addEventListener("dragleave", function () {
+                dropzone.classList.remove("is-dragover");
+            });
+
+            dropzone.addEventListener("drop", function (event) {
+                event.preventDefault();
+                dropzone.classList.remove("is-dragover");
+
+                if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+                    input.files = event.dataTransfer.files;
+                    form.submit();
+                }
+            });
+        }
+
+        if (pageSizeSelect) {
+            pageSizeSelect.addEventListener("change", function () {
+                currentRosterPage = 1;
+                renderRosterPage();
+            });
+        }
+
+        if (prevButton) {
+            prevButton.addEventListener("click", function () {
+                currentRosterPage -= 1;
+                renderRosterPage();
+            });
+        }
+
+        if (nextButton) {
+            nextButton.addEventListener("click", function () {
+                currentRosterPage += 1;
+                renderRosterPage();
+            });
+        }
+
+        renderRosterPage();
+    })();
+</script>
+

@@ -1,0 +1,54 @@
+@model HealthSys_20260428_v2.csproj.Models.HealthProjectWizardViewModel
+
+@{
+    var pageTitle = Model.IsEditMode ? "編輯完成" : "建立完成";
+    var routeMode = Model.IsEditMode ? "edit" : null;
+    var routeCode = Model.IsEditMode ? Model.Project.Code : null;
+    ViewData["Title"] = pageTitle;
+    string Money(int amount) => amount.ToString("N0");
+}
+
+<section class="project-wizard-page complete-step" aria-label="@pageTitle">
+    <header class="project-wizard-heading">
+        <h1>@pageTitle</h1>
+        <p>@(Model.IsEditMode ? "專案編輯完成，可前往專案列表查看最新設定。" : "專案建立成功，可前往專案列表查看或繼續建立新專案。")</p>
+    </header>
+
+    <nav class="project-wizard-stepper line" aria-label="@(Model.IsEditMode ? "編輯專案步驟" : "建立專案步驟")">
+        @foreach (var step in Model.Steps)
+        {
+            <div class="project-wizard-step @step.State">
+                <span class="project-wizard-step-number">@step.Number</span>
+                <strong>@step.Title</strong>
+            </div>
+        }
+    </nav>
+
+    <section class="project-complete-card" aria-labelledby="project-complete-title">
+        <div class="project-complete-hero">
+            <div class="project-complete-success" aria-hidden="true"></div>
+            <h2 id="project-complete-title">@(Model.IsEditMode ? "專案編輯完成！" : "專案建立成功！")</h2>
+            <strong>@Model.Project.Name</strong>
+            <p>@Model.Project.Target</p>
+        </div>
+
+        <dl class="project-complete-detail">
+            <div><dt>專案代碼</dt><dd>@Model.Project.Code</dd></div>
+            <div><dt>@(Model.IsEditMode ? "編輯時間" : "建立時間")</dt><dd>@Model.Project.UpdatedAt</dd></div>
+            <div><dt>@(Model.IsEditMode ? "編輯人" : "建立人")</dt><dd>@Model.Project.Owner</dd></div>
+        </dl>
+
+        <div class="project-complete-metrics">
+            <article><span>加入醫令</span><strong>@Model.SelectedItems.Count 項</strong></article>
+            <article><span>問卷項目</span><strong>@Model.SelectedSpecialOperations.Count 項</strong></article>
+            <article><span>專案售價</span><strong class="green-text">NT$@Money(Model.FinalPrice)</strong></article>
+            <article><span>體檢醫院</span><strong>@Model.Project.Hospital</strong></article>
+            <article><span>受檢單位</span><strong>@Model.Project.ClientUnit</strong></article>
+        </div>
+
+        <div class="project-complete-actions">
+            <a class="ghost-button" asp-controller="ProjectPackageSettings" asp-action="HealthCheckProjectManagement">前往專案列表</a>
+            <a class="primary-button" asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProject" asp-route-mode="@routeMode" asp-route-code="@routeCode">@(Model.IsEditMode ? "繼續編輯專案" : "繼續建立新專案")</a>
+        </div>
+    </section>
+</section>

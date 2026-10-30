@@ -1,0 +1,18 @@
+<dialog class="ai-agent-detection" data-ai-agent-detection aria-labelledby="ai-agent-detection-title" aria-describedby="ai-agent-detection-message" data-state="loading">
+    <div class="ai-agent-detection-card">
+        <button class="ai-agent-detection-close" type="button" data-ai-agent-dismiss aria-label="關閉提醒">×</button>
+        <div class="ai-agent-detection-art" aria-hidden="true">
+            <span class="ai-agent-detection-orbit"></span>
+            <span class="ai-agent-detection-spark">✦</span>
+            <span class="ai-agent-detection-icon">
+                <svg class="ai-agent-detection-loading-icon" viewBox="0 0 32 32" fill="none"><path d="m16 3 3.5 9.5L29 16l-9.5 3.5L16 29l-3.5-9.5L3 16l9.5-3.5L16 3Z" fill="currentColor"/></svg>
+                <svg class="ai-agent-detection-error-icon" viewBox="0 0 32 32" fill="none"><path d="M16 9v9" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><circle cx="16" cy="24" r="1.8" fill="currentColor"/></svg>
+            </span>
+        </div>
+        <span class="ai-agent-detection-eyebrow">您的健檢智慧精靈</span>
+        <h2 id="ai-agent-detection-title" data-ai-agent-detection-title>正在連接智慧精靈</h2>
+        <p id="ai-agent-detection-message" data-ai-agent-detection-message role="status" aria-live="polite">正在偵測 AI AGENT，請稍候…</p>
+        <div class="ai-agent-detection-progress" data-ai-agent-detection-progress role="progressbar" aria-label="正在偵測 AI AGENT"><span></span></div>
+        <button class="ai-agent-detection-action" type="button" data-ai-agent-dismiss data-ai-agent-detection-action>取消</button>
+    </div>
+</dialog>

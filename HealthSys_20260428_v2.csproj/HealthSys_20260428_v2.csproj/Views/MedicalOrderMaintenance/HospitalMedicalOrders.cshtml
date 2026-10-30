@@ -1,0 +1,158 @@
+@model HealthSys_20260428_v2.csproj.Models.HospitalMedicalOrdersViewModel
+
+@{
+    ViewData["Title"] = "院內醫令";
+    var firstItem = Model.TotalCount == 0 ? 0 : (Model.Page - 1) * Model.PageSize + 1;
+    var lastItem = Math.Min(Model.Page * Model.PageSize, Model.TotalCount);
+    var firstPage = Math.Max(1, Model.Page - 2);
+    var lastPage = Math.Min(Model.TotalPages, Model.Page + 2);
+    IDictionary<string, string> PageRoute(int page) => new Dictionary<string, string>
+    {
+        ["orderCode"] = Model.OrderCode,
+        ["orderName"] = Model.OrderName,
+        ["initial"] = Model.Initial,
+        ["page"] = page.ToString(),
+        ["pageSize"] = Model.PageSize.ToString()
+    };
+}
+
+<section class="hospital-orders-page" aria-labelledby="page-title" data-selected-initial="@Model.Initial">
+    <h1 id="page-title">院內醫令</h1>
+    <div data-ai-page="hospitalOrders" data-ai-result-count="@Model.TotalCount" data-ai-query-error="@Model.ErrorMessage" hidden></div>
+    <form class="hospital-orders-filter" method="get" asp-controller="MedicalOrderMaintenance" asp-action="HospitalMedicalOrders">
+        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+        <label for="hospital-order-code">醫令號碼
+            <input id="hospital-order-code" type="search" name="orderCode" value="@Model.OrderCode" placeholder="輸入醫令號碼" />
+        </label>
+        <label for="hospital-order-name">醫令名稱
+            <input id="hospital-order-name" type="search" name="orderName" value="@Model.OrderName" placeholder="輸入醫令名稱" />
+        </label>
+        <div class="hospital-orders-actions">
+            <button class="primary-button" type="submit" name="initial" value="@Model.Initial">查詢</button>
+            <a class="ghost-button" asp-controller="MedicalOrderMaintenance" asp-action="HospitalMedicalOrders" asp-route-pageSize="@Model.PageSize">清除條件</a>
+            <span class="hospital-orders-query-status" role="status" aria-live="polite"></span>
+        </div>
+        <div class="hospital-orders-index">
+            <div class="hospital-orders-index-scroll">
+                <div class="hospital-orders-index-buttons" role="group" aria-label="院內醫令開頭檢索">
+                    <button type="submit" name="initial" value="" class="@(Model.Initial == "" ? "active" : "")" aria-pressed="@(Model.Initial == "" ? "true" : "false")">全部</button>
+                    <button type="submit" name="initial" value="0-9" class="@(Model.Initial == "0-9" ? "active" : "")" aria-pressed="@(Model.Initial == "0-9" ? "true" : "false")">數字</button>
+                    <button type="submit" name="initial" value="OTHER" class="@(Model.Initial == "OTHER" ? "active" : "")" aria-pressed="@(Model.Initial == "OTHER" ? "true" : "false")">其他</button>
+                    @for (var letter = 'A'; letter <= 'Z'; letter++)
+                    {
+                        var value = letter.ToString();
+                        <button type="submit" name="initial" value="@value" class="@(Model.Initial == value ? "active" : "")" aria-pressed="@(Model.Initial == value ? "true" : "false")">@value</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <p class="hospital-orders-alert" role="alert">@Model.ErrorMessage</p>
+    }
+    else
+    {
+        <section class="hospital-orders-results" aria-label="院內醫令查詢結果">
+            <div class="hospital-orders-table-wrap">
+                <table>
+                    <thead><tr><th scope="col">醫令號碼</th><th scope="col">醫令名稱</th><th scope="col">單位</th></tr></thead>
+                    <tbody>
+                        @if (Model.Items.Count == 0)
+                        {
+                            <tr><td colspan="3">查無符合條件的院內醫令資料</td></tr>
+                        }
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr><td>@item.Code</td><td>@item.Name</td><td>@item.Unit</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <footer>
+                <span>顯示 @firstItem - @lastItem 筆，共 @Model.TotalCount 筆</span>
+                <form class="hospital-orders-page-size" method="get" asp-controller="MedicalOrderMaintenance" asp-action="HospitalMedicalOrders">
+                    <input type="hidden" name="orderCode" value="@Model.OrderCode" />
+                    <input type="hidden" name="orderName" value="@Model.OrderName" />
+                    <input type="hidden" name="initial" value="@Model.Initial" />
+                    <input type="hidden" name="page" value="1" />
+                    <label for="hospital-orders-page-size">每頁顯示</label>
+                    <select id="hospital-orders-page-size" class="page-select" name="pageSize" onchange="this.form.requestSubmit()">
+                        @foreach (var option in Model.PageSizeOptions)
+                        {
+                            <option value="@option" selected="@(option == Model.PageSize ? "selected" : null)">@option 筆</option>
+                        }
+                    </select>
+                </form>
+                <nav aria-label="院內醫令分頁">
+                    @if (Model.Page > 1)
+                    {
+                        <a asp-action="HospitalMedicalOrders" asp-all-route-data="@PageRoute(1)">第一頁</a>
+                        <a asp-action="HospitalMedicalOrders" asp-all-route-data="@PageRoute(Model.Page - 1)">上一頁</a>
+                    }
+                    @for (var pageNumber = firstPage; pageNumber <= lastPage; pageNumber++)
+                    {
+                        <a class="@(pageNumber == Model.Page ? "active" : "")" asp-action="HospitalMedicalOrders" asp-all-route-data="@PageRoute(pageNumber)" aria-current="@(pageNumber == Model.Page ? "page" : null)">@pageNumber</a>
+                    }
+                    @if (Model.Page < Model.TotalPages)
+                    {
+                        <a asp-action="HospitalMedicalOrders" asp-all-route-data="@PageRoute(Model.Page + 1)">下一頁</a>
+                        <a asp-action="HospitalMedicalOrders" asp-all-route-data="@PageRoute(Model.TotalPages)">最後頁</a>
+                    }
+                </nav>
+            </footer>
+        </section>
+    }
+</section>
+
+<style>
+    .hospital-orders-page { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 16px; height: 100%; min-height: 0; color: var(--app-text); }
+    .hospital-orders-page h1 { margin: 0; font-size: 24px; }
+    .hospital-orders-filter, .hospital-orders-results { border: 1px solid var(--app-border); border-radius: 14px; background: var(--app-surface); }
+    .hospital-orders-filter { display: grid; grid-template-columns: 1fr 1fr auto; gap: 16px; align-items: end; padding: 16px; }
+    .hospital-orders-filter label { display: grid; gap: 8px; font-weight: 700; }
+    .hospital-orders-filter input { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--app-border); border-radius: 8px; background: var(--app-surface); color: var(--app-text); font: inherit; }
+    .hospital-orders-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .hospital-orders-actions .primary-button, .hospital-orders-actions .ghost-button { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 6px 12px; border-radius: 8px; font-weight: 700; text-decoration: none; transition: box-shadow .12s ease, background .12s ease; }
+    .hospital-orders-actions .primary-button { box-shadow: 0 4px 12px color-mix(in srgb, var(--app-accent) 20%, transparent); }
+    .hospital-orders-actions .ghost-button:hover { background: var(--app-surface-soft); }
+    .hospital-orders-index { grid-column: 1 / -1; min-width: 0; padding: 6px; border: 1px solid color-mix(in srgb, var(--app-accent) 12%, var(--app-border)); border-radius: 10px; background: linear-gradient(135deg, color-mix(in srgb, var(--app-accent) 5%, var(--app-surface)), var(--app-surface)); }
+    .hospital-orders-index-scroll { container: hospital-order-index / inline-size; overflow-x: auto; padding: 4px; }
+    .hospital-orders-index-buttons { display: grid; grid-template-columns: repeat(15, 36px); width: max-content; gap: 6px; }
+    @@container hospital-order-index (min-width: 1212px) { .hospital-orders-index-buttons { grid-template-columns: repeat(29, 36px); } }
+    .hospital-orders-index-buttons button { --index-color: var(--app-accent); position: relative; display: flex; align-items: center; justify-content: center; min-height: 30px; padding: 5px 2px; border: 1px solid color-mix(in srgb, var(--index-color) 22%, var(--app-border)); border-radius: 7px; background: linear-gradient(180deg, var(--app-surface), color-mix(in srgb, var(--index-color) 6%, var(--app-surface))); color: var(--app-text); box-shadow: 0 1px 2px rgb(0 0 0 / 4%); font: inherit; font-size: 13px; font-weight: 700; line-height: 1.2; cursor: pointer; white-space: nowrap; transition: border-color .1s ease, background .1s ease; }
+    .hospital-orders-index-buttons button[value=""] { --index-color: #0f766e; }
+    .hospital-orders-index-buttons button[value="0-9"] { --index-color: #b45309; }
+    .hospital-orders-index-buttons button[value="OTHER"] { --index-color: #7c3aed; }
+    .hospital-orders-index-buttons button:hover { border-color: var(--index-color); background: color-mix(in srgb, var(--index-color) 10%, var(--app-surface)); }
+    .hospital-orders-index-buttons button.active { border-color: var(--index-color); background: linear-gradient(145deg, var(--index-color), color-mix(in srgb, var(--index-color) 82%, #000)); color: white; box-shadow: 0 4px 10px color-mix(in srgb, var(--index-color) 28%, transparent), inset 0 1px 0 rgb(255 255 255 / 18%); }
+    .hospital-orders-index-buttons button.active::after { content: ""; position: absolute; bottom: 4px; width: 12px; height: 2px; border-radius: 2px; background: rgb(255 255 255 / 80%); }
+    .hospital-orders-index-buttons button:active { transform: translateY(0); box-shadow: inset 0 2px 4px rgb(0 0 0 / 12%); }
+    .hospital-orders-index-buttons button:focus-visible { outline: 2px solid var(--index-color); outline-offset: 2px; }
+    .hospital-orders-query-status { font-size: 12px; color: var(--app-text-muted); }
+    .hospital-orders-query-status:empty { display: none; }
+    .hospital-orders-page[aria-busy="true"] .hospital-orders-results { opacity: .65; pointer-events: none; }
+    .hospital-orders-alert { padding: 16px; border: 1px solid var(--app-border); border-radius: 8px; background: var(--app-surface); }
+    .hospital-orders-results { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+    .hospital-orders-table-wrap { flex: 1; min-height: 0; overflow: auto; }
+    .hospital-orders-results table { width: 100%; border-collapse: collapse; }
+    .hospital-orders-results th, .hospital-orders-results td { padding: 14px 18px; text-align: left; border-bottom: 1px solid var(--app-border); }
+    .hospital-orders-results th { position: sticky; top: 0; z-index: 1; background: var(--app-surface-muted); }
+    .hospital-orders-results th:first-child { width: 25%; }
+    .hospital-orders-results th:last-child { width: 15%; }
+    .hospital-orders-results td:last-child { white-space: nowrap; }
+    .hospital-orders-results td:first-child { white-space: nowrap; }
+    .hospital-orders-results tbody tr:hover { background: var(--app-surface-soft); }
+    .hospital-orders-results footer { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; border-top: 1px solid var(--app-border); }
+    .hospital-orders-page-size { display: flex; align-items: center; gap: 8px; }
+    .hospital-orders-page-size select { padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 7px; background: var(--app-surface); color: var(--app-text); font: inherit; }
+    .hospital-orders-results nav { display: flex; flex-wrap: wrap; gap: 6px; }
+    .hospital-orders-results nav a { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; min-height: 38px; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 10px; background: var(--app-surface); color: var(--app-text); font-weight: 600; text-decoration: none; transition: background .18s ease, border-color .18s ease; }
+    .hospital-orders-results nav a:hover { border-color: var(--app-accent); background: color-mix(in srgb, var(--app-accent) 8%, var(--app-surface)); }
+    .hospital-orders-results nav a.active { border-color: var(--app-accent); background: var(--app-accent); color: white; box-shadow: 0 3px 8px color-mix(in srgb, var(--app-accent) 22%, transparent); }
+    .hospital-orders-actions a:focus-visible, .hospital-orders-actions button:focus-visible, .hospital-orders-results nav a:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
+    @@media (prefers-reduced-motion: reduce) { .hospital-orders-index-buttons button, .hospital-orders-actions .primary-button, .hospital-orders-actions .ghost-button, .hospital-orders-results nav a { transition: none; } .hospital-orders-index-buttons button:hover { transform: none; } }
+    @@media (max-width: 900px) { .hospital-orders-filter { grid-template-columns: 1fr; } }
+</style>
+<script src="~/js/hospital-orders.js" asp-append-version="true" defer></script>

@@ -1,0 +1,673 @@
+@model HealthSys_20260428_v2.csproj.Models.MedicalOrderMaintenanceViewModel
+
+@{
+    ViewData["Title"] = "醫令維護";
+
+    IDictionary<string, string> PageRoute(int page) => new Dictionary<string, string>
+    {
+        ["category"] = Model.Category,
+        ["keyword"] = Model.Keyword,
+        ["page"] = page.ToString(),
+        ["pageSize"] = Model.PageSize.ToString()
+    };
+
+    IReadOnlyList<int> VisiblePages()
+    {
+        if (Model.TotalPages <= 7) return Enumerable.Range(1, Model.TotalPages).ToArray();
+        if (Model.Page <= 4) return new[] { 1, 2, 3, 4, 5, -1, Model.TotalPages };
+        if (Model.Page >= Model.TotalPages - 3) return new[] { 1, -1, Model.TotalPages - 4, Model.TotalPages - 3, Model.TotalPages - 2, Model.TotalPages - 1, Model.TotalPages };
+        return new[] { 1, -1, Model.Page - 1, Model.Page, Model.Page + 1, -1, Model.TotalPages };
+    }
+
+    var firstItem = Model.TotalCount == 0 ? 0 : ((Model.Page - 1) * Model.PageSize) + 1;
+    var lastItem = Math.Min(Model.Page * Model.PageSize, Model.TotalCount);
+    var basicPhysicalCategory = Model.Categories.FirstOrDefault(category =>
+        string.Equals(category.Name, "基本體格檢查", StringComparison.Ordinal));
+}
+
+<section class="medical-order-page"
+         aria-label="醫令維護"
+         data-create-url="@Url.Action("CreateMedicalOrder", "MedicalOrderMaintenance")"
+         data-update-url="@Url.Action("UpdateMedicalOrder", "MedicalOrderMaintenance")"
+         data-delete-url="@Url.Action("DeleteMedicalOrder", "MedicalOrderMaintenance")">
+    <div data-ai-page="medicalOrders" data-ai-result-count="@Model.TotalCount" data-ai-query-error="@Model.ErrorMessage" hidden></div>
+    <dialog class="medical-order-editor" data-order-editor aria-labelledby="medical-order-editor-title">
+        <form class="medical-order-editor-form" data-order-editor-form>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="OriginalCheckNo" data-field="OriginalCheckNo" />
+
+            <header class="medical-order-dialog-header">
+                <div>
+                    <span class="medical-order-dialog-eyebrow" data-editor-eyebrow>新增資料</span>
+                    <h2 id="medical-order-editor-title" data-editor-title>新增醫令</h2>
+                    <p>建立醫令的中英文名稱、分類與報告顯示資料。</p>
+                </div>
+                <button class="medical-order-dialog-close" type="button" data-editor-close aria-label="關閉">×</button>
+            </header>
+
+            <div class="medical-order-form-section">
+                <div class="medical-order-form-section-title"><span>01</span><div><strong>基本資料</strong><small>醫令識別與檢查分類</small></div></div>
+                <div class="medical-order-form-grid">
+                    <label class="medical-order-editor-field">
+                        <span>醫令代碼 <em>必填</em></span>
+                        <input type="text" name="CheckNo" maxlength="26" required data-field="CheckNo" placeholder="最多 26 個字元" />
+                    </label>
+                    <div class="medical-order-editor-field medical-order-category-combobox" data-category-combobox>
+                        <span>檢查分類</span>
+                        <span class="medical-order-combobox-input">
+                            <input type="text" name="CheckCategory" maxlength="500" data-field="CheckCategory" placeholder="選擇或自行輸入新分類" autocomplete="off" aria-expanded="false" aria-controls="medical-order-category-menu" />
+                            <button type="button" data-category-toggle aria-label="展開檢查分類">⌄</button>
+                        </span>
+                        <span class="medical-order-combobox-menu" id="medical-order-category-menu" data-category-menu hidden>
+                            @foreach (var category in Model.Categories)
+                            {
+                                <button type="button" data-category-option="@category.Name" data-category-search="@category.Name">
+                                    <span class="medical-order-category @category.Tone">
+                                        <span class="package-category-icon @category.Icon" aria-hidden="true"></span>
+                                        <span>@category.Name</span>
+                                    </span>
+                                </button>
+                            }
+                            <span class="medical-order-category-no-result" data-category-no-result hidden>沒有既有分類，可直接使用目前輸入內容建立新分類</span>
+                        </span>
+                    </div>
+                    <div class="medical-order-editor-field medical-order-category-combobox medical-order-field-wide" data-item-category-combobox>
+                        <span>細項類別</span>
+                        <span class="medical-order-combobox-input">
+                            <input type="text" name="ItemCategory" maxlength="500" data-field="ItemCategory" placeholder="選擇或自行輸入細項類別" autocomplete="off" aria-expanded="false" aria-controls="medical-order-item-category-menu" />
+                            <button type="button" data-item-category-toggle aria-label="展開細項類別">⌄</button>
+                        </span>
+                        <span class="medical-order-combobox-menu medical-order-item-category-menu" id="medical-order-item-category-menu" data-item-category-menu hidden>
+                            @foreach (var itemCategory in Model.ItemCategories)
+                            {
+                                <button type="button" data-item-category-option="@itemCategory" data-item-category-search="@itemCategory">@itemCategory</button>
+                            }
+                            <span class="medical-order-category-no-result" data-item-category-no-result hidden>沒有符合的既有類別，可直接使用目前輸入內容</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="medical-order-form-section">
+                <div class="medical-order-form-section-title"><span>02</span><div><strong>名稱資料</strong><small>中文與英文顯示名稱</small></div></div>
+                <div class="medical-order-form-grid">
+                    <label class="medical-order-editor-field"><span>醫令名稱</span><input type="text" name="Name" maxlength="500" data-field="Name" /></label>
+                    <label class="medical-order-editor-field"><span>英文名稱</span><input type="text" name="EName" maxlength="500" data-field="EName" lang="en" /></label>
+                </div>
+            </div>
+
+            <div class="medical-order-form-section medical-order-output-section">
+                <div class="medical-order-form-section-title"><span>03</span><div><strong>結果設定</strong><small>報告格式與單位</small></div></div>
+                <div class="medical-order-form-grid">
+                    <label class="medical-order-editor-field"><span>格式</span><input type="text" name="Format" maxlength="100" data-field="Format" /></label>
+                    <label class="medical-order-editor-field"><span>單位</span><input type="text" name="Unit" maxlength="100" data-field="Unit" /></label>
+                </div>
+            </div>
+
+            <p class="medical-order-dialog-error" data-editor-error role="alert" hidden></p>
+            <footer class="medical-order-dialog-footer">
+                <button class="ghost-button" type="button" data-editor-cancel>取消</button>
+                <button class="primary-button" type="submit" data-editor-submit>新增醫令</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <dialog class="medical-order-delete-dialog" data-delete-dialog aria-labelledby="medical-order-delete-title">
+        <form class="medical-order-delete-form" data-delete-form>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="checkNo" data-delete-code-input />
+            <div class="medical-order-delete-icon" aria-hidden="true">!</div>
+            <h2 id="medical-order-delete-title">刪除醫令</h2>
+            <p>確定要刪除醫令 <strong data-delete-code></strong> 嗎？</p>
+            <span>刪除後無法復原，若資料已被其他功能使用，系統將不允許刪除。</span>
+            <p class="medical-order-dialog-error" data-delete-error role="alert" hidden></p>
+            <footer class="medical-order-delete-actions">
+                <button class="ghost-button" type="button" data-delete-cancel>取消</button>
+                <button class="medical-order-confirm-delete" type="submit" data-delete-submit>確認刪除</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <form class="medical-order-category-panel" method="get" asp-controller="MedicalOrderMaintenance" asp-action="MedicalOrderMaintenance">
+        <input type="hidden" name="keyword" value="@Model.Keyword" />
+        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+        <div class="suite-category-tabs medical-order-category-tabs" aria-label="檢驗項分類" data-medical-order-category-tabs>
+            <button class="blue @(string.IsNullOrWhiteSpace(Model.Category) ? "active" : "")" type="submit" name="category" value="" aria-pressed="@(string.IsNullOrWhiteSpace(Model.Category) ? "true" : "false")" data-category-name="全部">
+                <span class="package-category-icon stethoscope" aria-hidden="true"></span>
+                <span>全部</span>
+            </button>
+            @if (basicPhysicalCategory is not null)
+            {
+                <button class="@basicPhysicalCategory.Tone @(basicPhysicalCategory.Active ? "active" : "")" type="submit" name="category" value="@basicPhysicalCategory.Key" aria-pressed="@(basicPhysicalCategory.Active ? "true" : "false")" data-category-name="@basicPhysicalCategory.Name">
+                    <span class="package-category-icon @basicPhysicalCategory.Icon" aria-hidden="true"></span>
+                    <span>@basicPhysicalCategory.Name</span>
+                </button>
+            }
+            @foreach (var category in Model.Categories.Where(category => !string.Equals(category.Name, "基本體格檢查", StringComparison.Ordinal)))
+            {
+                <button class="@category.Tone @(category.Active ? "active" : "")" type="submit" name="category" value="@category.Key" aria-pressed="@(category.Active ? "true" : "false")" data-category-name="@category.Name">
+                    <span class="package-category-icon @category.Icon" aria-hidden="true"></span>
+                    <span>@category.Name</span>
+                </button>
+            }
+        </div>
+    </form>
+
+    <form class="medical-order-filter" method="get" asp-controller="MedicalOrderMaintenance" asp-action="MedicalOrderMaintenance">
+        <input type="hidden" name="category" value="@Model.Category" />
+        <label class="medical-order-field">
+            <span>搜尋分類索引</span>
+            <input type="search" placeholder="輸入分類，例如：影像檢查" autocomplete="off" data-category-index-search />
+        </label>
+        <label class="medical-order-field medical-order-keyword">
+            <span>關鍵字</span>
+            <input type="search" name="keyword" value="@Model.Keyword" placeholder="輸入醫令代碼、中文／英文名稱或細項類別" autocomplete="off" />
+        </label>
+        <div class="medical-order-actions">
+            <button class="primary-button" type="submit">查詢</button>
+            <a class="ghost-button" asp-controller="MedicalOrderMaintenance" asp-action="MedicalOrderMaintenance">清除條件</a>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="medical-order-alert" role="alert">@Model.ErrorMessage</div>
+    }
+
+    <section class="medical-order-grid-panel" aria-label="醫令查詢結果">
+        <div class="medical-order-grid-title">
+            <div><h2>醫令清單</h2><span>@(string.IsNullOrWhiteSpace(Model.Category) ? "全部分類" : Model.Category)</span></div>
+            <div class="medical-order-grid-actions">
+                <span class="medical-order-count">共 @Model.TotalCount 筆</span>
+                <a class="medical-order-export-button"
+                   asp-controller="MedicalOrderMaintenance"
+                   asp-action="ExportExcel"
+                   asp-route-category="@Model.Category"
+                   asp-route-keyword="@Model.Keyword">
+                    <span class="medical-order-export-icon" aria-hidden="true">⇩</span>
+                    <span>匯出 Excel</span>
+                </a>
+                <button class="primary-button medical-order-add-button" type="button" data-order-add>
+                    <span aria-hidden="true">＋</span>
+                    <span>新增醫令</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="medical-order-table-wrap">
+            <table class="medical-order-table">
+                <thead>
+                    <tr>
+                        <th class="medical-order-action-heading">操作</th>
+                        <th>醫令代碼</th>
+                        <th>醫令名稱</th>
+                        <th>英文名稱</th>
+                        <th>檢驗分類</th>
+                        <th>細項類別</th>
+                        <th>格式</th>
+                        <th>單位</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Items.Count == 0)
+                    {
+                        <tr class="medical-order-empty-row"><td colspan="8">查無符合條件的醫令資料</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="medical-order-row-actions">
+                                        <button class="medical-order-edit-button"
+                                                type="button"
+                                                data-order-edit
+                                                data-check-no="@item.Code"
+                                                data-name="@item.Name"
+                                                data-check-category="@item.Category"
+                                                data-item-category="@item.ItemCategory"
+                                                data-e-name="@item.EnglishName"
+                                                data-format="@item.Format"
+                                                data-unit="@item.Unit">編輯</button>
+                                        <button class="medical-order-delete-button" type="button" data-order-delete data-order-code="@item.Code">刪除</button>
+                                    </div>
+                                </td>
+                                <td><span class="medical-order-code">@item.Code</span></td>
+                                <td class="medical-order-name">@item.Name</td>
+                                <td class="medical-order-english-name" lang="en">@item.EnglishName</td>
+                                <td>
+                                    <span class="medical-order-category @item.CategoryTone">
+                                        <span class="package-category-icon @item.CategoryIcon" aria-hidden="true"></span>
+                                        <span>@item.Category</span>
+                                    </span>
+                                </td>
+                                <td>@item.ItemCategory</td>
+                                <td>@item.Format</td>
+                                <td>@item.Unit</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="medical-order-grid-footer">
+            <span>顯示 @firstItem - @lastItem 筆，共 @Model.TotalCount 筆</span>
+            <div class="medical-order-pagination-controls">
+                <form method="get" asp-controller="MedicalOrderMaintenance" asp-action="MedicalOrderMaintenance">
+                    <input type="hidden" name="category" value="@Model.Category" />
+                    <input type="hidden" name="keyword" value="@Model.Keyword" />
+                    <select class="page-select" name="pageSize" aria-label="每頁筆數" onchange="this.form.submit()">
+                        @foreach (var option in Model.PageSizeOptions)
+                        {
+                            <option value="@option" selected="@(option == Model.PageSize ? "selected" : null)">@option 筆/頁</option>
+                        }
+                    </select>
+                </form>
+                <nav class="medical-order-pagination" aria-label="醫令列表分頁">
+                    <a class="@(Model.Page <= 1 ? "is-disabled" : "")" asp-all-route-data="@PageRoute(Math.Max(1, Model.Page - 1))" aria-label="上一頁" aria-disabled="@(Model.Page <= 1 ? "true" : "false")">‹</a>
+                    @foreach (var pageNumber in VisiblePages())
+                    {
+                        if (pageNumber == -1)
+                        {
+                            <span class="medical-order-ellipsis">…</span>
+                        }
+                        else
+                        {
+                            <a class="@(pageNumber == Model.Page ? "active" : "")" asp-all-route-data="@PageRoute(pageNumber)" aria-current="@(pageNumber == Model.Page ? "page" : null)">@pageNumber</a>
+                        }
+                    }
+                    <a class="@(Model.Page >= Model.TotalPages ? "is-disabled" : "")" asp-all-route-data="@PageRoute(Math.Min(Model.TotalPages, Model.Page + 1))" aria-label="下一頁" aria-disabled="@(Model.Page >= Model.TotalPages ? "true" : "false")">›</a>
+                </nav>
+            </div>
+        </footer>
+    </section>
+
+    <div class="medical-order-toast" role="status" aria-live="polite" data-medical-order-toast hidden></div>
+</section>
+
+<style>
+    .medical-order-page { display: grid; gap: 18px; padding: 24px; color: var(--app-text, #172033); }
+    .medical-order-filter, .medical-order-grid-panel, .medical-order-category-panel { border: 1px solid var(--app-border, #dfe5ee); border-radius: 14px; background: var(--app-surface, #fff); box-shadow: 0 5px 20px rgba(24, 40, 72, .06); }
+    .medical-order-category-panel { overflow: hidden; }
+    .medical-order-category-tabs { grid-template-rows: 34px; padding-top: 14px; padding-bottom: 14px; }
+    .medical-order-category-tabs button[hidden] { display: none; }
+    .medical-order-category-tabs button.blue .package-category-icon { --package-icon-color: #2563eb; }
+    .medical-order-category-tabs button.cyan .package-category-icon { --package-icon-color: #0891b2; }
+    .medical-order-category-tabs button.rose .package-category-icon { --package-icon-color: #e11d48; }
+    .medical-order-category-tabs button.violet .package-category-icon { --package-icon-color: #7c3aed; }
+    .medical-order-category-tabs button.lime .package-category-icon { --package-icon-color: #65a30d; }
+    .medical-order-filter { display: grid; grid-template-columns: minmax(180px, .35fr) minmax(280px, 1fr) auto; align-items: end; gap: 12px; padding: 16px; }
+    .medical-order-field { display: grid; gap: 7px; min-width: 0; font-size: 14px; font-weight: 650; }
+    .medical-order-field input, .medical-order-field select { width: 100%; min-height: 42px; padding: 8px 11px; border: 1px solid var(--app-border, #cfd7e3); border-radius: 8px; background: var(--app-surface, #fff); color: inherit; font: inherit; }
+    .medical-order-field input:focus, .medical-order-field select:focus { border-color: var(--app-accent, #1677e8); outline: 3px solid rgba(var(--app-accent-rgb, 22, 119, 232), .14); }
+    .medical-order-actions { display: flex; gap: 8px; }
+    .medical-order-actions a { text-decoration: none; }
+    .medical-order-alert { padding: 12px 15px; border: 1px solid #f0b7b7; border-radius: 10px; background: #fff3f3; color: #a42626; }
+    .medical-order-grid-panel { min-width: 0; overflow: hidden; }
+    .medical-order-grid-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 18px; border-bottom: 1px solid var(--app-border, #e4e9f0); }
+    .medical-order-grid-title > div { display: flex; align-items: baseline; gap: 10px; }
+    .medical-order-grid-title h2 { margin: 0; font-size: 18px; }
+    .medical-order-grid-title span { color: var(--app-text-muted, #687386); font-size: 13px; }
+    .medical-order-grid-actions { align-items: center !important; }
+    .medical-order-add-button { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 7px 13px; }
+    .medical-order-add-button span { color: inherit; font-size: inherit; }
+    .medical-order-export-button { min-height: 36px; display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border: 1px solid #91d1ac; border-radius: 8px; background: #e9f8ef; color: #187542; font-size: 13px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+    .medical-order-export-button:hover { border-color: #55b47d; background: #dff4e8; color: #116236; }
+    .medical-order-export-icon { width: 19px; height: 19px; display: grid; place-items: center; border-radius: 5px; background: #c8ecd6; color: #187542 !important; font-size: 15px !important; line-height: 1; }
+    .medical-order-count { padding: 5px 10px; border-radius: 999px; background: var(--app-accent-soft, #eaf3ff); color: var(--app-accent-dark, #0f67c7) !important; font-weight: 700; }
+    .medical-order-table-wrap { overflow-x: auto; }
+    .medical-order-table { width: 100%; min-width: 900px; border-collapse: collapse; }
+    .medical-order-table th { padding: 13px 16px; background: var(--app-surface-muted, #f5f7fa); color: var(--app-text-muted, #556174); text-align: left; font-size: 13px; white-space: nowrap; }
+    .medical-order-table td { padding: 13px 16px; border-top: 1px solid var(--app-border, #e4e9f0); vertical-align: middle; }
+    .medical-order-table tbody tr:hover { background: rgba(var(--app-accent-rgb, 22, 119, 232), .045); }
+    .medical-order-code { color: var(--app-accent-dark, #0f67c7); font-weight: 750; }
+    .medical-order-name { font-weight: 650; }
+    .medical-order-english-name { color: var(--app-text-muted, #687386); }
+    .medical-order-action-heading { width: 140px; text-align: center !important; }
+    .medical-order-row-actions { display: flex; justify-content: center; gap: 7px; }
+    .medical-order-row-actions button { min-height: 31px; padding: 4px 11px; border-radius: 7px; background: var(--app-surface, #fff); font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
+    .medical-order-edit-button { border: 1px solid #93bce9; color: #1267c5; }
+    .medical-order-edit-button:hover { border-color: #1677e8; background: #edf6ff; }
+    .medical-order-delete-button { border: 1px solid #efb1b1; color: #c43333; }
+    .medical-order-delete-button:hover { border-color: #dc4d4d; background: #fff1f1; }
+    .medical-order-category { --category-color: #1677e8; display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 5px 10px; border: 1px solid color-mix(in srgb, var(--category-color) 32%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--category-color) 10%, var(--app-surface, #fff)); color: color-mix(in srgb, var(--category-color) 82%, #172033); font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .medical-order-category .package-category-icon { --package-icon-color: var(--category-color); width: 17px; height: 17px; flex-basis: 17px; }
+    .medical-order-category.red { --category-color: #ef4444; }
+    .medical-order-category.green { --category-color: #10b981; }
+    .medical-order-category.blue { --category-color: #1677e8; }
+    .medical-order-category.orange, .medical-order-category.amber { --category-color: #f59e0b; }
+    .medical-order-category.purple, .medical-order-category.indigo { --category-color: #8b5cf6; }
+    .medical-order-category.teal { --category-color: #14b8a6; }
+    .medical-order-category.pink { --category-color: #ec4899; }
+    .medical-order-category.brown { --category-color: #a16207; }
+    .medical-order-category.cyan { --category-color: #0891b2; }
+    .medical-order-category.rose { --category-color: #e11d48; }
+    .medical-order-category.violet { --category-color: #7c3aed; }
+    .medical-order-category.lime { --category-color: #65a30d; }
+    .medical-order-empty-row td { height: 180px; color: var(--app-text-muted, #687386); text-align: center; }
+    .medical-order-grid-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; border-top: 1px solid var(--app-border, #e4e9f0); color: var(--app-text-muted, #687386); font-size: 13px; }
+    .medical-order-pagination-controls, .medical-order-pagination { display: flex; align-items: center; gap: 8px; }
+    .medical-order-pagination a, .medical-order-ellipsis { min-width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--app-border, #d9e0e9); border-radius: 7px; color: inherit; text-decoration: none; }
+    .medical-order-pagination a.active { border-color: var(--app-accent, #1677e8); background: var(--app-accent, #1677e8); color: #fff; }
+    .medical-order-pagination a.is-disabled { pointer-events: none; opacity: .42; }
+    .medical-order-ellipsis { border-color: transparent; }
+    .medical-order-editor { width: min(920px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 0; border-radius: 18px; background: var(--app-surface, #fff); color: var(--app-text, #172033); box-shadow: 0 30px 90px rgba(15, 35, 65, .3); }
+    .medical-order-editor::backdrop, .medical-order-delete-dialog::backdrop { background: rgba(13, 27, 48, .55); backdrop-filter: blur(3px); }
+    .medical-order-editor-form { display: grid; gap: 16px; padding: 0 24px 22px; }
+    .medical-order-dialog-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin: 0 -24px; padding: 22px 24px 18px; border-bottom: 1px solid var(--app-border, #e4e9f0); background: linear-gradient(135deg, color-mix(in srgb, var(--app-accent, #1677e8) 9%, var(--app-surface, #fff)), var(--app-surface, #fff) 62%); }
+    .medical-order-dialog-header h2 { margin: 3px 0 3px; font-size: 24px; }
+    .medical-order-dialog-header p { margin: 0; color: var(--app-text-muted, #687386); font-size: 13px; }
+    .medical-order-dialog-eyebrow { color: var(--app-accent, #1677e8); font-size: 11px; font-weight: 850; letter-spacing: .1em; }
+    .medical-order-dialog-close { width: 36px; height: 36px; display: grid; flex: 0 0 36px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--app-text, #172033) 7%, transparent); color: var(--app-text-muted, #687386); font-size: 25px; line-height: 1; cursor: pointer; }
+    .medical-order-dialog-close:hover { background: color-mix(in srgb, var(--app-text, #172033) 12%, transparent); color: var(--app-text, #172033); }
+    .medical-order-form-section { padding: 16px; border: 1px solid var(--app-border, #e1e7ef); border-radius: 13px; background: color-mix(in srgb, var(--app-surface-muted, #f5f7fa) 62%, var(--app-surface, #fff)); }
+    .medical-order-form-section-title { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .medical-order-form-section-title > span { width: 34px; height: 34px; display: grid; place-items: center; flex: 0 0 34px; border-radius: 10px; background: var(--app-accent-soft, #eaf3ff); color: var(--app-accent-dark, #0f67c7); font-size: 11px; font-weight: 900; }
+    .medical-order-form-section-title > div { display: grid; gap: 1px; }
+    .medical-order-form-section-title strong { font-size: 14px; }
+    .medical-order-form-section-title small { color: var(--app-text-muted, #687386); font-size: 11px; }
+    .medical-order-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .medical-order-form-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .medical-order-form-stack { display: grid; gap: 11px; }
+    .medical-order-field-wide { grid-column: 1 / -1; }
+    .medical-order-editor-field { display: grid; gap: 6px; min-width: 0; color: var(--app-text-muted, #556174); font-size: 12px; font-weight: 750; }
+    .medical-order-editor-field em { margin-left: 3px; color: #d43b3b; font-size: 10px; font-style: normal; }
+    .medical-order-editor-field input { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--app-border, #cfd7e3); border-radius: 8px; background: var(--app-surface, #fff); color: var(--app-text, #172033); font: inherit; font-size: 14px; font-weight: 500; }
+    .medical-order-editor-field input:focus { border-color: var(--app-accent, #1677e8); outline: 3px solid rgba(var(--app-accent-rgb, 22, 119, 232), .13); }
+    .medical-order-category-combobox { position: relative; }
+    .medical-order-combobox-input { position: relative; display: block; }
+    .medical-order-combobox-input input { padding-right: 42px; }
+    .medical-order-combobox-input > button { position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 7px; background: color-mix(in srgb, var(--app-accent, #1677e8) 8%, transparent); color: var(--app-accent-dark, #0f67c7); font-size: 20px; line-height: 1; cursor: pointer; }
+    .medical-order-combobox-input > button:hover { background: color-mix(in srgb, var(--app-accent, #1677e8) 15%, transparent); }
+    .medical-order-combobox-menu { position: absolute; top: calc(100% + 5px); left: 0; z-index: 8; width: max-content; min-width: 100%; max-width: min(820px, calc(100vw - 96px)); max-height: 270px; grid-template-columns: repeat(2, max-content); gap: 5px; overflow: auto; padding: 8px; border: 1px solid var(--app-border, #d8e0ea); border-radius: 10px; background: var(--app-surface, #fff); box-shadow: 0 15px 36px rgba(18, 40, 72, .18); }
+    .medical-order-combobox-menu:not([hidden]) { display: grid; }
+    .medical-order-combobox-menu > button { width: auto; display: flex; padding: 5px 6px; border: 0; border-radius: 8px; background: transparent; text-align: left; cursor: pointer; }
+    .medical-order-combobox-menu > button .medical-order-category { width: auto; }
+    .medical-order-item-category-menu { grid-template-columns: repeat(2, minmax(160px, 1fr)); width: 100%; }
+    .medical-order-item-category-menu > button { color: var(--app-text, #172033); font-size: 13px; font-weight: 600; }
+    .medical-order-combobox-menu > button:hover, .medical-order-combobox-menu > button:focus-visible { background: color-mix(in srgb, var(--app-accent, #1677e8) 8%, transparent); outline: none; }
+    .medical-order-category-no-result { grid-column: 1 / -1; display: block; padding: 12px 10px; color: var(--app-text-muted, #687386); font-size: 12px; font-weight: 500; line-height: 1.55; text-align: center; }
+    .medical-order-output-section { margin-bottom: 0; }
+    .medical-order-dialog-error { margin: 0; padding: 10px 12px; border: 1px solid #efb1b1; border-radius: 8px; background: #fff1f1; color: #a92929; font-size: 13px; }
+    .medical-order-dialog-footer { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 9px; margin: 0 -24px -22px; padding: 15px 24px; border-top: 1px solid var(--app-border, #e4e9f0); background: var(--app-surface, #fff); }
+    .medical-order-dialog-footer button { min-width: 96px; }
+    .medical-order-delete-dialog { width: min(440px, calc(100vw - 32px)); padding: 0; border: 0; border-radius: 17px; background: var(--app-surface, #fff); color: var(--app-text, #172033); box-shadow: 0 30px 90px rgba(15, 35, 65, .3); }
+    .medical-order-delete-form { display: grid; justify-items: center; gap: 10px; padding: 26px; text-align: center; }
+    .medical-order-delete-icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; background: #fff0f0; color: #d23c3c; font-size: 25px; font-weight: 900; }
+    .medical-order-delete-form h2 { margin: 2px 0 0; font-size: 22px; }
+    .medical-order-delete-form p { margin: 0; }
+    .medical-order-delete-form > span { color: var(--app-text-muted, #687386); font-size: 12px; line-height: 1.6; }
+    .medical-order-delete-actions { width: 100%; display: flex; justify-content: flex-end; gap: 9px; margin-top: 10px; }
+    .medical-order-confirm-delete { min-height: 40px; padding: 8px 15px; border: 1px solid #cc3434; border-radius: 8px; background: #d94242; color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+    .medical-order-confirm-delete:hover { background: #c83232; }
+    .medical-order-dialog-footer button:disabled, .medical-order-confirm-delete:disabled { cursor: wait; opacity: .62; }
+    .medical-order-toast { position: fixed; right: 24px; bottom: 24px; z-index: 40; max-width: min(360px, calc(100vw - 48px)); padding: 12px 16px; border: 1px solid rgba(var(--app-accent-rgb, 22, 119, 232), .3); border-radius: 10px; background: var(--app-surface, #fff); color: var(--app-text, #172033); box-shadow: 0 14px 38px rgba(15, 35, 65, .22); font-size: 14px; font-weight: 700; }
+    @@media (max-width: 850px) {
+        .medical-order-filter { grid-template-columns: 1fr; }
+        .medical-order-actions { justify-content: flex-end; }
+        .medical-order-grid-footer { align-items: flex-start; flex-direction: column; }
+        .medical-order-form-columns, .medical-order-form-grid { grid-template-columns: 1fr; }
+        .medical-order-field-wide { grid-column: auto; }
+        .medical-order-combobox-menu { width: 100%; grid-template-columns: 1fr; }
+    }
+    .medical-order-page { min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; }
+    .medical-order-category-panel, .medical-order-filter, .medical-order-alert { flex: 0 0 auto; }
+    .medical-order-grid-panel { flex: 1 1 auto; min-height: 360px; display: grid; grid-template-rows: auto minmax(0, 1fr) minmax(60px, 4%); }
+    .medical-order-table-wrap { min-height: 0; overflow: auto; }
+    .medical-order-table thead th { position: sticky; top: 0; z-index: 1; }
+    @@media (max-width: 1100px) { .medical-order-filter { grid-template-columns: minmax(0, 1fr); } }
+    @@media (max-width: 850px) { .medical-order-grid-panel { grid-template-rows: auto minmax(0, 1fr) auto; } }
+    @@media (min-height: 901px) { .medical-order-category-tabs { grid-template-rows: repeat(2, 34px); } }
+    @@media (min-height: 1126px) { .medical-order-category-tabs { grid-template-rows: repeat(3, 34px); } }
+</style>
+
+<script>
+    (() => {
+        const search = document.querySelector("[data-category-index-search]");
+        const tabs = document.querySelector("[data-medical-order-category-tabs]");
+        if (!search || !tabs) return;
+
+        search.addEventListener("input", () => {
+            const keyword = search.value.trim().toLocaleLowerCase("zh-TW");
+            tabs.querySelectorAll("button[data-category-name]").forEach(button => {
+                const name = (button.dataset.categoryName || "").toLocaleLowerCase("zh-TW");
+                button.hidden = keyword !== "" && !name.includes(keyword);
+            });
+        });
+
+        const toast = document.querySelector("[data-medical-order-toast]");
+        let toastTimer = 0;
+        const showToast = message => {
+            if (!toast) return;
+            toast.textContent = message;
+            toast.hidden = false;
+            window.clearTimeout(toastTimer);
+            toastTimer = window.setTimeout(() => { toast.hidden = true; }, 2800);
+        };
+
+        const page = document.querySelector(".medical-order-page");
+        const editor = document.querySelector("[data-order-editor]");
+        const editorForm = document.querySelector("[data-order-editor-form]");
+        const editorError = document.querySelector("[data-editor-error]");
+        const editorTitle = document.querySelector("[data-editor-title]");
+        const editorEyebrow = document.querySelector("[data-editor-eyebrow]");
+        const editorSubmit = document.querySelector("[data-editor-submit]");
+        let editorMode = "create";
+
+        const setEditorField = (name, value) => {
+            const field = editorForm?.querySelector(`[data-field="${name}"]`);
+            if (field) field.value = value || "";
+        };
+
+        const openEditor = (mode, values = {}) => {
+            if (!editor || !editorForm) return;
+            editorMode = mode;
+            editorForm.reset();
+            editorError.hidden = true;
+            setEditorField("OriginalCheckNo", mode === "edit" ? values.checkNo : "");
+            setEditorField("CheckNo", values.checkNo);
+            setEditorField("Name", values.name);
+            setEditorField("CheckCategory", values.checkCategory);
+            setEditorField("ItemCategory", values.itemCategory);
+            setEditorField("EName", values.eName);
+            setEditorField("Format", values.format);
+            setEditorField("Unit", values.unit);
+            closeCategoryMenu();
+            closeItemCategoryMenu();
+            editorTitle.textContent = mode === "edit" ? "編輯醫令" : "新增醫令";
+            editorEyebrow.textContent = mode === "edit" ? "更新既有資料" : "建立新資料";
+            editorSubmit.textContent = mode === "edit" ? "儲存變更" : "新增醫令";
+            editor.showModal();
+            window.setTimeout(() => editorForm.querySelector('[name="CheckNo"]')?.focus(), 50);
+        };
+
+        document.querySelector("[data-order-add]")?.addEventListener("click", () => openEditor("create"));
+        document.querySelectorAll("[data-order-edit]").forEach(button => {
+            button.addEventListener("click", () => openEditor("edit", button.dataset));
+        });
+        document.querySelectorAll("[data-editor-close], [data-editor-cancel]").forEach(button => {
+            button.addEventListener("click", () => editor?.close());
+        });
+        editor?.addEventListener("click", event => {
+            if (event.target === editor) editor.close();
+        });
+
+        const categoryCombobox = document.querySelector("[data-category-combobox]");
+        const categoryInput = categoryCombobox?.querySelector('[name="CheckCategory"]');
+        const categoryMenu = categoryCombobox?.querySelector("[data-category-menu]");
+        const categoryToggle = categoryCombobox?.querySelector("[data-category-toggle]");
+        const categoryNoResult = categoryCombobox?.querySelector("[data-category-no-result]");
+        const categoryOptions = Array.from(categoryCombobox?.querySelectorAll("[data-category-option]") || []);
+
+        function filterCategoryOptions() {
+            const keyword = (categoryInput?.value || "").trim().toLocaleLowerCase("zh-TW");
+            let visibleCount = 0;
+            categoryOptions.forEach(option => {
+                const text = (option.dataset.categorySearch || "").toLocaleLowerCase("zh-TW");
+                option.hidden = keyword !== "" && !text.includes(keyword);
+                if (!option.hidden) visibleCount += 1;
+            });
+            if (categoryNoResult) categoryNoResult.hidden = visibleCount > 0;
+        }
+
+        function openCategoryMenu() {
+            if (!categoryMenu || !categoryInput) return;
+            filterCategoryOptions();
+            categoryMenu.hidden = false;
+            categoryInput.setAttribute("aria-expanded", "true");
+        }
+
+        function closeCategoryMenu() {
+            if (!categoryMenu || !categoryInput) return;
+            categoryMenu.hidden = true;
+            categoryInput.setAttribute("aria-expanded", "false");
+        }
+
+        categoryToggle?.addEventListener("click", () => {
+            if (categoryMenu?.hidden) openCategoryMenu(); else closeCategoryMenu();
+            categoryInput?.focus();
+        });
+        categoryInput?.addEventListener("focus", openCategoryMenu);
+        categoryInput?.addEventListener("input", () => {
+            openCategoryMenu();
+            filterCategoryOptions();
+        });
+        categoryOptions.forEach(option => {
+            option.addEventListener("click", () => {
+                categoryInput.value = option.dataset.categoryOption || "";
+                closeCategoryMenu();
+                categoryInput.focus();
+            });
+        });
+        document.addEventListener("click", event => {
+            if (categoryCombobox && !categoryCombobox.contains(event.target)) closeCategoryMenu();
+        });
+
+        const itemCategoryCombobox = document.querySelector("[data-item-category-combobox]");
+        const itemCategoryInput = itemCategoryCombobox?.querySelector('[name="ItemCategory"]');
+        const itemCategoryMenu = itemCategoryCombobox?.querySelector("[data-item-category-menu]");
+        const itemCategoryToggle = itemCategoryCombobox?.querySelector("[data-item-category-toggle]");
+        const itemCategoryNoResult = itemCategoryCombobox?.querySelector("[data-item-category-no-result]");
+        const itemCategoryOptions = Array.from(itemCategoryCombobox?.querySelectorAll("[data-item-category-option]") || []);
+
+        function filterItemCategoryOptions() {
+            const keyword = (itemCategoryInput?.value || "").trim().toLocaleLowerCase("zh-TW");
+            let visibleCount = 0;
+            itemCategoryOptions.forEach(option => {
+                const text = (option.dataset.itemCategorySearch || "").toLocaleLowerCase("zh-TW");
+                option.hidden = keyword !== "" && !text.includes(keyword);
+                if (!option.hidden) visibleCount += 1;
+            });
+            if (itemCategoryNoResult) itemCategoryNoResult.hidden = visibleCount > 0;
+        }
+
+        function openItemCategoryMenu() {
+            if (!itemCategoryMenu || !itemCategoryInput) return;
+            filterItemCategoryOptions();
+            itemCategoryMenu.hidden = false;
+            itemCategoryInput.setAttribute("aria-expanded", "true");
+        }
+
+        function closeItemCategoryMenu() {
+            if (!itemCategoryMenu || !itemCategoryInput) return;
+            itemCategoryMenu.hidden = true;
+            itemCategoryInput.setAttribute("aria-expanded", "false");
+        }
+
+        itemCategoryToggle?.addEventListener("click", () => {
+            if (itemCategoryMenu?.hidden) openItemCategoryMenu(); else closeItemCategoryMenu();
+            itemCategoryInput?.focus();
+        });
+        itemCategoryInput?.addEventListener("focus", openItemCategoryMenu);
+        itemCategoryInput?.addEventListener("input", () => {
+            openItemCategoryMenu();
+            filterItemCategoryOptions();
+        });
+        itemCategoryOptions.forEach(option => {
+            option.addEventListener("click", () => {
+                itemCategoryInput.value = option.dataset.itemCategoryOption || "";
+                closeItemCategoryMenu();
+                itemCategoryInput.focus();
+            });
+        });
+        document.addEventListener("click", event => {
+            if (itemCategoryCombobox && !itemCategoryCombobox.contains(event.target)) closeItemCategoryMenu();
+        });
+
+        const readResponse = async response => {
+            const contentType = response.headers.get("content-type") || "";
+            if (contentType.includes("application/json")) return response.json();
+            return { message: await response.text() };
+        };
+
+        editorForm?.addEventListener("submit", async event => {
+            event.preventDefault();
+            if (!editorForm.reportValidity() || !page) return;
+            editorError.hidden = true;
+            editorSubmit.disabled = true;
+            editorSubmit.textContent = "儲存中…";
+
+            try {
+                const url = editorMode === "edit" ? page.dataset.updateUrl : page.dataset.createUrl;
+                const response = await fetch(url, { method: "POST", body: new FormData(editorForm) });
+                const result = await readResponse(response);
+                if (!response.ok || !result.saved) throw new Error(result.message || "醫令儲存失敗。");
+                editor.close();
+                showToast(result.message || "醫令已儲存。");
+                window.setTimeout(() => window.location.reload(), 650);
+            } catch (error) {
+                editorError.textContent = error.message || "醫令儲存失敗。";
+                editorError.hidden = false;
+            } finally {
+                editorSubmit.disabled = false;
+                editorSubmit.textContent = editorMode === "edit" ? "儲存變更" : "新增醫令";
+            }
+        });
+
+        const deleteDialog = document.querySelector("[data-delete-dialog]");
+        const deleteForm = document.querySelector("[data-delete-form]");
+        const deleteCode = document.querySelector("[data-delete-code]");
+        const deleteCodeInput = document.querySelector("[data-delete-code-input]");
+        const deleteError = document.querySelector("[data-delete-error]");
+        const deleteSubmit = document.querySelector("[data-delete-submit]");
+
+        document.querySelectorAll("[data-order-delete]").forEach(button => {
+            button.addEventListener("click", () => {
+                const code = button.dataset.orderCode || "";
+                deleteCode.textContent = code;
+                deleteCodeInput.value = code;
+                deleteError.hidden = true;
+                deleteDialog?.showModal();
+            });
+        });
+        document.querySelector("[data-delete-cancel]")?.addEventListener("click", () => deleteDialog?.close());
+        deleteDialog?.addEventListener("click", event => {
+            if (event.target === deleteDialog) deleteDialog.close();
+        });
+
+        deleteForm?.addEventListener("submit", async event => {
+            event.preventDefault();
+            if (!page) return;
+            deleteError.hidden = true;
+            deleteSubmit.disabled = true;
+            deleteSubmit.textContent = "刪除中…";
+
+            try {
+                const response = await fetch(page.dataset.deleteUrl, { method: "POST", body: new FormData(deleteForm) });
+                const result = await readResponse(response);
+                if (!response.ok || !result.deleted) throw new Error(result.message || "醫令刪除失敗。");
+                deleteDialog.close();
+                showToast(result.message || "醫令已刪除。");
+                window.setTimeout(() => window.location.reload(), 650);
+            } catch (error) {
+                deleteError.textContent = error.message || "醫令刪除失敗。";
+                deleteError.hidden = false;
+            } finally {
+                deleteSubmit.disabled = false;
+                deleteSubmit.textContent = "確認刪除";
+            }
+        });
+    })();
+</script>

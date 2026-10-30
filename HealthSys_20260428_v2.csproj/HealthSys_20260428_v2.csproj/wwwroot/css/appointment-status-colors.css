@@ -1,0 +1,73 @@
+/* Share the live home dashboard palette, including dark surfaces. */
+.appointment-list-page .appointment-status-metric.total,
+.appointment-list-page [data-appointment-status-cell].total {
+    --status-accent: var(--app-accent, #1677e8);
+    --status-soft: color-mix(in srgb, var(--app-accent, #1677e8) 12%, var(--app-surface, #fff));
+    --status-border: color-mix(in srgb, var(--app-accent, #1677e8) 35%, var(--app-surface, #fff));
+}
+.appointment-list-page .appointment-status-metric.confirmed,
+.appointment-list-page [data-appointment-status-cell].confirmed {
+    --status-accent: var(--app-status-reserved, #4daee9);
+    --status-soft: color-mix(in srgb, var(--app-status-reserved, #4daee9) 12%, var(--app-surface, #fff));
+    --status-border: color-mix(in srgb, var(--app-status-reserved, #4daee9) 35%, var(--app-surface, #fff));
+}
+.appointment-list-page .appointment-status-metric.registered,
+.appointment-list-page [data-appointment-status-cell].registered {
+    --status-accent: var(--app-status-registered, #a67c52);
+    --status-soft: color-mix(in srgb, var(--app-status-registered, #a67c52) 12%, var(--app-surface, #fff));
+    --status-border: color-mix(in srgb, var(--app-status-registered, #a67c52) 35%, var(--app-surface, #fff));
+}
+.appointment-list-page .appointment-status-metric.checked-in,
+.appointment-list-page [data-appointment-status-cell].checked-in {
+    --status-accent: var(--app-status-arrived, #21b978);
+    --status-soft: color-mix(in srgb, var(--app-status-arrived, #21b978) 12%, var(--app-surface, #fff));
+    --status-border: color-mix(in srgb, var(--app-status-arrived, #21b978) 35%, var(--app-surface, #fff));
+}
+.appointment-list-page .appointment-status-metric.checking,
+.appointment-list-page [data-appointment-status-cell].checking {
+    --status-accent: var(--app-status-checking, #f5aa22);
+    --status-soft: color-mix(in srgb, var(--app-status-checking, #f5aa22) 12%, var(--app-surface, #fff));
+    --status-border: color-mix(in srgb, var(--app-status-checking, #f5aa22) 35%, var(--app-surface, #fff));
+}
+.appointment-list-page .appointment-status-metric.reserved,
+.appointment-list-page [data-appointment-status-cell].reserved {
+    --status-accent: var(--app-status-slot, #7086ad);
+    --status-soft: color-mix(in srgb, var(--app-status-slot, #7086ad) 12%, var(--app-surface, #fff));
+    --status-border: color-mix(in srgb, var(--app-status-slot, #7086ad) 35%, var(--app-surface, #fff));
+}
+.appointment-list-page .appointment-status-metric.reserved-slot,
+.appointment-list-page [data-appointment-status-cell].reserved-slot {
+    --status-accent: var(--app-status-slot, #7086ad);
+    --status-soft: color-mix(in srgb, var(--app-status-slot, #7086ad) 12%, var(--app-surface, #fff));
+    --status-border: color-mix(in srgb, var(--app-status-slot, #7086ad) 35%, var(--app-surface, #fff));
+}
+.appointment-list-page .appointment-status-metric.cancelled,
+.appointment-list-page [data-appointment-status-cell].cancelled {
+    --status-accent: var(--app-status-cancelled, #ef5d63);
+    --status-soft: color-mix(in srgb, var(--app-status-cancelled, #ef5d63) 12%, var(--app-surface, #fff));
+    --status-border: color-mix(in srgb, var(--app-status-cancelled, #ef5d63) 35%, var(--app-surface, #fff));
+}
+
+html[data-theme-mode] body.hc .appointment-list-page .appointment-status[data-appointment-status-cell] {
+    color: var(--status-accent) !important;
+    border-color: var(--status-border) !important;
+    background: var(--status-soft) !important;
+}
+
+html[data-theme-mode] body.hc .appointment-list-page .appointment-status-metric {
+    background: var(--app-surface, #fff) !important;
+    color: var(--app-text-color) !important;
+    border-color: var(--app-border) !important;
+    border-top-color: var(--status-accent) !important;
+    border-radius: var(--app-radius, 8px) !important;
+}
+html[data-theme-mode] body.hc .appointment-list-page .status-metric-icon {
+    color: var(--status-accent) !important;
+    border-color: var(--status-border) !important;
+    background: var(--status-soft) !important;
+}
+html[data-theme-text-color="custom"] body.hc .appointment-list-page .status-metric-copy strong {
+    color: var(--app-text-color) !important;
+}
+html[data-theme-card-shadow="true"] body.hc .appointment-list-page .appointment-status-metric { box-shadow: var(--shadow) !important; }
+html[data-theme-card-shadow="false"] body.hc .appointment-list-page .appointment-status-metric { box-shadow: none !important; }

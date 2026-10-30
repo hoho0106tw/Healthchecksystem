@@ -1,0 +1,796 @@
+.inspection-task-page .it-critical-badge {
+  margin: 4px 0 0 4px;
+  font-weight: 800;
+}
+
+.inspection-task-page .it-flow li { min-height: 35px; }
+.inspection-task-page .it-flow li > i { font-size: 11px; font-style: normal; }
+.inspection-task-page .it-flow li.pending em { color: var(--app-muted, #64748b); }
+.inspection-task-page .wide.done i { background: #139b44; }
+
+.inspection-task-page .it-critical-tab {
+  color: #c62828;
+}
+
+.inspection-task-page .it-critical-tab.active {
+  color: #a51d1d;
+  border-color: #ef9a9a;
+  background: #fff1f0;
+}
+
+.inspection-task-page .it-workspace {
+  grid-template-columns: minmax(370px, .52fr) minmax(760px, 1.48fr) !important;
+}
+
+.inspection-task-page .it-table-box {
+  overflow: auto;
+}
+
+.inspection-task-page .it-list {
+  min-width: 560px;
+}
+
+.it-lab-grid-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 8px 12px;
+  color: var(--app-text-color, #536176);
+  font-size: calc(12px * var(--app-font-scale, 1));
+}
+
+.it-lab-grid-footer[hidden] {
+  display: none;
+}
+
+.it-lab-grid-footer .pagination {
+  display: flex;
+  gap: 4px;
+}
+
+.it-lab-grid-footer .pagination button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--app-border, #d8e1ec);
+  border-radius: 6px;
+  color: var(--app-text-color, #475569);
+  background: var(--app-surface, #fff);
+  cursor: pointer;
+}
+
+.it-lab-grid-footer .pagination button.active {
+  color: #fff;
+  border-color: var(--it-blue);
+  background: var(--it-blue);
+}
+
+.it-lab-grid-footer .pagination button:disabled {
+  cursor: default;
+  opacity: .5;
+}
+
+.it-subview.is-lab-view > header,
+.it-subview.is-lab-view .it-subview-person,
+.it-subview.is-lab-view .it-subview-stats {
+  display: none;
+}
+
+.it-subview.is-lab-view {
+  padding-top: 20px;
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.it-subview.is-lab-view .it-subview-table {
+  min-height: 0;
+  overflow: auto;
+}
+
+.it-subview.is-lab-view .it-subview-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+@media (max-width: 1200px) {
+  .inspection-task-page .it-workspace {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .it-lab-grid-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+.inspection-task-page .it-list-layout-controls {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.inspection-task-page .it-list-layout-controls button {
+  min-width: auto;
+}
+
+.inspection-task-page .it-list-card,
+.inspection-task-page .it-detail {
+  height: min(650px, calc(100vh - 285px));
+  min-height: 617px;
+}
+
+.inspection-task-page .it-table-box {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.inspection-task-page .it-workspace.list-layout-compact {
+  grid-template-columns: minmax(370px, .52fr) minmax(760px, 1.48fr) !important;
+}
+
+.inspection-task-page .list-layout-compact .it-list {
+  min-width: 0;
+}
+
+.inspection-task-page .list-layout-compact .it-list th:nth-child(4),
+.inspection-task-page .list-layout-compact .it-list td:nth-child(4) {
+  display: none;
+}
+
+.inspection-task-page .list-layout-compact .it-list th:nth-child(1) {
+  width: 20%;
+}
+
+.inspection-task-page .list-layout-compact .it-list th:nth-child(2) {
+  width: 27%;
+}
+
+.inspection-task-page .list-layout-compact .it-list th:nth-child(3) {
+  width: 53%;
+}
+
+.inspection-task-page .it-workspace.list-layout-expanded {
+  grid-template-columns: minmax(560px, .85fr) minmax(680px, 1.15fr) !important;
+}
+
+.inspection-task-page .list-layout-expanded .it-list {
+  min-width: 0;
+}
+
+.inspection-task-page .it-workspace.list-layout-hidden {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.inspection-task-page .list-layout-hidden .it-list-card {
+  display: none;
+}
+
+.inspection-task-page .it-subview-table td:nth-child(2) {
+  font-weight: 400;
+}
+
+.inspection-task-page .it-subview.is-lab-view .it-subview-table th {
+  height: 40px;
+}
+
+.inspection-task-page .it-subview.is-lab-view .it-subview-table td {
+  height: 48px;
+}
+
+/* Keep long Lab values inside their column and make multi-line results readable. */
+.inspection-task-page .it-subview.is-lab-view .it-subview-table table {
+  table-layout: fixed;
+}
+
+.inspection-task-page .it-subview.is-lab-view .it-subview-table th:nth-child(1),
+.inspection-task-page .it-subview.is-lab-view .it-subview-table th:nth-child(2) {
+  width: 15%;
+}
+
+.inspection-task-page .it-subview.is-lab-view .it-subview-table th:nth-child(3) {
+  width: 20%;
+}
+
+.inspection-task-page .it-subview.is-lab-view .it-subview-table th:nth-child(4) {
+  width: 22%;
+}
+
+.inspection-task-page .it-subview.is-lab-view .it-subview-table th:nth-child(5) {
+  width: 16%;
+}
+
+.inspection-task-page .it-subview.is-lab-view .it-subview-table th:nth-child(6) {
+  width: 12%;
+}
+
+.inspection-task-page .it-subview.is-lab-view .it-subview-table td.it-lab-value-cell {
+  height: auto;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  white-space: normal;
+}
+
+.inspection-task-page .it-lab-value {
+  display: inline-block;
+  max-width: 100%;
+  padding: 6px 9px;
+  border: 1px solid var(--app-border, #dbe7f5);
+  border-radius: 7px;
+  color: var(--app-text-color, #29435f);
+  background: var(--app-surface-soft, #f5f9fe);
+  font-weight: 700;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.inspection-task-page .it-lab-abnormal .it-lab-value {
+  border-color: #fecaca;
+  color: #dc2626;
+  background: #fff5f5;
+  box-shadow: inset 3px 0 #ef4444;
+}
+
+/* Make the active patient easy to identify in the DataGrid. */
+.inspection-task-page .it-list tbody tr.selected td,
+.inspection-task-page .it-list tbody tr.selected:hover td {
+  border-top-color: #8ab8ee;
+  color: var(--app-text-color, #12375f);
+  background: linear-gradient(90deg, #d9eaff 0%, var(--app-surface-soft, #edf5ff) 100%);
+  box-shadow: inset 0 1px #a9ccf4, inset 0 -1px #a9ccf4;
+  font-weight: 700;
+}
+
+.inspection-task-page .it-list tbody tr.selected td:first-child,
+.inspection-task-page .it-list tbody tr.selected:hover td:first-child {
+  box-shadow: inset 5px 0 var(--it-blue), inset 0 1px #a9ccf4, inset 0 -1px #a9ccf4;
+}
+
+.inspection-task-page .it-list tbody tr.selected td:last-child,
+.inspection-task-page .it-list tbody tr.selected:hover td:last-child {
+  box-shadow: inset -1px 0 #a9ccf4, inset 0 1px #a9ccf4, inset 0 -1px #a9ccf4;
+}
+
+.inspection-task-page .it-subview.is-image-view .it-subview-table {
+  min-height: 0;
+  overflow: auto;
+  background: var(--app-surface-soft, #f6f8fb);
+}
+
+/* Keep the image report panel level with the patient DataGrid. */
+.inspection-task-page .it-subview.is-image-view {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.inspection-task-page .it-subview.is-image-view > header {
+  display: none;
+}
+
+.inspection-task-page .it-subview.is-image-view .it-subview-person,
+.inspection-task-page .it-subview.is-image-view .it-subview-stats {
+  display: none;
+}
+
+.inspection-task-page .it-subview.is-image-view .it-subview-table table {
+  display: block;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+}
+
+.inspection-task-page .it-subview.is-image-view .it-subview-table thead {
+  display: none;
+}
+
+.inspection-task-page .it-subview.is-image-view .it-subview-table td {
+  display: block;
+  height: 100%;
+  padding: 14px;
+  border: 0;
+  box-sizing: border-box;
+  vertical-align: top;
+}
+
+.inspection-task-page .it-subview.is-image-view .it-subview-table tbody,
+.inspection-task-page .it-subview.is-image-view .it-subview-table tr {
+  display: block;
+  height: 100%;
+}
+
+.inspection-task-page .it-image-report-viewer {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+  height: 100%;
+}
+
+.inspection-task-page .it-image-report-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inspection-task-page .it-image-report-tab {
+  display: grid;
+  gap: 4px;
+  min-width: 210px;
+  padding: 9px 12px;
+  border: 1px solid var(--app-border, #d5deea);
+  border-radius: 8px;
+  color: var(--app-text-color, #536176);
+  background: var(--app-surface, #fff);
+  text-align: left;
+  cursor: pointer;
+}
+
+.inspection-task-page .it-special-tabs-pager {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.inspection-task-page .it-special-tabs-single-row {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.inspection-task-page .it-special-tabs-single-row .it-image-report-tab {
+  flex: 0 0 210px;
+  width: 210px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.inspection-task-page .it-special-tabs-single-row .it-image-report-tab[hidden] {
+  display: none;
+}
+
+.inspection-task-page .it-report-page-button {
+  width: 32px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--app-border, #cbd5e1);
+  border-radius: 8px;
+  background: var(--app-surface-soft, #f8fafc);
+  color: #1d4ed8;
+  font-size: calc(14px * var(--app-font-scale, 1));
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inspection-task-page .it-report-page-button:hover:not(:disabled) {
+  background: var(--app-surface-soft, #eff6ff);
+  border-color: #93c5fd;
+}
+
+.inspection-task-page .it-report-page-button:disabled {
+  color: var(--app-muted, #94a3b8);
+  opacity: .5;
+  cursor: default;
+}
+
+.inspection-task-page .it-report-page-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.inspection-task-page .it-image-report-tab:hover {
+  border-color: #8eb6e8;
+  background: var(--app-surface, #f7faff);
+}
+
+.inspection-task-page .it-image-report-tab.active {
+  border-color: var(--it-blue);
+  color: var(--app-text-color, #183b61);
+  background: var(--app-surface-soft, #edf5ff);
+  box-shadow: inset 0 3px var(--it-blue);
+}
+
+.inspection-task-page .it-image-report-tab span {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  font-size: calc(12px * var(--app-font-scale, 1));
+}
+
+.inspection-task-page .it-image-report-tab b {
+  color: var(--app-muted, #64748b);
+  font-weight: 600;
+}
+
+.inspection-task-page .it-image-report-tab em {
+  overflow: hidden;
+  font-style: normal;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspection-task-page .it-image-report {
+  display: grid;
+  grid-template-rows: minmax(0, 7fr) minmax(0, 3fr);
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--app-border, #dce4ee);
+  border-radius: 10px;
+  background: var(--app-surface, #fff);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 5%);
+}
+
+.inspection-task-page .it-special-report {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.inspection-task-page .it-report-zoom-section.is-magnifier-enabled {
+  cursor: zoom-in;
+}
+
+.inspection-task-page .it-special-report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.inspection-task-page .it-special-report-header h3 {
+  margin: 0;
+}
+
+.inspection-task-page .it-report-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 4px;
+  border: 1px solid var(--app-border, #dbe4ef);
+  border-radius: 12px;
+  background: var(--app-surface-soft, #f8fafc);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 4%);
+}
+
+.inspection-task-page .it-report-zoom-select {
+  width: 120px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--app-text-color, #334155);
+  background: var(--app-surface-soft, #f8fafc);
+  font-family: inherit;
+  font-size: calc(13px * var(--app-font-scale, 1));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.inspection-task-page .it-report-zoom-select:hover {
+  border-color: var(--app-border, #cbd5e1);
+  background: var(--app-surface, #fff);
+}
+
+.inspection-task-page .it-report-zoom-select:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+/* Grow the containing panel as well, so the enlarged report is not clipped. */
+@media (hover: hover) and (pointer: fine) {
+  .inspection-task-page .it-image-report:not(.it-special-report):has(> section:last-child.is-magnifier-enabled:hover) {
+    grid-template-rows: minmax(0, 3fr) minmax(0, 7fr);
+  }
+
+  .inspection-task-page .it-detail:has(.it-image-report:not([hidden]) .it-report-zoom-section.is-magnifier-enabled:hover) {
+    min-height: max(820px, 85vh);
+  }
+
+  .inspection-task-page .it-report-zoom-section.is-magnifier-enabled:hover {
+    border-color: var(--it-blue);
+    box-shadow: 0 6px 22px rgb(15 23 42 / 16%);
+  }
+
+  .inspection-task-page .it-report-zoom-section.is-magnifier-enabled:hover p {
+    font-size: var(--it-report-zoom-font-size, 20px);
+    line-height: 1.85;
+  }
+}
+
+.inspection-task-page .it-detail:has(.it-image-report:not([hidden]) .it-report-zoom-section.is-magnifier-enabled:focus-visible) {
+  min-height: max(820px, 85vh);
+}
+
+.inspection-task-page .it-report-zoom-section:focus-visible {
+  outline: 2px solid var(--it-blue);
+  outline-offset: -2px;
+}
+
+.inspection-task-page .it-image-report:not(.it-special-report):has(> section:last-child.is-magnifier-enabled:focus-visible) {
+  grid-template-rows: minmax(0, 3fr) minmax(0, 7fr);
+}
+
+.inspection-task-page .it-report-zoom-section.is-magnifier-enabled:focus-visible p {
+  font-size: var(--it-report-zoom-font-size, 20px);
+  line-height: 1.85;
+}
+
+.inspection-task-page .it-image-report[hidden] {
+  display: none;
+}
+
+.inspection-task-page .it-image-report-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--app-border, #e5eaf1);
+  color: var(--app-text-color, #536176);
+  background: var(--app-surface-soft, #f8fafc);
+  font-size: calc(13px * var(--app-font-scale, 1));
+}
+
+.inspection-task-page .it-image-report section {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  padding: 18px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.inspection-task-page .it-image-report section + section {
+  border-top: 1px solid var(--app-border, #e5eaf1);
+}
+
+.inspection-task-page .it-image-report h3 {
+  margin: 0 0 10px;
+  color: var(--app-text-color, #183b61);
+  font-size: calc(15px * var(--app-font-scale, 1));
+}
+
+.inspection-task-page .it-image-report p {
+  min-height: 24px;
+  margin: 0;
+  padding-right: 8px;
+  color: var(--app-text-color, #26384d);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 1200px) {
+  .inspection-task-page .it-workspace.list-layout-compact,
+  .inspection-task-page .it-workspace.list-layout-expanded {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .inspection-task-page .it-tabs {
+    flex-wrap: wrap;
+  }
+
+  .inspection-task-page .it-list-layout-controls {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+/* Keep the task panels within the available page width and viewport height. */
+.inspection-task-page {
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.inspection-task-page > .it-filters,
+.inspection-task-page > .it-tabs,
+.inspection-task-page > .it-query-error {
+  flex: 0 0 auto;
+}
+
+.inspection-task-page .it-workspace {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  grid-template-columns: minmax(0, .52fr) minmax(0, 1.48fr) !important;
+}
+
+.inspection-task-page .it-workspace.list-layout-expanded {
+  grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr) !important;
+}
+
+.inspection-task-page .it-workspace.list-layout-hidden {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.inspection-task-page .it-list-card,
+.inspection-task-page .it-detail {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.inspection-task-page .it-list-card {
+  grid-template-rows: 64px minmax(0, 1fr) minmax(64px, 4%);
+}
+
+.inspection-task-page .it-list [data-list-sort] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inspection-task-page .it-list [data-list-sort]:hover {
+  color: #1677e8;
+}
+
+.inspection-task-page .it-list-sort-arrows {
+  display: grid;
+  gap: 1px;
+  color: var(--app-muted, #94a3b8);
+  font-size: calc(8px * var(--app-font-scale, 1));
+  line-height: 1;
+}
+
+.inspection-task-page .it-list [aria-sort="ascending"] [data-sort-direction="asc"],
+.inspection-task-page .it-list [aria-sort="descending"] [data-sort-direction="desc"] {
+  color: #1677e8;
+}
+
+.inspection-task-page .it-list [data-list-sort]:focus-visible {
+  outline: 2px solid var(--it-blue);
+  outline-offset: 3px;
+}
+
+.inspection-task-page [data-overview-lab-alert][hidden],
+.inspection-task-page [data-overview-lab-badge][hidden] {
+  display: none;
+}
+
+.inspection-task-page .station:not(.danger) [data-overview-lab-count] {
+  color: var(--app-muted, #64748b);
+}
+
+.inspection-task-page [data-overview-lab-alert] {
+  height: auto;
+  min-height: 45px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  overflow-wrap: anywhere;
+}
+
+.inspection-task-page .it-detail-main {
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto auto auto auto;
+  align-content: start;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+@media (max-width: 1580px), (max-height: 820px) {
+  .inspection-task-page .it-workspace,
+  .inspection-task-page .it-workspace.list-layout-compact,
+  .inspection-task-page .it-workspace.list-layout-expanded {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(220px, 36%) minmax(300px, 1fr);
+  }
+
+  .inspection-task-page .it-workspace.list-layout-hidden {
+    grid-template-rows: minmax(300px, 1fr);
+  }
+}
+
+@media (max-width: 1100px) {
+  .inspection-task-page .it-filters {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .inspection-task-page .it-filters > * {
+    flex: 1 1 150px;
+  }
+
+  .inspection-task-page .it-filters > label,
+  .inspection-task-page .it-filters > i {
+    flex: 0 0 auto;
+  }
+
+  .inspection-task-page .it-search {
+    flex-basis: 100%;
+  }
+
+  .inspection-task-page .it-tabs {
+    flex-wrap: wrap;
+  }
+
+  .inspection-task-page .it-list-layout-controls {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 1000px) {
+  .inspection-task-page .it-stations {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inspection-task-page .it-lower {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+}
+
+@media (max-width: 900px) {
+  .inspection-task-page .it-detail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inspection-task-page .it-person {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+
+  .inspection-task-page .it-person dl,
+  .inspection-task-page .it-person .state {
+    grid-column: 1 / -1;
+  }
+
+  .inspection-task-page .it-side-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(2, 72px);
+    border: 1px solid var(--app-border, #e0e7f0);
+  }
+}
+
+@media (max-width: 760px) {
+  .inspection-task-page .it-workspace {
+    display: grid;
+  }
+
+  .inspection-task-page .it-workspace.list-layout-compact,
+  .inspection-task-page .it-workspace.list-layout-expanded {
+    grid-template-rows: minmax(280px, 38%) minmax(480px, 1fr);
+  }
+
+  .inspection-task-page .it-list-card {
+    grid-template-rows: 64px minmax(0, 1fr) auto;
+  }
+}

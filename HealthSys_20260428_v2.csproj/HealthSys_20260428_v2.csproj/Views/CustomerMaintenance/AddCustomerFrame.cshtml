@@ -1,0 +1,357 @@
+﻿@model HealthSys_20260428_v2.csproj.Models.AddCustomerFrameViewModel
+
+@{
+    Layout = null;
+    ViewData["Title"] = Model.FrameTitle;
+}
+
+<!DOCTYPE html>
+<html lang="zh-TW" class="customer-create-frame-root">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Health Checkup System</title>
+    <link rel="stylesheet" href="~/css/ui.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/theme-controls.css" asp-append-version="true" />
+<script src="~/js/theme-frame.js" asp-append-version="true"></script>
+</head>
+<body class="hc customer-create-frame-body">
+    <main class="customer-create-frame" aria-labelledby="add-customer-title">
+        <header class="customer-create-header">
+            <h1 id="add-customer-title" class="sr-only">@Model.FrameTitle</h1>
+            <button class="customer-create-close" type="button" aria-label="關閉@Model.FrameTitle" data-customer-frame-close>
+                <span class="customer-action-icon close" aria-hidden="true"></span>
+            </button>
+        </header>
+
+        <form class="customer-create-form" method="post" action="@Url.Action(Model.FormActionName, "CustomerMaintenance")" data-customer-create-form>
+            @Html.AntiForgeryToken()
+            <div class="customer-create-body">
+                <section class="customer-create-section customer-create-primary-section" data-customer-create-section>
+                    <header class="customer-create-section-header">
+                        <span class="customer-create-section-number">1</span>
+                        <strong>基本資料</strong>
+                        <button type="button" aria-label="收合基本資料" aria-expanded="true" data-customer-create-section-toggle>
+                            <span aria-hidden="true">⌃</span>
+                        </button>
+                    </header>
+                    <div class="customer-create-section-body">
+                        <label class="customer-create-field customer-create-code-field">
+                            <span>公司編號 <em>*</em></span>
+                            <input class="customer-create-code-input" type="text" required readonly maxlength="10" value="@Model.EffectiveCustomerNo" aria-label="公司編號" name="CustomerNo" data-customer-create-no />
+                        </label>
+                        <label class="customer-create-field customer-create-name-field">
+                            <span>公司名稱 <em>*</em></span>
+                            <input type="text" required maxlength="1000" value="@Model.CustomerName" placeholder="請輸入公司名稱" aria-label="公司名稱" name="CustomerName" />
+                        </label>
+                        <label class="customer-create-field">
+                            <span>英文名稱（英文報告用）</span>
+                            <input type="text" maxlength="100" value="@Model.EnglishName" placeholder="請輸入英文名稱" aria-label="英文名稱" name="EnglishName" />
+                        </label>
+                        <label class="customer-create-field">
+                            <span>統一編號</span>
+                            <input type="text" maxlength="20" value="@Model.UniformNo" placeholder="請輸入統一編號" aria-label="統一編號" name="UniformNo" />
+                        </label>
+                    </div>
+                </section>
+
+                <section class="customer-create-section customer-create-contact-section" data-customer-create-section>
+                    <header class="customer-create-section-header">
+                        <span class="customer-create-section-number">2</span>
+                        <strong>聯絡資訊</strong>
+                        <button type="button" aria-label="收合聯絡資訊" aria-expanded="true" data-customer-create-section-toggle>
+                            <span aria-hidden="true">⌃</span>
+                        </button>
+                    </header>
+                    <div class="customer-create-section-body">
+                        <label class="customer-create-field">
+                            <span>聯絡人</span>
+                            <input type="text" maxlength="50" value="@Model.ContactPerson" placeholder="請輸入聯絡人" aria-label="聯絡人" name="ContactPerson" />
+                        </label>
+                        <label class="customer-create-field">
+                            <span>電話</span>
+                            <input type="tel" maxlength="100" value="@Model.Tel" placeholder="請輸入電話" aria-label="電話" name="Tel" />
+                        </label>
+                        <label class="customer-create-field">
+                            <span>傳真</span>
+                            <input type="tel" maxlength="100" value="@Model.Fax" placeholder="請輸入傳真" aria-label="傳真" name="Fax" />
+                        </label>
+                        <label class="customer-create-field is-full">
+                            <span>E-Mail</span>
+                            <input type="email" maxlength="100" value="@Model.Email" placeholder="請輸入電子郵件" aria-label="E-Mail" name="Email" />
+                        </label>
+                        <label class="customer-create-field is-full">
+                            <span>地址</span>
+                            <input type="text" maxlength="1000" value="@Model.Address" placeholder="請輸入地址" aria-label="地址" name="Address" />
+                        </label>
+                    </div>
+                </section>
+
+                <section class="customer-create-section customer-create-business-section" data-customer-create-section>
+                    <header class="customer-create-section-header">
+                        <span class="customer-create-section-number">3</span>
+                        <strong>事業與單位資料</strong>
+                        <button type="button" aria-label="收合事業與單位資料" aria-expanded="true" data-customer-create-section-toggle>
+                            <span aria-hidden="true">⌃</span>
+                        </button>
+                    </header>
+                    <div class="customer-create-section-body">
+                        <label class="customer-create-field">
+                            <span>事業登記所在地</span>
+                            <input type="text" maxlength="200" value="@Model.BusinessRegAddress" placeholder="請輸入事業登記所在地" aria-label="事業登記所在地" name="BusinessRegAddress" />
+                        </label>
+                        <label class="customer-create-field">
+                            <span>事業單位（稅所）代碼</span>
+                            <input type="text" maxlength="50" value="@Model.TaxOfficeCode" placeholder="請輸入事業單位代碼" aria-label="事業單位代碼" name="TaxOfficeCode" />
+                        </label>
+                        <label class="customer-create-field">
+                            <span>事業聯營</span>
+                            <input type="text" maxlength="100" value="@Model.BusinessUnion" placeholder="請輸入事業聯營" aria-label="事業聯營" name="BusinessUnion" />
+                        </label>
+                        <label class="customer-create-field">
+                            <span>行業標準分類</span>
+                            <input type="text" maxlength="100" value="@Model.IndustryCategory" placeholder="請輸入行業標準分類" aria-label="行業標準分類" name="IndustryCategory" />
+                        </label>
+                        <label class="customer-create-field">
+                            <span>事業單位名稱</span>
+                            <input type="text" maxlength="100" value="@Model.BusinessUnitName" placeholder="請輸入事業單位名稱" aria-label="事業單位名稱" name="BusinessUnitName" />
+                        </label>
+                        <label class="customer-create-field">
+                            <span>事業單位地址</span>
+                            <input type="text" maxlength="200" value="@Model.BusinessUnitAddress" placeholder="請輸入事業單位地址" aria-label="事業單位地址" name="BusinessUnitAddress" />
+                        </label>
+                        <label class="customer-create-field is-full">
+                            <span>醫護管理代碼</span>
+                            <input type="text" maxlength="50" value="@Model.MedicalManageCode" placeholder="請輸入醫護管理代碼" aria-label="醫護管理代碼" name="MedicalManageCode" />
+                        </label>
+                    </div>
+                </section>
+
+                <section class="customer-create-section customer-create-note-section" data-customer-create-section>
+                    <header class="customer-create-section-header">
+                        <span class="customer-create-section-number">4</span>
+                        <strong>備註</strong>
+                    </header>
+                    <div class="customer-create-section-body">
+                        <label class="customer-create-field is-full">
+                            <span>記帳單位</span>
+                            <input type="text" maxlength="100" value="@Model.AccountingUnit" placeholder="請輸入記帳單位" aria-label="記帳單位" name="AccountingUnit" />
+                        </label>
+                        <label class="customer-create-field is-full customer-create-note">
+                            <span>備註</span>
+                            <textarea maxlength="4000" placeholder="請輸入備註（選填）" aria-label="備註" name="CustomerNote" data-customer-create-note>@Model.CustomerNote</textarea>
+                            <small><span data-customer-create-note-count>0</span> / 4000</small>
+                        </label>
+                    </div>
+                </section>
+            </div>
+
+            <div class="customer-create-status" role="status" aria-live="polite" hidden data-customer-create-status></div>
+
+            <footer class="customer-create-footer">
+                <button class="ghost-button" type="button" data-customer-frame-cancel>取消</button>
+                @if (Model.ShowSaveNext)
+                {
+                    <button class="ghost-button customer-create-save-next" type="button" data-customer-create-save-next>
+                        <span class="customer-action-icon add" aria-hidden="true"></span>
+                        <span>儲存並新增下一筆</span>
+                    </button>
+                }
+                <button class="primary-button" type="submit">
+                    <span class="customer-action-icon building" aria-hidden="true"></span>
+                    <span>@Model.SubmitButtonText</span>
+                </button>
+            </footer>
+        </form>
+    </main>
+
+    <script>
+        (function () {
+            const form = document.querySelector("[data-customer-create-form]");
+            const customerNoInput = document.querySelector("[data-customer-create-no]");
+            const note = document.querySelector("[data-customer-create-note]");
+            const noteCount = document.querySelector("[data-customer-create-note-count]");
+            const closeButtons = Array.from(document.querySelectorAll("[data-customer-frame-close], [data-customer-frame-cancel]"));
+            const saveNextButton = document.querySelector("[data-customer-create-save-next]");
+            const submitButton = form?.querySelector("button[type='submit']");
+            const statusMessage = document.querySelector("[data-customer-create-status]");
+            const sectionToggles = Array.from(document.querySelectorAll("[data-customer-create-section-toggle]"));
+            const initialCustomerNo = "@Model.SuggestedCustomerNo";
+            const isEdit = @Model.IsEdit.ToString().ToLowerInvariant();
+            let lastCustomerNo = Number.parseInt(initialCustomerNo, 10) || 0;
+
+            function postToParent(message) {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(message, window.location.origin);
+                }
+            }
+
+            function closeFrame() {
+                postToParent({ type: "healthsys:customer-create-frame-close" });
+            }
+
+            function showStatus(state, message) {
+                if (!statusMessage) {
+                    return;
+                }
+
+                statusMessage.hidden = false;
+                statusMessage.dataset.state = state;
+                statusMessage.textContent = message;
+            }
+
+            function setSaving(saving) {
+                [saveNextButton, submitButton].forEach(function (button) {
+                    if (button) {
+                        button.disabled = saving;
+                    }
+                });
+
+                form?.classList.toggle("is-saving", saving);
+            }
+
+            function nextCustomerNo() {
+                const value = Number.parseInt(customerNoInput?.value || "", 10);
+
+                if (Number.isFinite(value)) {
+                    lastCustomerNo = Math.max(lastCustomerNo, value);
+                }
+
+                lastCustomerNo += 1;
+
+                return String(lastCustomerNo).padStart(4, "0");
+            }
+
+            function syncNoteCount() {
+                if (note && noteCount) {
+                    noteCount.textContent = String(note.value.length);
+                }
+            }
+
+            function resetFormForNext() {
+                form?.reset();
+
+                if (customerNoInput) {
+                    customerNoInput.value = nextCustomerNo();
+                    customerNoInput.focus();
+                }
+
+                syncNoteCount();
+            }
+
+            function collectCustomer() {
+                const formData = new FormData(form);
+
+                return {
+                    customerNo: String(customerNoInput?.value || "").trim(),
+                    customerName: String(formData.get("CustomerName") || "").trim(),
+                    englishName: String(formData.get("EnglishName") || "").trim(),
+                    uniformNo: String(formData.get("UniformNo") || "").trim(),
+                    tel: String(formData.get("Tel") || "").trim(),
+                    fax: String(formData.get("Fax") || "").trim(),
+                    email: String(formData.get("Email") || "").trim(),
+                    contactPerson: String(formData.get("ContactPerson") || "").trim(),
+                    address: String(formData.get("Address") || "").trim(),
+                    businessRegAddress: String(formData.get("BusinessRegAddress") || "").trim(),
+                    taxOfficeCode: String(formData.get("TaxOfficeCode") || "").trim(),
+                    businessUnion: String(formData.get("BusinessUnion") || "").trim(),
+                    industryCategory: String(formData.get("IndustryCategory") || "").trim(),
+                    businessUnitName: String(formData.get("BusinessUnitName") || "").trim(),
+                    businessUnitAddress: String(formData.get("BusinessUnitAddress") || "").trim(),
+                    medicalManageCode: String(formData.get("MedicalManageCode") || "").trim(),
+                    accountingUnit: String(formData.get("AccountingUnit") || "").trim(),
+                    customerNote: String(formData.get("CustomerNote") || "").trim()
+                };
+            }
+
+            async function saveCustomer(addAnother) {
+                if (!form?.reportValidity()) {
+                    return;
+                }
+
+                let unlockForm = true;
+                setSaving(true);
+                showStatus("saving", isEdit ? "正在更新公司資料..." : "正在儲存公司資料...");
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: "POST",
+                        body: new FormData(form)
+                    });
+                    const result = await response.json().catch(function () {
+                        return {};
+                    });
+
+                    if (!response.ok || !result.saved) {
+                        showStatus("error", result.message || "公司資料儲存失敗。");
+                        return;
+                    }
+
+                    const customer = result.customer || collectCustomer();
+                    showStatus("success", result.message || (isEdit ? "公司資料已更新。" : "公司資料已儲存。"));
+
+                    if (!isEdit && addAnother) {
+                        postToParent({
+                            type: "healthsys:customer-created",
+                            customer,
+                            addAnother: true
+                        });
+                        resetFormForNext();
+                        return;
+                    }
+
+                    unlockForm = false;
+                    window.setTimeout(function () {
+                        postToParent({
+                            type: isEdit ? "healthsys:customer-updated" : "healthsys:customer-created",
+                            customer,
+                            addAnother: false
+                        });
+                    }, 600);
+                } catch {
+                    showStatus("error", isEdit ? "公司資料更新失敗，請稍後再試。" : "公司資料儲存失敗，請稍後再試。");
+                } finally {
+                    if (unlockForm) {
+                        setSaving(false);
+                    }
+                }
+            }
+
+            closeButtons.forEach(function (button) {
+                button.addEventListener("click", closeFrame);
+            });
+
+            note?.addEventListener("input", syncNoteCount);
+
+            sectionToggles.forEach(function (button) {
+                button.addEventListener("click", function () {
+                    const section = button.closest("[data-customer-create-section]");
+                    const body = section?.querySelector(".customer-create-section-body");
+
+                    if (!section || !body) {
+                        return;
+                    }
+
+                    const collapsed = !section.classList.contains("is-collapsed");
+                    section.classList.toggle("is-collapsed", collapsed);
+                    button.setAttribute("aria-expanded", String(!collapsed));
+                    body.toggleAttribute("hidden", collapsed);
+                });
+            });
+
+            saveNextButton?.addEventListener("click", function () {
+                saveCustomer(true);
+            });
+
+            form?.addEventListener("submit", function (event) {
+                event.preventDefault();
+                saveCustomer(false);
+            });
+
+            syncNoteCount();
+            customerNoInput?.focus();
+        })();
+    </script>
+</body>
+</html>
+

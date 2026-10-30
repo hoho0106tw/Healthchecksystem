@@ -1,0 +1,904 @@
+
+@model HealthSys_20260428_v2.csproj.Models.CreateAppointmentViewModel
+
+@{
+    var pageModeTitle = Model.IsReadOnly ? "查詢個人預約" : Model.IsEditMode ? "編輯預約" : "新增預約";
+    ViewData["Title"] = pageModeTitle;
+    var todayReservationDate = DateTime.Today.ToString("yyyy-MM-dd");
+    var projectLookupStartDate = DateTime.Today.AddYears(-2).ToString("yyyy-MM-dd");
+    var projectLookupEndDate = DateTime.Today.AddYears(2).ToString("yyyy-MM-dd");
+    var reservationDateValue = string.IsNullOrWhiteSpace(Model.Form.ReservationDate)
+        ? todayReservationDate
+        : Model.Form.ReservationDate;
+    var paymentDateValue = string.IsNullOrWhiteSpace(Model.Form.PaymentDate)
+        ? todayReservationDate
+        : Model.Form.PaymentDate;
+    var packageAmountValue = string.IsNullOrWhiteSpace(Model.Form.PackageAmount) ? "0" : Model.Form.PackageAmount;
+    var extraAmountValue = string.IsNullOrWhiteSpace(Model.Form.ExtraAmount) ? "0" : Model.Form.ExtraAmount;
+    var remitAmountValue = string.IsNullOrWhiteSpace(Model.Form.RemitAmount) ? "0" : Model.Form.RemitAmount;
+    var discountAmountValue = string.IsNullOrWhiteSpace(Model.Form.DiscountAmount) ? "0" : Model.Form.DiscountAmount;
+    var accountAmountValue = string.IsNullOrWhiteSpace(Model.Form.AccountAmount) ? "0" : Model.Form.AccountAmount;
+    var receivedAmountValue = string.IsNullOrWhiteSpace(Model.Form.ReceivedAmount) ? "0" : Model.Form.ReceivedAmount;
+    var firstPhraseText = Model.PhraseOptions.Count > 0 ? Model.PhraseOptions[0].Value : "";
+    var jsonOptions = new System.Text.Json.JsonSerializerOptions
+    {
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+    };
+    var initialPackagesJson = System.Text.Json.JsonSerializer.Serialize(Model.Form.Packages, jsonOptions);
+    var initialOtherSuitesJson = System.Text.Json.JsonSerializer.Serialize(Model.Form.OtherSuites, jsonOptions);
+    var questionnaireOptionsJson = System.Text.Json.JsonSerializer.Serialize(Model.QuestionnaireOptions, jsonOptions);
+    var showQuestionnaireSection = !string.IsNullOrWhiteSpace(Model.Form.ProjectNo);
+    var normalizedReserveStatus = (Model.Form.ReserveStatus ?? string.Empty).Trim();
+    var currentReserveStatus = normalizedReserveStatus switch
+    {
+        "0" or "1" or "2" => normalizedReserveStatus,
+        _ when string.Equals(normalizedReserveStatus, "預約取消", StringComparison.Ordinal) => "0",
+        _ when string.Equals(normalizedReserveStatus, "已預約", StringComparison.Ordinal) => "1",
+        _ when string.Equals(normalizedReserveStatus, "佔名額", StringComparison.Ordinal) => "2",
+        _ => ""
+    };
+    var hideQuotaButton = currentReserveStatus == "1";
+    var fallbackReturnUrl = (Url.Action("AppointmentManagement", "Appointment") ?? "/Appointment/AppointmentManagement") + "#individual-appointment";
+    var appointmentReturnUrl = string.IsNullOrWhiteSpace(Model.ReturnUrl) ? fallbackReturnUrl : Model.ReturnUrl;
+}
+
+<link rel="stylesheet" href="~/css/create-appointment-accounting-bulk.css" asp-append-version="true" />
+<form class="appointment-page appointment-create-page @(Model.IsReadOnly ? "appointment-read-only-page" : "")"
+      method="post"
+      action="@Url.Action("CreateAppointment", "Appointment")"
+      aria-label="@pageModeTitle"
+      data-create-appointment-form
+      data-list-url="@appointmentReturnUrl"
+      data-package-url="@Url.Action("GetPersonalProjectPackages", "Appointment")"
+      data-project-lookup-url="@Url.Action("GetPersonalProjects", "Appointment")"
+      data-health-code-url="@Url.Action("GetPersonalHealthCode", "Appointment")"
+      data-employee-lookup-url="@Url.Action("GetPersonalEmployeeProfile", "Appointment")"
+      data-other-suite-lookup-url="@Url.Action("OtherSuiteLookupFrame", "Appointment")"
+      data-register-url="@Url.Action("BathRegistered", "Appointment")"
+      data-edit-mode="@Model.IsEditMode.ToString().ToLowerInvariant()"
+      data-read-only-mode="@Model.IsReadOnly.ToString().ToLowerInvariant()"
+      data-current-reserve-status="@currentReserveStatus">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="IsEditMode" value="@Model.IsEditMode.ToString().ToLowerInvariant()" />
+    <input type="hidden" name="OriginalPatientHealthCode" value="@Model.Form.PatientHealthCode" />
+    <input type="hidden" name="OriginalProjectNo" value="@Model.Form.ProjectNo" />
+    <input type="hidden" name="CustomerNo" value="@Model.Form.CustomerNo" data-project-customer-no />
+    <script type="application/json" data-initial-packages>@Html.Raw(initialPackagesJson)</script>
+    <script type="application/json" data-initial-other-suites>@Html.Raw(initialOtherSuitesJson)</script>
+    <script type="application/json" data-questionnaire-options>@Html.Raw(questionnaireOptionsJson)</script>
+
+    <header class="appointment-page-header">
+        <div>
+            <nav class="breadcrumb" aria-label="頁面路徑">
+                <span>首頁</span>
+                <span>預約管理</span>
+                <span>個人預約</span>
+                <span>@pageModeTitle</span>
+            </nav>
+        </div>
+        <div class="appointment-page-actions">
+            <a class="ghost-button" href="@appointmentReturnUrl" aria-label="返回前一頁" data-appointment-return-link>
+                <span class="back-arrow-icon" aria-hidden="true"></span>
+                <span>返回</span>
+            </a>
+            @if (!Model.IsReadOnly)
+            {
+            @if (Model.IsEditMode && (currentReserveStatus == "1" || currentReserveStatus == "2"))
+                {
+                    <button class="primary-button" type="button" data-create-appointment-register>
+                        <span class="check-circle-icon" aria-hidden="true"></span>
+                        <span>掛號</span>
+                    </button>
+                }
+            @if (!hideQuotaButton)
+            {
+                <button class="ghost-button quota-button" type="button" data-create-appointment-submit data-reserve-status="2">
+                    <span class="save-icon" aria-hidden="true"></span>
+                    <span>佔名額</span>
+                </button>
+            }
+            <button class="primary-button" type="button" data-create-appointment-submit data-reserve-status="1">
+                <span class="check-circle-icon" aria-hidden="true"></span>
+                <span>@(Model.IsEditMode ? "確認預約" : "建立預約")</span>
+            </button>
+            }
+        </div>
+    </header>
+
+    @if (Model.IsReadOnly)
+    {
+        <div class="appointment-read-only-banner" role="status">
+            <span class="appointment-read-only-icon" aria-hidden="true"></span>
+            <div><strong>唯讀查詢</strong><p>此預約已完成掛號，僅供查看當時填選內容，所有資料與選項皆不可修改。</p></div>
+        </div>
+    }
+
+    <div class="appointment-create-tabs" role="tablist" aria-label="個人預約資料頁籤">
+        <button class="appointment-create-tab is-active" id="appointment-tab-patient" type="button" role="tab" aria-selected="true" aria-controls="appointment-panel-patient" data-appointment-tab="patient">受檢者資訊</button>
+        <button class="appointment-create-tab" id="appointment-tab-project" type="button" role="tab" aria-selected="false" aria-controls="appointment-panel-project" data-appointment-tab="project">專案資訊</button>
+    </div>
+
+    <div class="appointment-create-layout">
+        <div class="create-form-grid" id="appointment-panel-patient" role="tabpanel" aria-labelledby="appointment-tab-patient" data-appointment-tab-panel="patient">
+            <section class="panel form-panel examinee-card-panel" aria-labelledby="examinee-info-title">
+                <div class="form-panel-title examinee-title-row">
+                    <div class="form-panel-title-copy">
+                        <h2 id="examinee-info-title"><span class="panel-title-icon person-panel-icon" aria-hidden="true"></span>受檢者資訊</h2>
+                        <p>請輸入受檢者基本資料，或先查詢院內資料自動帶入</p>
+                    </div>
+                    <div class="patient-info-actions">
+                        <button class="primary-button patient-lookup-button" type="button" data-open-patient-lookup data-lookup-url="@Url.Action("PatientLookupFrame", "Appointment")">
+                            <span class="search-button-icon" aria-hidden="true"></span>
+                            <span>查詢院內資料</span>
+                        </button>
+                    </div>
+                </div>
+
+                <section class="patient-form-section patient-basic-section" aria-labelledby="patient-basic-title">
+                    <h3 id="patient-basic-title" class="patient-section-heading">
+                        <span class="patient-section-icon person-section-icon" aria-hidden="true"></span>
+                        <span>基本資料</span>
+                    </h3>
+                    <div class="patient-basic-grid" aria-live="polite">
+                        <label class="field-group health-code-field">
+                            <span>健檢碼</span>
+                            <span class="field-control-shell field-control-muted">
+                                <span class="field-control-icon lock-field-icon" aria-hidden="true"></span>
+                                <input type="text" name="PatientHealthCode" value="@Model.Form.PatientHealthCode" data-patient-field="healthCode" data-health-code-input placeholder="自動產生健檢碼" readonly aria-readonly="true" />
+                            </span>
+                        </label>
+                        <label class="field-group chart-number-field">
+                            <span><em>*</em>&nbsp;病歷號</span>
+                            <span class="field-control-shell field-control-muted">
+                                <span class="field-control-icon phone-field-icon" aria-hidden="true"></span>
+                                <input type="text" name="PatientChartNo" value="@Model.Form.PatientChartNo" data-patient-field="chartNo" placeholder="請輸入病歷號" required readonly aria-readonly="true" />
+                            </span>
+                        </label>
+                        <label class="field-group patient-name-field">
+                            <span><em>*</em>&nbsp;姓名</span>
+                            <span class="field-control-shell clearable-input">
+                                <span class="field-control-icon person-field-icon" aria-hidden="true"></span>
+                                <input type="text" name="PatientName" value="@Model.Form.PatientName" data-patient-field="name" placeholder="請輸入姓名" required />
+                            </span>
+                        </label>
+                        <label class="field-group id-number-field">
+                            <span><em>*</em>&nbsp;身分證 / 居留證號</span>
+                            <span class="field-control-shell clearable-input">
+                                <span class="field-control-icon id-field-icon" aria-hidden="true"></span>
+                                <input type="text" name="PatientIdNo" value="@Model.Form.PatientIdNo" data-patient-field="idNo" placeholder="請輸入身分證 / 居留證號" required />
+                            </span>
+                        </label>
+                        <label class="field-group birth-date-field">
+                            <span>出生日期</span>
+                            <span class="field-control-shell">
+                                <span class="field-control-icon calendar-field-icon" aria-hidden="true"></span>
+                                <input type="date" name="PatientBirthDate" value="@Model.Form.PatientBirthDate" data-patient-field="birthDate" />
+                            </span>
+                        </label>
+                        <label class="field-group patient-age-field">
+                            <span>年齡</span>
+                            <span class="field-control-shell clearable-input">
+                                <input type="number" name="PatientAge" value="@Model.Form.PatientAge" data-patient-field="age" min="1" max="130" placeholder="--" />
+                            </span>
+                        </label>
+                        <label class="field-group patient-mobile-field">
+                            <span><em>*</em>&nbsp;手機</span>
+                            <span class="field-control-shell clearable-input">
+                                <span class="field-control-icon phone-field-icon" aria-hidden="true"></span>
+                                <input type="text" name="PatientMobile" value="@Model.Form.PatientMobile" data-patient-field="mobile" placeholder="請輸入手機" required />
+                            </span>
+                        </label>
+                        <label class="field-group patient-phone-field">
+                            <span>聯絡電話</span>
+                            <span class="field-control-shell clearable-input">
+                                <span class="field-control-icon tel-field-icon" aria-hidden="true"></span>
+                                <input type="text" name="PatientPhone" value="@Model.Form.PatientPhone" data-patient-field="phone" placeholder="請輸入聯絡電話" />
+                            </span>
+                        </label>
+                        <label class="field-group patient-sex-field">
+                            <span><em>*</em>&nbsp;性別</span>
+                            <span class="field-control-shell has-select">
+                                <span class="field-control-icon gender-field-icon" aria-hidden="true"></span>
+                                <select name="PatientSex" data-patient-field="sex" required>
+                                    <option value="" selected="@(string.IsNullOrWhiteSpace(Model.Form.PatientSex) ? "selected" : null)">請選擇</option>
+                                    <option value="男" selected="@(Model.Form.PatientSex == "男" ? "selected" : null)">男</option>
+                                    <option value="女" selected="@(Model.Form.PatientSex == "女" ? "selected" : null)">女</option>
+                                </select>
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="patient-form-section patient-emergency-section" aria-labelledby="patient-emergency-title">
+                    <h3 id="patient-emergency-title" class="patient-section-heading">
+                        <span class="patient-section-icon emergency-section-icon" aria-hidden="true"></span>
+                        <span>緊急聯絡人</span>
+                    </h3>
+                    <div class="patient-emergency-grid">
+                        <label class="field-group">
+                            <span>聯絡人</span>
+                            <span class="field-control-shell clearable-input">
+                                <span class="field-control-icon person-field-icon" aria-hidden="true"></span>
+                                <input type="text" name="ContactName" value="@Model.Form.ContactName" data-patient-field="contactName" placeholder="請輸入聯絡人" />
+                            </span>
+                        </label>
+                        <label class="field-group">
+                            <span>聯絡人電話</span>
+                            <span class="field-control-shell clearable-input">
+                                <span class="field-control-icon phone-field-icon" aria-hidden="true"></span>
+                                <input type="tel" name="ContactPhone" value="@Model.Form.ContactPhone" data-patient-field="contactPhone" placeholder="請輸入聯絡人電話" />
+                            </span>
+                        </label>
+                        <div class="field-group contact-relationship-field" data-relationship-picker>
+                            <label for="contact-relationship">關係</label>
+                            <span class="field-control-shell has-select relationship-field-shell">
+                                <span class="field-control-icon relationship-field-icon" aria-hidden="true"></span>
+                                <span class="relationship-picker clearable-input has-relationship-picker">
+                                    <input id="contact-relationship" type="text" name="ContactRelationship" value="@Model.Form.ContactRelationship" data-patient-field="contactRelationship" data-relationship-input placeholder="請選擇或輸入關係" autocomplete="off" aria-haspopup="listbox" aria-expanded="false" aria-controls="contact-relationship-options" />
+                                    <button class="relationship-picker-button" type="button" data-relationship-toggle aria-label="選擇關係" aria-controls="contact-relationship-options" aria-expanded="false"></button>
+                                    <span class="relationship-options" id="contact-relationship-options" data-relationship-options role="listbox" hidden>
+                                        <button type="button" role="option" data-relationship-option data-value="父母">父母</button>
+                                        <button type="button" role="option" data-relationship-option data-value="配偶">配偶</button>
+                                        <button type="button" role="option" data-relationship-option data-value="子女">子女</button>
+                                        <button type="button" role="option" data-relationship-option data-value="兄弟姊妹">兄弟姊妹</button>
+                                        <button type="button" role="option" data-relationship-option data-value="親戚">親戚</button>
+                                        <button type="button" role="option" data-relationship-option data-value="朋友">朋友</button>
+                                        <button type="button" role="option" data-relationship-option data-value="同事">同事</button>
+                                    </span>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="patient-form-section patient-identity-section" aria-labelledby="patient-identity-title">
+                    <h3 id="patient-identity-title" class="patient-section-heading">
+                        <span class="patient-section-icon identity-section-icon" aria-hidden="true"></span>
+                        <span>身分設定</span>
+                    </h3>
+                    <div class="patient-identity-grid">
+                        <div class="identity-setting-group vip-identity-group" role="group" aria-label="VIP 身分">
+                            <span class="identity-group-title">VIP 身分</span>
+                            <label class="identity-check-card reservation-vip-field">
+                                <span class="field-control-icon crown-field-icon" aria-hidden="true"></span>
+                                <span class="identity-card-label">是否 VIP</span>
+                                <input type="checkbox" name="IsVip" value="true" checked="@(Model.Form.IsVip ? "checked" : null)" aria-label="是否 VIP" />
+                                <span class="employee-family-box" aria-hidden="true"></span>
+                            </label>
+                        </div>
+                        <div class="identity-setting-group family-identity-group" role="group" aria-label="家屬身分">
+                            <span class="identity-group-title">家屬身分</span>
+                            <label class="identity-check-card employee-family-check">
+                                <span class="field-control-icon home-field-icon" aria-hidden="true"></span>
+                                <span class="identity-card-label">是否家屬</span>
+                                <input type="checkbox" name="IsEmployeeFamily" value="true" checked="@(Model.Form.IsEmployeeFamily ? "checked" : null)" />
+                                <span class="employee-family-box" aria-hidden="true"></span>
+                            </label>
+                        </div>
+                        <label class="identity-setting-group field-group employee-type-field family-note-field">
+                            <span class="identity-group-title">家屬備註</span>
+                            <span class="employee-profile-control">
+                                <span class="field-control-shell clearable-input">
+                                    <span class="field-control-icon employee-field-icon" aria-hidden="true"></span>
+                                    <input type="text" name="FamilyNote" value="@Model.Form.FamilyNote" data-patient-field="familyNote" placeholder="請輸入家屬備註" aria-label="家屬備註" autocomplete="off" />
+                                </span>
+                            </span>
+                        </label>
+                        <label class="identity-setting-group field-group branch-factory-field">
+                            <span class="identity-group-title">分公司</span>
+                            <span class="field-control-shell">
+                                <span class="field-control-icon building-field-icon" aria-hidden="true"></span>
+                                <input type="text" name="BranchFactory" value="@Model.Form.BranchFactory" maxlength="100" placeholder="請輸入分公司" aria-label="分公司" autocomplete="organization" />
+                            </span>
+                        </label>
+                        <label class="identity-setting-group field-group employee-student-no-field">
+                            <span class="identity-group-title">工學號</span>
+                            <span class="field-control-shell">
+                                <span class="field-control-icon employee-field-icon" aria-hidden="true"></span>
+                                <input type="text" name="EmployeeStudentNo" value="@Model.Form.EmployeeStudentNo" maxlength="50" placeholder="請輸入工學號" aria-label="工學號" autocomplete="off" />
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="patient-form-section patient-contact-section" aria-labelledby="patient-contact-title">
+                    <h3 id="patient-contact-title" class="patient-section-heading">
+                        <span class="patient-section-icon contact-section-icon" aria-hidden="true"></span>
+                        <span>聯絡資訊</span>
+                    </h3>
+                    <div class="patient-contact-list">
+                        <div class="field-group patient-email-field wide-field-group">
+                            <label class="sr-only" for="patient-email">E-mail</label>
+                            <span class="wide-control-shell clearable-input">
+                                <span class="field-control-icon mail-field-icon" aria-hidden="true"></span>
+                                <span class="wide-control-label">E-mail</span>
+                                <input id="patient-email" type="email" name="PatientEmail" value="@Model.Form.PatientEmail" data-patient-field="email" placeholder="請輸入 E-mail" />
+                                <button class="field-clear-button" type="button" data-clear-field aria-label="清除 E-mail" hidden></button>
+                            </span>
+                        </div>
+                        <div class="field-group mailing-address-field wide-field-group">
+                            <label class="sr-only" for="patient-mailing-address">寄件地址</label>
+                            <span class="wide-control-shell clearable-input">
+                                <span class="field-control-icon pin-field-icon" aria-hidden="true"></span>
+                                <span class="wide-control-label">寄件地址</span>
+                                <input id="patient-mailing-address" type="text" name="MailAddress" value="@Model.Form.MailAddress" data-patient-field="mailingAddress" data-mailing-address placeholder="請輸入寄件地址" />
+                                <button class="field-clear-button" type="button" data-clear-field aria-label="清除寄件地址" hidden></button>
+                            </span>
+                        </div>
+                        <div class="field-group patient-address-field wide-field-group">
+                            <label class="sr-only" for="patient-address">居住地址</label>
+                            <span class="wide-control-shell clearable-input address-control-shell">
+                                <span class="field-control-icon home-field-icon" aria-hidden="true"></span>
+                                <span class="wide-control-label">居住地址</span>
+                                <input id="patient-address" type="text" name="LiveAddress" value="@Model.Form.LiveAddress" data-patient-field="address" data-address-field placeholder="請輸入居住地址" />
+                                <button class="field-clear-button" type="button" data-clear-field aria-label="清除地址" hidden></button>
+                                <label class="same-address-toggle">
+                                    <input type="checkbox" name="IsSameAddress" value="true" data-same-address checked="@(Model.Form.IsSameAddress ? "checked" : null)" />
+                                    <span>同上</span>
+                                </label>
+                            </span>
+                        </div>
+                        <div class="notification-note-grid">
+                            <label class="field-group notification-note-field" for="notification-note">
+                                <span>通知備註</span>
+                                <span class="notification-note-control clearable-input">
+                                    <input id="notification-note" type="text" name="NotificationNote" value="@Model.Form.NotificationNote" data-patient-field="notificationNote" maxlength="100" placeholder="請輸入通知備註" />
+                                    <button class="field-clear-button" type="button" data-clear-field aria-label="清除通知備註" hidden></button>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="patient-form-section patient-note-section" aria-labelledby="patient-note-title">
+                    <h3 id="patient-note-title" class="patient-section-heading">
+                        <span class="patient-section-icon note-mini-icon" aria-hidden="true"></span>
+                        <span>備註</span>
+                    </h3>
+                    <div class="annotation-note-grid">
+                        <div class="field-group note-field">
+                            <div class="field-label-row">
+                                <span>當次備註</span>
+                                <button class="phrase-button" type="button" data-phrase-target="appointment-note" data-phrase-text="@firstPhraseText" disabled="@(string.IsNullOrWhiteSpace(firstPhraseText))">片語</button>
+                            </div>
+                            <textarea id="appointment-note" name="CurrentNote" rows="2" maxlength="200" placeholder="請輸入預約備註..." data-auto-resize-note>@Model.Form.CurrentNote</textarea>
+                            <span class="char-counter">0 / 200</span>
+                        </div>
+                        <label class="field-group permanent-note-field">
+                            <span>永久備註</span>
+                            <textarea name="PermanentNote" rows="2" maxlength="200" placeholder="請輸入永久備註..." data-auto-resize-note>@Model.Form.PermanentNote</textarea>
+                            <span class="char-counter">0 / 200</span>
+                        </label>
+                    </div>
+                </section>
+            </section>
+        </div>
+
+        <aside class="create-side-column" id="appointment-panel-project" role="tabpanel" aria-labelledby="appointment-tab-project" aria-label="專案預約費用資訊" data-appointment-tab-panel="project">
+            <section class="panel form-panel booking-panel" aria-labelledby="booking-info-title">
+                <div class="form-panel-title">
+                    <h2 id="booking-info-title"><span class="panel-title-icon briefcase-mini-icon" aria-hidden="true"></span>專案 / 預約 /費用 資訊</h2>
+                </div>
+
+                <section class="patient-form-section reservation-info-section" aria-labelledby="reservation-info-title">
+                    <h3 id="reservation-info-title" class="patient-section-heading">
+                        <span class="patient-section-icon calendar-section-icon" aria-hidden="true"></span>
+                        <span>預約資訊</span>
+                    </h3>
+                    <div class="reservation-info-grid">
+                        <label class="field-group reservation-area-field">
+                            <span><em>*</em>&nbsp;預約區域</span>
+                            <span class="field-control-shell has-select">
+                                <span class="field-control-icon building-field-icon" aria-hidden="true"></span>
+                                <select name="ReservationArea" required>
+                                    @foreach (var option in Model.WorkAreaOptions)
+                                    {
+                                        var optionText = string.IsNullOrWhiteSpace(option.Value) ? "請選擇" : option.Text;
+                                        <option value="@option.Value" selected="@(option.IsSelected ? "selected" : null)">@optionText</option>
+                                    }
+                                </select>
+                            </span>
+                        </label>
+                        <label class="field-group reservation-date-field">
+                            <span><em>*</em>&nbsp;預約日期</span>
+                            <span class="field-control-shell no-icon-control">
+                                <input type="date" name="ReservationDate" value="@reservationDateValue" required />
+                            </span>
+                        </label>
+                        <label class="field-group reservation-time-field">
+                            <span><em>*</em>&nbsp;預約時間</span>
+                            <span class="reservation-time-control field-control-shell no-icon-control">
+                                <input class="reservation-time-input" type="time" name="ReservationTime" value="@Model.Form.ReservationTime" step="60" placeholder="15:45" autocomplete="off" required />
+                            </span>
+                        </label>
+                        <label class="field-group consulting-doctor-field">
+                            <span><em>*</em>&nbsp;看診醫師</span>
+                            <select name="ConsultingDoctorId" aria-label="看診醫師" data-consulting-doctor required>
+                                @foreach (var option in Model.ConsultingDoctorOptions)
+                                {
+                                    <option value="@option.Value" selected="@(option.IsSelected ? "selected" : null)">@option.Text</option>
+                                }
+                            </select>
+                            <input type="hidden" name="ConsultingDoctorName" value="@Model.Form.ConsultingDoctorName" data-consulting-doctor-name />
+                        </label>
+                        <label class="field-group clinic-room-field">
+                            <span><em>*</em>&nbsp;診間號</span>
+                            <input class="clinic-room-input" type="text" name="ClinicRoom" value="@(string.IsNullOrWhiteSpace(Model.Form.ClinicRoom) ? "B6011" : Model.Form.ClinicRoom)" list="clinic-room-options" autocomplete="off" required />
+                            <datalist id="clinic-room-options">
+                                <option value="B6011"></option>
+                            </datalist>
+                        </label>
+                        <label class="field-group parking-field">
+                            <span>停車</span>
+                            <select name="ParkingType" aria-label="停車">
+                                @foreach (var option in Model.ParkingOptions)
+                                {
+                                    <option value="@option.Value" selected="@(option.IsSelected ? "selected" : null)">@option.Text</option>
+                                }
+                            </select>
+                        </label>
+                        <label class="field-group laxative-field">
+                            <span>瀉藥</span>
+                            <select name="Laxative" aria-label="瀉藥">
+                                @foreach (var option in Model.LaxativeOptions)
+                                {
+                                    <option value="@option.Value" selected="@(option.IsSelected ? "selected" : null)">@option.Text</option>
+                                }
+                            </select>
+                        </label>
+                        <label class="field-group meal-field">
+                            <span>餐點</span>
+                            <select name="MealType" aria-label="餐點">
+                                @foreach (var option in Model.MealOptions)
+                                {
+                                    <option value="@option.Value" selected="@(option.IsSelected ? "selected" : null)">@option.Text</option>
+                                }
+                            </select>
+                        </label>
+                    </div>
+                </section>
+
+                <div class="booking-project-grid">
+                    <label class="field-group">
+                        <span>健檢專案 / 方案 <em>*</em></span>
+                        <span class="project-lookup-control" role="group" aria-label="健檢專案與操作">
+                            <select id="appointment-project-select" name="ProjectNo" data-project-select aria-label="健檢專案 / 方案" required>
+                                @foreach (var option in Model.ProjectOptions)
+                                {
+                                    <option value="@option.Value" selected="@(option.IsSelected ? "selected" : null)">@option.Text</option>
+                                }
+                            </select>
+                            <span class="appointment-project-action-group">
+                                <button class="ghost-button project-search-button" type="button" data-open-project-lookup>
+                                    <span class="search-button-icon" aria-hidden="true"></span>
+                                    <span>查詢</span>
+                                </button>
+                                <a class="ghost-button project-add-button" asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProject">
+                                    <span class="customer-action-icon add" aria-hidden="true"></span>
+                                    <span>新增</span>
+                                </a>
+                            </span>
+                        </span>
+                    </label>
+                </div>
+
+                <div class="booking-section-heading has-required">
+                    <h3 id="package-title"><span class="panel-title-icon lock-mini-icon" aria-hidden="true"></span>套餐 / 套組選擇</h3>
+                    <div class="suite-accounting-bulk-editor appointment-accounting-bulk-editor" aria-label="已選套組優待身分總項">
+                        <span>優待身分（總項）</span>
+                        <strong data-package-accounting-all-value>尚未選擇套組</strong>
+                        <span class="suite-accounting-actions">
+                            <button type="button" class="ghost-button" data-package-accounting-all-clear disabled>重設</button>
+                            <button type="button" class="primary-button" data-package-accounting-all-query disabled>套用全部</button>
+                        </span>
+                        <small class="appointment-accounting-bulk-reminder" data-package-accounting-all-reminder>請先在下方勾選至少一個套組，才能設定總項</small>
+                    </div>
+                    <span class="required-pill">必選</span>
+                </div>
+                <div class="suite-category-tabs package-category-tabs" aria-label="套組分類" data-package-category-tabs></div>
+                <div class="package-filter-row">
+                    <label class="package-filter-field" for="package-search-input">
+                        <span class="customer-action-icon search" aria-hidden="true"></span>
+                        <input id="package-search-input" type="search" data-package-search-input placeholder="輸入套組名稱搜尋" autocomplete="off" />
+                    </label>
+                </div>
+                <div class="package-data-grid-shell" role="region" aria-label="套餐 / 套組選擇清單" tabindex="0">
+                    <table class="compact-choice-table choice-data-grid package-data-grid" data-grid="package-options">
+                        <thead>
+                            <tr>
+                                <th class="choice-column">
+                                    <input type="checkbox" data-package-select-all aria-label="全選目前篩選的套組" title="全選套組" />
+                                </th>
+                                <th>套組名稱</th>
+                                <th>優待身分</th>
+                                <th class="money-column">金額</th>
+                            </tr>
+                        </thead>
+                        <tbody data-package-options-body>
+                            @if (!Model.PackageOptions.Any())
+                            {
+                                <tr class="empty-row">
+                                    <td colspan="4">請先選擇健檢專案 / 方案</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var packageOption in Model.PackageOptions)
+                                {
+                                    <tr class="@(packageOption.IsSelected ? "is-selected" : "")" data-row-id="@packageOption.Id" data-price="@packageOption.Price">
+                                        <td class="choice-cell">
+                                            <input type="checkbox" name="SelectedPackageIds" value="@packageOption.Id" checked="@(packageOption.IsSelected ? "checked" : null)" aria-label="選擇 @packageOption.Name" />
+                                        </td>
+                                        <td><span class="item-name">@packageOption.Name</span></td>
+                                        <td>@packageOption.SelfPayAccountingUnitDisplay</td>
+                                        <td class="money-cell">@packageOption.PriceText</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="package-pagination-controls pagination-controls" aria-label="套組分頁控制">
+                    <select class="page-select" aria-label="套組每頁筆數" data-package-page-size>
+                        <option value="5" selected>5 項/頁</option>
+                        <option value="10">10 項/頁</option>
+                        <option value="15">15 項/頁</option>
+                        <option value="20">20 項/頁</option>
+                    </select>
+                    <span class="package-page-info" data-package-page-info>顯示 0 筆，共 0 筆</span>
+                    <div class="pagination" aria-label="套組分頁" data-package-pagination></div>
+                </div>
+
+                <div class="booking-section-heading other-suite-heading">
+                    <h3 id="other-suite-title"><span class="panel-title-icon lock-mini-icon" aria-hidden="true"></span>其他組套</h3>
+                    <div class="other-suite-heading-actions">
+                        <span class="required-pill optional-pill">選填</span>
+                        <button class="ghost-button other-suite-add-button" type="button" data-add-other-suite>
+                            <span class="customer-action-icon add" aria-hidden="true"></span>
+                            <span>新增組套</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="package-data-grid-shell other-suite-data-grid-shell" role="region" aria-label="其他組套清單" tabindex="0">
+                    <table class="compact-choice-table choice-data-grid package-data-grid other-suite-data-grid" data-grid="other-suite-options">
+                        <thead>
+                            <tr>
+                                <th>組套名稱</th>
+                                <th class="other-suite-code-column">組套碼</th>
+                                <th class="other-suite-accounting-column">優待身分</th>
+                                <th class="money-column">金額</th>
+                                <th class="other-suite-action-column">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody data-other-suite-body>
+                            <tr class="empty-row">
+                                <td colspan="5">請先新增組套</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="package-pagination-controls pagination-controls other-suite-pagination-controls" aria-label="其他組套分頁控制">
+                    <select class="page-select" aria-label="其他組套每頁筆數" data-other-suite-page-size>
+                        <option value="5" selected>5 項/頁</option>
+                        <option value="10">10 項/頁</option>
+                        <option value="15">15 項/頁</option>
+                        <option value="20">20 項/頁</option>
+                    </select>
+                    <span class="package-page-info" data-other-suite-page-info>顯示 0 筆，共 0 筆</span>
+                    <div class="pagination" aria-label="其他組套分頁" data-other-suite-pagination></div>
+                </div>
+
+                <div data-questionnaire-section>
+                    <div class="booking-section-heading questionnaire-heading">
+                        <h3 id="questionnaire-title"><span class="panel-title-icon note-mini-icon" aria-hidden="true"></span>問卷選擇</h3>
+                        <span class="required-pill optional-pill">選填</span>
+                    </div>
+                    <div class="suite-category-tabs package-category-tabs questionnaire-category-tabs" aria-label="問卷兩字搜尋" data-questionnaire-category-tabs></div>
+                    <div class="package-filter-row questionnaire-filter-row">
+                        <label class="package-filter-field" for="questionnaire-search-input">
+                            <span class="customer-action-icon search" aria-hidden="true"></span>
+                            <input id="questionnaire-search-input" type="search" data-questionnaire-search-input placeholder="輸入問卷名稱或兩字搜尋" autocomplete="off" />
+                        </label>
+                    </div>
+                    <div class="package-data-grid-shell questionnaire-data-grid-shell" role="region" aria-label="問卷選擇清單" tabindex="0">
+                        <table class="compact-choice-table choice-data-grid package-data-grid questionnaire-data-grid" data-grid="questionnaire-options">
+                            <thead>
+                                <tr>
+                                    <th class="choice-column">
+                                    <input type="checkbox" data-package-select-all aria-label="全選目前篩選的套組" title="全選套組" />
+                                </th>
+                                    <th>名稱</th>
+                                    <th class="money-column">金額</th>
+                                </tr>
+                            </thead>
+                            <tbody data-questionnaire-body>
+                                @if (!showQuestionnaireSection)
+                                {
+                                    <tr class="empty-row">
+                                        <td colspan="3">請先選擇健檢專案 / 方案</td>
+                                    </tr>
+                                }
+                                else if (!Model.QuestionnaireOptions.Any())
+                                {
+                                    <tr class="empty-row">
+                                        <td colspan="3">尚無問卷資料</td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    foreach (var questionnaire in Model.QuestionnaireOptions)
+                                    {
+                                        <tr class="@(questionnaire.IsSelected ? "is-selected" : "")" data-row-id="@questionnaire.Id" data-price="@questionnaire.Price">
+                                            <td class="choice-cell">
+                                                <input type="checkbox" name="SelectedQuestionnaireIds" value="@questionnaire.Id" checked="@(questionnaire.IsSelected ? "checked" : null)" aria-label="選擇 @questionnaire.Name" />
+                                            </td>
+                                            <td><span class="item-name">@questionnaire.Name</span></td>
+                                            <td class="money-cell">@questionnaire.PriceText</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="package-pagination-controls pagination-controls questionnaire-pagination-controls" aria-label="問卷分頁控制">
+                        <select class="page-select" aria-label="問卷每頁筆數" data-questionnaire-page-size>
+                            <option value="5" selected>5 項/頁</option>
+                            <option value="10">10 項/頁</option>
+                            <option value="15">15 項/頁</option>
+                            <option value="20">20 項/頁</option>
+                        </select>
+                        <span class="package-page-info" data-questionnaire-page-info>顯示 0 筆，共 0 筆</span>
+                        <div class="pagination" aria-label="問卷分頁" data-questionnaire-pagination></div>
+                    </div>
+                </div>
+
+                <div class="booking-section-heading billing-section-heading">
+                    <h3 id="billing-title"><span class="panel-title-icon receipt-mini-icon" aria-hidden="true"></span>費用資訊</h3>
+                    <span class="billing-edit-hint" hidden>紅色欄位可手動輸入</span>
+                </div>
+                <div class="billing-form" aria-labelledby="billing-title">
+                    <div class="billing-formula-row" aria-label="費用計算" hidden>
+                        <label class="billing-field billing-field-readonly">
+                            <span>套餐費用</span>
+                            <output data-billing-value="package" data-initial-billing-value="@packageAmountValue">@packageAmountValue</output>
+                        </label>
+                        <span class="billing-operator" aria-hidden="true">+</span>
+                        <label class="billing-field billing-field-readonly">
+                            <span>加做費用</span>
+                            <output data-billing-value="addon" data-initial-billing-value="@extraAmountValue">@extraAmountValue</output>
+                        </label>
+                        <span class="billing-operator" aria-hidden="true">-</span>
+                        <label class="billing-field billing-field-manual">
+                            <span>匯款金額</span>
+                            <input type="text" name="RemitAmount" inputmode="decimal" value="@remitAmountValue" data-billing-adjustment="remittance" />
+                        </label>
+                        <span class="billing-operator" aria-hidden="true">-</span>
+                        <label class="billing-field billing-field-manual">
+                            <span>優待金額</span>
+                            <input type="text" name="DiscountAmount" inputmode="decimal" value="@discountAmountValue" data-billing-adjustment="discount" />
+                        </label>
+                        <span class="billing-operator" aria-hidden="true">-</span>
+                        <label class="billing-field billing-field-manual">
+                            <span>記帳金額</span>
+                            <input type="text" name="AccountAmount" inputmode="decimal" value="@accountAmountValue" data-billing-adjustment="account" />
+                        </label>
+                        <span class="billing-operator" aria-hidden="true">=</span>
+                        <label class="billing-field billing-field-readonly">
+                            <span>實收金額</span>
+                            <output data-billing-value="actual" data-initial-billing-value="@receivedAmountValue">@receivedAmountValue</output>
+                        </label>
+                    </div>
+                    <div class="billing-detail-row">
+                        <label class="billing-detail-field">
+                            <span>繳款日</span>
+                            <input type="date" name="PaymentDate" value="@paymentDateValue" aria-label="繳款日" data-billing-payment-date />
+                        </label>
+                        <label class="billing-detail-field">
+                            <span>繳款方式</span>
+                            <select name="PaymentMethod" data-billing-payment-method>
+                                <option value="" selected="@(string.IsNullOrWhiteSpace(Model.Form.PaymentMethod) ? "selected" : null)">請選擇繳款方式</option>
+                                <option value="cash" selected="@(Model.Form.PaymentMethod == "cash" ? "selected" : null)">現金</option>
+                                <option value="card" selected="@(Model.Form.PaymentMethod == "card" ? "selected" : null)">刷卡</option>
+                                <option value="transfer" selected="@(Model.Form.PaymentMethod == "transfer" ? "selected" : null)">匯款</option>
+                            </select>
+                        </label>
+                        <label class="billing-detail-field billing-note-field">
+                            <span>優待說明 / 收費備註</span>
+                            <span class="billing-note-control" data-billing-note-picker>
+                                <input id="billing-note" type="text" name="PaymentNote" value="@Model.Form.PaymentNote" placeholder="請輸入優待說明或備註（選填）" data-billing-note-input autocomplete="off" aria-haspopup="listbox" aria-expanded="false" aria-controls="billing-note-options" />
+                                <button class="billing-note-menu-button" type="button" data-billing-note-toggle aria-label="更多優待說明" aria-controls="billing-note-options" aria-expanded="false">...</button>
+                                <span class="billing-note-options" id="billing-note-options" data-billing-note-options role="listbox" hidden>
+                                    <button type="button" role="option" data-billing-note-option data-value="停車卷">停車卷</button>
+                                    <button type="button" role="option" data-billing-note-option data-value="本院員眷">本院員眷</button>
+                                    <button type="button" role="option" data-billing-note-option data-value="線上刷卡已完成">線上刷卡已完成</button>
+                                    <button type="button" role="option" data-billing-note-option data-value="匯款已完成">匯款已完成</button>
+                                    <button type="button" role="option" data-billing-note-option data-value="刷卡已完成">刷卡已完成</button>
+                                    <button type="button" role="option" data-billing-note-option data-value="振興券">振興券</button>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                    <p class="billing-note" hidden>計算公式：套餐費用 + 加做費用 - 匯款金額 - 優待金額 - 記帳金額 = 實收金額</p>
+                </div>
+            </section>
+        </aside>
+    </div>
+</form>
+
+<div class="appointment-batch-progress-modal" data-create-appointment-register-progress hidden>
+    <div class="appointment-batch-progress-dialog" role="alertdialog" aria-modal="true" aria-labelledby="create-appointment-register-progress-title" aria-describedby="create-appointment-register-progress-message">
+        <div class="appointment-batch-progress-spinner" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div class="appointment-batch-progress-copy">
+            <span class="appointment-batch-progress-kicker">REGISTRATION IN PROGRESS</span>
+            <h2 id="create-appointment-register-progress-title">正在執行單筆掛號</h2>
+            <p id="create-appointment-register-progress-message">正在連線掛號系統並更新預約狀態…</p>
+        </div>
+        <div class="appointment-batch-progress-track" aria-hidden="true"><span></span></div>
+        <small>請稍候，完成後動畫將自動消失。</small>
+    </div>
+</div>
+<div class="appointment-create-result-modal" data-create-appointment-result data-state="success" hidden>
+    <div class="appointment-create-result-panel" role="status" aria-live="polite" aria-labelledby="create-appointment-result-title">
+        <span class="appointment-create-result-icon" aria-hidden="true"></span>
+        <div class="appointment-create-result-copy">
+            <h2 id="create-appointment-result-title" data-create-appointment-result-title>資料已建立</h2>
+            <p data-create-appointment-result-message>正在返回預約清單...</p>
+        </div>
+        <button class="appointment-create-result-close" type="button" data-create-appointment-result-close aria-label="關閉提示">關閉</button>
+    </div>
+</div>
+
+<div class="patient-lookup-modal" data-patient-lookup-modal hidden>
+    <button class="patient-lookup-backdrop" type="button" data-close-patient-lookup aria-label="關閉查詢受檢者視窗"></button>
+    <div class="patient-lookup-frame-shell" role="dialog" aria-modal="true" aria-labelledby="patient-lookup-dialog-title">
+        <span id="patient-lookup-dialog-title" class="sr-only">查詢受檢者</span>
+        <div data-patient-lookup-frame-host></div>
+    </div>
+</div>
+
+<div class="patient-lookup-modal other-suite-lookup-modal" data-other-suite-lookup-modal hidden>
+    <button class="patient-lookup-backdrop" type="button" data-close-other-suite-lookup aria-label="關閉新增組套視窗"></button>
+    <div class="patient-lookup-frame-shell other-suite-lookup-frame-shell" role="dialog" aria-modal="true" aria-labelledby="other-suite-lookup-dialog-title">
+        <span id="other-suite-lookup-dialog-title" class="sr-only">新增組套</span>
+        <div data-other-suite-lookup-frame-host></div>
+    </div>
+</div>
+
+<div class="project-lookup-modal" data-project-lookup-modal hidden>
+    <button class="patient-lookup-backdrop" type="button" data-close-project-lookup aria-label="關閉專案選擇視窗"></button>
+    <div class="project-lookup-shell" role="dialog" aria-modal="true" aria-labelledby="project-lookup-title">
+        <header class="project-lookup-header">
+            <h2 id="project-lookup-title">專案選擇</h2>
+            <button class="project-lookup-close" type="button" data-close-project-lookup aria-label="關閉專案選擇視窗">×</button>
+        </header>
+        <div class="project-lookup-body">
+            <div class="project-lookup-filters" aria-label="專案搜尋條件">
+                <label class="appointment-project-date-filter">
+                    <span>檢查日</span>
+                    <span class="appointment-project-date-range">
+                        <input type="date" value="@projectLookupStartDate" data-project-date-filter="start" aria-label="檢查日開始日期" />
+                        <i aria-hidden="true">~</i>
+                        <input type="date" value="@projectLookupEndDate" data-project-date-filter="end" aria-label="檢查日結束日期" />
+                    </span>
+                </label>
+                <label>
+                    <span>專案號</span>
+                    <input type="search" data-project-filter="projectNo" />
+                </label>
+                <label>
+                    <span>公司編號</span>
+                    <input type="search" data-project-filter="customerNo" />
+                </label>
+                <label>
+                    <span>公司名稱</span>
+                    <input type="search" data-project-filter="customerName" />
+                </label>
+                <label>
+                    <span>專案名稱</span>
+                    <input type="search" data-project-filter="projectName" />
+                </label>
+                <button class="primary-button appointment-project-search-button" type="button" data-project-search>查詢</button>
+            </div>
+            <div class="project-lookup-results appointment-project-lookup-results" role="region" aria-label="專案查詢結果" tabindex="0">
+                <table class="project-lookup-table appointment-project-lookup-table">
+                    <thead>
+                        <tr>
+                            <th>操作</th>
+                            <th>專案編號</th>
+                            <th>公司編號</th>
+                            <th>公司名稱</th>
+                            <th>專案名稱</th>
+                            <th>檢查日</th>
+                            <th>結束日</th>
+                        </tr>
+                    </thead>
+                    <tbody data-project-results-body>
+                        @foreach (var project in Model.ProjectLookupItems)
+                        {
+                            <tr data-project-row
+                                data-project-no="@project.ProjectNo"
+                                data-customer-no="@project.CustomerNo"
+                                data-customer-name="@project.CustomerName"
+                                data-self-pay-accounting="@project.SelfPayAccountingUnit"
+                                data-check-date="@project.CheckDate"
+                                data-end-date="@project.EndDate"
+                                data-project-name="@project.ProjectName">
+                                <td><button type="button"
+                                            data-project-select-option
+                                            data-project-no="@project.ProjectNo"
+                                            data-customer-no="@project.CustomerNo"
+                                            data-self-pay-accounting="@project.SelfPayAccountingUnit"
+                                            data-project-name="@project.ProjectName">選擇</button></td>
+                                <td>@project.ProjectNo</td>
+                                <td>@project.CustomerNo</td>
+                                <td>@project.CustomerName</td>
+                                <td>@project.ProjectName</td>
+                                <td>@project.CheckDate</td>
+                                <td>@project.EndDate</td>
+                            </tr>
+                        }
+                        <tr class="project-lookup-empty" data-project-empty hidden="@(Model.ProjectLookupItems.Count > 0)">
+                            <td colspan="7">查無符合條件的專案資料</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="project-lookup-modal project-self-pay-accounting-modal" data-self-pay-accounting-modal hidden>
+    <button class="patient-lookup-backdrop" type="button" data-close-self-pay-accounting-lookup aria-label="關閉優待身分查詢視窗"></button>
+    <div class="project-lookup-shell" role="dialog" aria-modal="true" aria-labelledby="appointment-self-pay-accounting-title">
+        <header class="project-lookup-header">
+            <h2 id="appointment-self-pay-accounting-title">優待身分查詢</h2>
+            <button class="project-lookup-close" type="button" data-close-self-pay-accounting-lookup aria-label="關閉優待身分查詢視窗">×</button>
+        </header>
+        <div class="project-lookup-body">
+            <div class="project-lookup-filters project-self-pay-accounting-filters" aria-label="優待身分搜尋條件">
+                <label>
+                    <span>代碼</span>
+                    <input type="search" placeholder="請輸入代碼" autocomplete="off" data-self-pay-accounting-filter="code" />
+                </label>
+                <label>
+                    <span>優待身分</span>
+                    <input type="search" placeholder="請輸入優待身分" autocomplete="off" data-self-pay-accounting-filter="name" />
+                </label>
+                <button class="ghost-button project-self-pay-accounting-clear" type="button" data-clear-self-pay-accounting-filters>清除</button>
+            </div>
+            <div class="suite-category-tabs project-self-pay-accounting-tabs" aria-label="優待身分兩字搜尋" data-self-pay-accounting-tabs></div>
+            <div class="project-lookup-results">
+                <table class="project-lookup-table project-self-pay-accounting-table">
+                    <thead>
+                        <tr>
+                            <th>代碼</th>
+                            <th>優待身分</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var accountingUnit in Model.SelfPayAccountingUnits)
+                        {
+                            <tr data-self-pay-accounting-row
+                                data-accounting-code="@accountingUnit.Code"
+                                data-accounting-name="@accountingUnit.Name">
+                                <td>@accountingUnit.Code</td>
+                                <td>@accountingUnit.Name</td>
+                                <td><button type="button" data-self-pay-accounting-select>選擇</button></td>
+                            </tr>
+                        }
+                        <tr class="project-lookup-empty" data-self-pay-accounting-empty hidden="@(Model.SelfPayAccountingUnits.Count > 0)">
+                            <td colspan="3">查無符合條件的優待身分</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/js/create-appointment.js" asp-append-version="true"></script>

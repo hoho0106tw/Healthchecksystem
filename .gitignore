@@ -1,0 +1,10 @@
+
+# Edge DevTools
+edge-devtools/
+**/edge-devtools/
+
+# Development cache
+node_modules/
+.vs/
+bin/
+obj/

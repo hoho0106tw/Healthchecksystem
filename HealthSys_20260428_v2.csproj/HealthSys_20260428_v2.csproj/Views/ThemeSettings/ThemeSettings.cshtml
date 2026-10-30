@@ -1,0 +1,759 @@
+﻿@model HealthSys_20260428_v2.csproj.Models.ThemeSettingsViewModel
+
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<section class="theme-settings-page" data-theme-settings data-theme-apply-url="@Url.Action("Apply", "ThemeSettings")" aria-label="佈景主題">
+    <link rel="stylesheet" href="~/css/theme-workspace.css" asp-append-version="true" />
+    <div class="theme-settings-workspace">
+        <form class="theme-settings-form" id="theme-settings-form" data-theme-form>
+            @Html.AntiForgeryToken()
+            <section class="theme-section" aria-labelledby="theme-mode-title">
+                <h2 id="theme-mode-title">主題模式</h2>
+                <div class="theme-mode-options">
+                    <label class="theme-choice is-selected" data-theme-mode-option>
+                        <input type="radio" name="ThemeMode" value="light" checked data-theme-mode-choice />
+                        <span class="theme-choice-check" aria-hidden="true"></span>
+                        <span class="theme-icon sun" aria-hidden="true"></span>
+                        <strong>淺色模式</strong>
+                        <small>明亮清爽的介面</small>
+                    </label>
+                    <label class="theme-choice" data-theme-mode-option>
+                        <input type="radio" name="ThemeMode" value="dark" data-theme-mode-choice />
+                        <span class="theme-choice-check" aria-hidden="true"></span>
+                        <span class="theme-icon moon" aria-hidden="true"></span>
+                        <strong>深色模式</strong>
+                        <small>護眼舒適的體驗</small>
+                    </label>
+                    <label class="theme-choice" data-theme-mode-option>
+                        <input type="radio" name="ThemeMode" value="gray" data-theme-mode-choice />
+                        <span class="theme-choice-check" aria-hidden="true"></span>
+                        <span class="theme-icon gray" aria-hidden="true"></span>
+                        <strong>灰色模式</strong>
+                        <small>中性專業的介面</small>
+                    </label>
+                    <label class="theme-choice" data-theme-mode-option>
+                        <input type="radio" name="ThemeMode" value="simple" data-theme-mode-choice />
+                        <span class="theme-choice-check" aria-hidden="true"></span>
+                        <span class="theme-icon simple" aria-hidden="true"></span>
+                        <strong>單色模式</strong>
+                        <small>圖表採同色系深淺</small>
+                    </label>
+                    <label class="theme-choice" data-theme-mode-option>
+                        <input type="radio" name="ThemeMode" value="system" data-theme-mode-choice />
+                        <span class="theme-choice-check" aria-hidden="true"></span>
+                        <span class="theme-icon monitor" aria-hidden="true"></span>
+                        <strong>跟隨系統</strong>
+                        <small>依系統自動切換</small>
+                    </label>
+                </div>
+            </section>
+
+            <section class="theme-section" aria-labelledby="theme-color-title">
+                <h2 id="theme-color-title">主色設定</h2>
+                <p>選擇系統主色，將套用於按鈕、連結、圖表與重點元件。</p>
+                <div class="theme-color-row" aria-label="主色選項">
+                    <button class="theme-color-swatch is-selected" type="button" style="--swatch-color: #1677e8;" data-theme-color="#1677e8" aria-pressed="true">
+                        <span class="theme-swatch-check" aria-hidden="true"></span>
+                        <span>藍色（預設）</span>
+                    </button>
+                    <button class="theme-color-swatch" type="button" style="--swatch-color: #20b979;" data-theme-color="#20b979" aria-pressed="false">
+                        <span class="theme-swatch-check" aria-hidden="true"></span>
+                        <span>綠色</span>
+                    </button>
+                    <button class="theme-color-swatch" type="button" style="--swatch-color: #14b8a6;" data-theme-color="#14b8a6" aria-pressed="false">
+                        <span class="theme-swatch-check" aria-hidden="true"></span>
+                        <span>青綠色</span>
+                    </button>
+                    <button class="theme-color-swatch" type="button" style="--swatch-color: #7c5ce5;" data-theme-color="#7c5ce5" aria-pressed="false">
+                        <span class="theme-swatch-check" aria-hidden="true"></span>
+                        <span>紫色</span>
+                    </button>
+                    <button class="theme-color-swatch" type="button" style="--swatch-color: #f59e0b;" data-theme-color="#f59e0b" aria-pressed="false">
+                        <span class="theme-swatch-check" aria-hidden="true"></span>
+                        <span>橙色</span>
+                    </button>
+                    @foreach (var color in new[] {
+                        ("#0e7490", "湖水藍"), ("#1e40af", "深藍色"),
+                        ("#4f46e5", "靛紫色"), ("#be185d", "玫瑰色"),
+                        ("#dc2626", "紅色"), ("#92400e", "咖啡色"),
+                        ("#475569", "石板灰") })
+                    {
+                        <button class="theme-color-swatch" type="button" style="--swatch-color: @color.Item1;" data-theme-color="@color.Item1" aria-pressed="false">
+                            <span class="theme-swatch-check" aria-hidden="true"></span>
+                            <span>@color.Item2</span>
+                        </button>
+                    }
+                </div>
+                <div class="theme-custom-color" data-theme-color-picker>
+                    <div class="theme-color-wheel" data-theme-color-wheel role="slider" tabindex="0"
+                         aria-label="圓形調色盤：左右鍵調整色相，上下鍵調整飽和度"
+                         aria-valuemin="0" aria-valuemax="360" aria-valuenow="0">
+                        <span class="theme-color-marker" data-theme-color-marker aria-hidden="true"></span>
+                    </div>
+                    <div class="theme-color-fields">
+                        <strong>自訂主色</strong>
+                        <p>點選或拖曳調色盤，選擇喜歡的顏色。</p>
+                        <label class="theme-custom-color-value">
+                            <span>目前顏色</span>
+                            <span class="theme-custom-color-inputs">
+                                <input type="color" value="@Model.DefaultColor" data-theme-custom-color aria-label="開啟色彩選擇器" />
+                                <input type="text" value="@Model.DefaultColor" data-theme-color-hex aria-label="主色色碼" maxlength="7" pattern="#[0-9a-fA-F]{6}" spellcheck="false" />
+                            </span>
+                        </label>
+                        <label class="theme-color-brightness">
+                            <span>亮度</span>
+                            <input type="range" min="0" max="100" value="100" data-theme-color-brightness />
+                            <output data-theme-color-brightness-output>100%</output>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <div class="theme-control-grid">
+                <section class="theme-section" aria-labelledby="theme-layout-title">
+                    <h2 id="theme-layout-title">版面與元件</h2>
+
+                    <label class="theme-range-control">
+                        <span>圓角大小</span>
+                        <span class="theme-range-track">
+                            <small>小</small>
+                            <input type="range" min="4" max="18" value="8" data-theme-radius />
+                            <small>大</small>
+                            <output data-theme-radius-output>8 px</output>
+                        </span>
+                    </label>
+
+                    <div class="theme-control-group">
+                        <span>元件密度</span>
+                        <div class="theme-segmented" role="group" aria-label="元件密度">
+                            <button type="button" data-theme-density="comfortable">
+                                <span class="theme-icon comfort" aria-hidden="true"></span>
+                                <span>舒適</span>
+                            </button>
+                            <button class="is-selected" type="button" data-theme-density="standard">
+                                <span class="theme-icon standard" aria-hidden="true"></span>
+                                <span>標準</span>
+                            </button>
+                            <button type="button" data-theme-density="compact">
+                                <span class="theme-icon compact" aria-hidden="true"></span>
+                                <span>緊湊</span>
+                            </button>
+                        </div>
+                    </div>
+                    <label class="theme-range-control">
+                        <span>表格列高</span>
+                        <span class="theme-range-track">
+                            <small>緊湊</small>
+                            <input type="range" min="32" max="52" value="40" data-theme-row-height />
+                            <small>寬鬆</small>
+                            <output data-theme-row-output>40 px</output>
+                        </span>
+                    </label>
+                </section>
+                <section class="theme-section" aria-labelledby="theme-display-title">
+                    <h2 id="theme-display-title">字體與顯示</h2>
+
+                    <div class="theme-control-group">
+                        <span>字體大小</span>
+                        <div class="theme-size-row" role="group" aria-label="字體大小">
+                            <button type="button" data-theme-font="small">Aa 小</button>
+                            <button class="is-selected" type="button" data-theme-font="medium">中</button>
+                            <button type="button" data-theme-font="large">Aa 大</button>
+                        </div>
+                    </div>
+
+                    
+
+                    <div class="theme-control-group">
+                        <span>字體顏色</span>
+                        <div class="theme-text-presets" role="group" aria-label="常用字體顏色">
+                            @foreach (var textColor in new[] { ("#000000", "黑色"), ("#ffffff", "白色"), ("#475569", "灰色"), ("#1e40af", "藍色"), ("#166534", "綠色"), ("#7c3aed", "紫色") })
+                            {
+                                <button type="button" data-theme-text-preset="@textColor.Item1" style="--text-preset: @textColor.Item1" aria-label="字體顏色：@textColor.Item2" aria-pressed="false"><i aria-hidden="true"></i><span>@textColor.Item2</span></button>
+                            }
+                        </div>
+                        <div class="theme-text-color-controls">
+                            <input type="color" value="#263850" data-theme-text-color aria-label="選擇字體顏色" />
+                            <button type="button" class="is-selected" data-theme-text-auto aria-pressed="true">自動配色</button>
+                        </div>
+                    </div>
+
+                    <label class="theme-select-control">
+                        <span>頁面縮放</span>
+                        <select data-theme-zoom>
+                            <option>90%</option>
+                            <option selected>100%（預設）</option>
+                            <option>110%</option>
+                            <option>125%</option>
+                        </select>
+                    </label>
+
+                    <p class="theme-note">調整整體介面大小（不影響資料顯示）</p>
+                </section>
+                <section class="theme-section theme-behavior-section"><h2>介面行為</h2><div class="theme-behavior-options">
+                    <label class="theme-toggle-row">
+                        <span>
+                            <strong>固定頁首</strong>
+                            <small>捲動時仍固定顯示頁首。</small>
+                        </span>
+                        <input type="checkbox" checked data-theme-toggle />
+                        <i aria-hidden="true"></i>
+                    </label>
+                    <label class="theme-toggle-row">
+                        <span>
+                            <strong>卡片陰影</strong>
+                            <small>為卡片與彈窗增加陰影效果。</small>
+                        </span>
+                        <input type="checkbox" checked data-theme-toggle />
+                        <i aria-hidden="true"></i>
+                    </label>
+                    <label class="theme-toggle-row">
+                        <span>
+                            <strong>動畫效果</strong>
+                            <small>啟用平滑過渡與互動動效。</small>
+                        </span>
+                        <input type="checkbox" checked data-theme-toggle />
+                        <i aria-hidden="true"></i>
+                    </label>
+                </div></section>
+            </div>
+        </form>
+
+        <aside class="theme-preview-panel" id="theme-feature-preview" data-theme-preview aria-label="主題預覽，使用範例資料">
+            <div class="theme-demo-bar"><span class="theme-demo-badge">主題預覽</span><button class="ghost-button theme-preview-refresh" type="button" data-theme-preview-refresh aria-label="重新預覽"><span class="theme-icon refresh" aria-hidden="true"></span><span>重新預覽</span></button></div>
+            <div class="theme-demo-grid theme-sample-shell">
+                <fieldset class="theme-demo-group theme-demo-dashboard">
+                    <legend>儀表板與圓餅圖</legend>
+                    @{
+                        var demoMetrics = new[] {
+                            new { Key = "total", Label = "總人數", Count = 56, Icon = "people", Color = "var(--theme-accent)" },
+                            new { Key = "reserved", Label = "已預約", Count = 24, Icon = "people", Color = "var(--app-status-reserved, #4daee9)" },
+                            new { Key = "registered", Label = "已掛號", Count = 12, Icon = "success", Color = "var(--app-status-registered, #a67c52)" },
+                            new { Key = "arrived", Label = "已報到", Count = 8, Icon = "success", Color = "var(--app-status-arrived, #20b979)" },
+                            new { Key = "checking", Label = "檢查中", Count = 6, Icon = "pending", Color = "var(--app-status-checking, #f59e0b)" },
+                            new { Key = "slot", Label = "佔名額", Count = 4, Icon = "pending", Color = "var(--app-status-slot, #7086ad)" },
+                            new { Key = "cancelled", Label = "已取消", Count = 2, Icon = "danger", Color = "var(--app-status-cancelled, #ef4444)" }
+                        };
+                    }
+                    <div class="theme-demo-chart-row">
+                        <button type="button" class="theme-demo-pie" data-theme-demo-chart-toggle aria-label="放大圓餅圖並查看各狀態統計，共 56 人" aria-expanded="false" aria-controls="theme-demo-chart-details"><span class="pie-reserved">42.9%</span><span class="pie-registered">21.4%</span></button>
+                        @for (var i = 1; i < demoMetrics.Length; i++)
+                        {
+                            var item = demoMetrics[i];
+                            var percent = (100m * item.Count / 56m).ToString("0.#");
+                            <span class="theme-demo-chart-corner theme-demo-chart-corner-@(i - 1)"><span>@item.Label</span><i style="background: @item.Color" aria-hidden="true"></i><span>：@percent%</span></span>
+                        }
+                    </div>
+                    <div id="theme-demo-chart-details" class="theme-demo-chart-details" data-theme-demo-chart-details role="region" aria-label="範例狀態統計" hidden>
+                        <div class="theme-demo-chart-details-head"><strong>總人數：56 人</strong><button type="button" data-theme-demo-chart-close aria-label="收合統計明細">×</button></div>
+                        <table class="theme-sample-table"><thead><tr><th scope="col">狀態</th><th scope="col">人數</th><th scope="col">比例</th></tr></thead><tbody>
+                            @foreach (var metric in demoMetrics.Skip(1))
+                            {
+                                <tr><th scope="row"><i class="theme-demo-status-dot" style="background: @metric.Color" aria-hidden="true"></i>@metric.Label</th><td>@metric.Count 人</td><td>@((100m * metric.Count / 56m).ToString("0.#"))%</td></tr>
+                            }
+                        </tbody></table>
+                    </div>
+                    <div class="theme-demo-dashboard-metrics">
+                        @foreach (var metric in demoMetrics)
+                        {
+                            <div class="theme-demo-metric" data-demo-metric="@metric.Key" style="--demo-state-color: @metric.Color">
+                                <span class="metric-icon @metric.Icon" aria-hidden="true"></span>
+                                <p>@metric.Label</p>
+                                <div class="theme-demo-metric-count"><strong>@metric.Count</strong><small>(@((100m * metric.Count / 56m).ToString("0.#"))%)</small></div>
+                            </div>
+                        }
+                    </div>
+                </fieldset>
+                <fieldset class="theme-demo-group theme-demo-company">
+                    <legend>DataGrid 與 Page List · 公司維護</legend>
+                    <div class="theme-demo-actions"><span class="theme-demo-button primary">＋ 新增公司</span><span class="theme-demo-button danger">批次刪除</span><span class="theme-demo-button success">匯出 Excel</span></div>
+                    <div class="theme-demo-search"><span class="theme-demo-input">⌕ 搜尋公司名稱、編號、聯絡人…</span><span class="theme-demo-button primary">查詢</span></div>
+                    <div class="theme-sample-table-wrap"><table class="theme-sample-table" data-theme-demo-datagrid aria-label="公司資料表格範例"><thead><tr><th scope="col">選取</th><th scope="col">公司名稱</th><th scope="col">聯絡人</th><th scope="col">狀態</th></tr></thead><tbody>
+                        <tr class="is-selected"><td><span class="theme-demo-checkbox checked" aria-hidden="true">✓</span></td><td>範例公司 A</td><td>範例 01</td><td><span class="theme-status complete">啟用</span></td></tr>
+                        <tr><td><span class="theme-demo-checkbox" aria-hidden="true"></span></td><td>範例公司 B</td><td>範例 02</td><td><span class="theme-status complete">啟用</span></td></tr>
+                    </tbody></table></div>
+                    <div class="theme-sample-pagination theme-demo-page-list">
+                        <span data-theme-demo-page-summary>第 1–2 筆，共 6 筆</span>
+                        <label>每頁 <select data-theme-demo-page-size aria-label="範例每頁筆數"><option value="2">2 筆</option><option value="3">3 筆</option><option value="6">6 筆</option></select></label>
+                        <nav aria-label="Page List 範例分頁" data-theme-demo-pages></nav>
+                    </div>
+                </fieldset>
+                <fieldset class="theme-demo-group theme-demo-appointment">
+                    <legend>預約管理</legend>
+                    <div class="theme-demo-search"><span class="theme-demo-input"><small>預約日期</small>2026/10/05</span><span class="theme-demo-input"><small>狀態</small>全部 ▾</span><span class="theme-demo-button primary">查詢</span></div>
+                    <div class="theme-sample-table-wrap"><table class="theme-sample-table"><thead><tr><th scope="col">受檢者</th><th scope="col">預約時段</th><th scope="col">健檢方案</th><th scope="col">狀態</th></tr></thead><tbody>
+                        <tr class="is-selected"><td>範例 01</td><td>08:30</td><td>一般健檢</td><td><span class="theme-status assigned">已報到</span></td></tr>
+                        <tr><td>範例 02</td><td>09:00</td><td>團體健檢</td><td><span class="theme-status reserved">已預約</span></td></tr>
+                    </tbody></table></div>
+                    <div class="theme-demo-actions theme-demo-bottom-actions"><span class="theme-demo-button primary">＋ 新增預約</span><span class="theme-demo-button">掛號</span><span class="theme-demo-button danger">取消掛號</span></div>
+                </fieldset>
+                <fieldset class="theme-demo-group theme-demo-project">
+                    <legend>頁籤與表單</legend>
+                    <div class="theme-demo-tabs" role="tablist" aria-label="資料頁籤範例">
+                        <button type="button" role="tab" id="theme-demo-tab-basic" aria-selected="true" aria-controls="theme-demo-panel-basic" data-theme-demo-tab="basic">基本資料</button>
+                        <button type="button" role="tab" id="theme-demo-tab-contact" aria-selected="false" aria-controls="theme-demo-panel-contact" tabindex="-1" data-theme-demo-tab="contact">聯絡資訊</button>
+                        <button type="button" role="tab" id="theme-demo-tab-notes" aria-selected="false" aria-controls="theme-demo-panel-notes" tabindex="-1" data-theme-demo-tab="notes">備註</button>
+                    </div>
+                    <div role="tabpanel" id="theme-demo-panel-basic" aria-labelledby="theme-demo-tab-basic" data-theme-demo-tab-panel="basic" tabindex="0">
+                    <div class="theme-demo-fields"><div><span>專案名稱 <b>*</b></span><span class="theme-demo-input">年度團體健檢</span></div><div><span>受檢單位</span><span class="theme-demo-input">範例公司 A ▾</span></div><div><span>生效日期</span><span class="theme-demo-input">2026/10/05</span></div><div><span>專案類別</span><span class="theme-demo-input">團體健檢 ▾</span></div></div>
+                    <div class="theme-demo-actions theme-demo-bottom-actions"><span class="theme-demo-button">取消</span><span class="theme-demo-button primary">下一步 →</span></div>
+                    </div>
+                    <div role="tabpanel" id="theme-demo-panel-contact" aria-labelledby="theme-demo-tab-contact" data-theme-demo-tab-panel="contact" tabindex="0" hidden>
+                        <div class="theme-demo-fields"><div><span>聯絡人</span><span class="theme-demo-input">範例聯絡人</span></div><div><span>聯絡方式</span><span class="theme-demo-input">分機 1234</span></div><div><span>受檢單位</span><span class="theme-demo-input">範例公司 A</span></div><div><span>聯絡時間</span><span class="theme-demo-input">平日 09:00–17:00</span></div></div>
+                    </div>
+                    <div role="tabpanel" id="theme-demo-panel-notes" aria-labelledby="theme-demo-tab-notes" data-theme-demo-tab-panel="notes" tabindex="0" hidden>
+                        <div class="theme-demo-note-field"><span>備註內容</span><div class="theme-demo-input">這是備註欄位的示意內容，可查看字體、顏色及圓角的套用效果。</div></div>
+                    </div>
+                </fieldset>
+                <fieldset class="theme-demo-group theme-demo-account">
+                    <legend>帳目查詢與金額字體</legend>
+                    <div class="theme-demo-search"><span class="theme-demo-input"><small>預約日期</small>2026/10/01–2026/10/05</span><span class="theme-demo-button primary">查詢</span></div>
+                    <div class="theme-sample-table-wrap">
+                        <table class="theme-sample-table theme-demo-account-table" aria-label="帳目金額配色預覽，使用範例資料">
+                            <thead><tr><th scope="col">組套名稱</th><th scope="col">總金額</th><th scope="col" class="theme-demo-receivable">應收金額</th><th scope="col">優待金額</th><th scope="col">記帳金額</th><th scope="col">轉欠金額</th></tr></thead>
+                            <tbody>
+                                <tr><td>一般健檢</td><td>$6,000</td><td class="theme-demo-receivable">$4,500</td><td>−$500</td><td>−$1,000</td><td>$0</td></tr>
+                                <tr><td>進階健檢</td><td>$12,000</td><td class="theme-demo-receivable">$9,000</td><td>−$1,000</td><td>−$1,500</td><td>−$500</td></tr>
+                            </tbody>
+                            <tfoot><tr><th scope="row">總計</th><td>$18,000</td><td class="theme-demo-receivable">$13,500</td><td>−$1,500</td><td>−$2,500</td><td>−$500</td></tr></tfoot>
+                        </table>
+                    </div>
+                    <p class="theme-demo-account-note">移入或點選資料列，亦可用上下鍵切換，預覽光棒效果。應收固定紅色，三項扣款同色；按套用後使用此配色。</p>
+                </fieldset>
+            </div>
+            <div class="theme-preview-summary"><span class="theme-preview-summary-dot" aria-hidden="true"></span><span data-theme-preview-summary>調整設定，即時查看樣式效果。</span></div>
+        </aside>
+    </div>
+
+    <footer class="theme-settings-footer">
+        <button class="ghost-button theme-reset-button" type="button" data-theme-reset>
+            <span class="theme-icon reset" aria-hidden="true"></span>
+            <span>還原預設</span>
+        </button>
+        <div class="theme-footer-actions">
+            <span class="theme-save-state" data-theme-save-state aria-live="polite"></span>
+            <a class="ghost-button" asp-controller="UserRole" asp-action="SystemSettings">取消</a>
+            <button class="primary-button" type="button" data-theme-apply>
+                <span class="theme-icon save" aria-hidden="true"></span>
+                <span>套用</span>
+            </button>
+        </div>
+    </footer>
+</section>
+
+<div class="theme-applied-notice" data-theme-applied-notice hidden>
+    <span class="theme-applied-icon" aria-hidden="true">
+        <svg viewBox="0 0 40 40" fill="none">
+            <defs>
+                <linearGradient id="theme-applied-palette" x1="7" y1="8" x2="30" y2="34" gradientUnits="userSpaceOnUse"><stop stop-color="#fff" /><stop offset="1" stop-color="#dce8ff" /></linearGradient>
+                <linearGradient id="theme-applied-sparkle" x1="26" y1="4" x2="35" y2="17" gradientUnits="userSpaceOnUse"><stop stop-color="#b8a1ff" /><stop offset="1" stop-color="currentColor" /></linearGradient>
+            </defs>
+            <path d="M20 8C12.3 8 6 13.8 6 21.1 6 28.2 12.1 34 19.6 34h1.2c2.8 0 4.2-2.7 2.7-4.8l-.8-1.1c-.8-1.2 0-2.8 1.5-2.8h3c4.2 0 7.1-2.5 7.1-6.2 0-1.1-.3-2.1-.8-3" fill="url(#theme-applied-palette)" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            <circle cx="12.2" cy="20.7" r="2.4" fill="#50c7d7" />
+            <circle cx="16.5" cy="14.4" r="2.4" fill="#8d79ee" />
+            <circle cx="24" cy="14.7" r="2.4" fill="#f6bd58" />
+            <circle cx="13.7" cy="27.6" r="2.4" fill="#f18daf" />
+            <path d="m31 3 1.7 4.7L37.4 9.4l-4.7 1.7L31 15.8l-1.7-4.7-4.7-1.7 4.7-1.7L31 3Z" fill="url(#theme-applied-sparkle)" stroke="#fff" stroke-width=".8" stroke-linejoin="round" />
+            <path d="m33.8 28 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" fill="currentColor" opacity=".6" />
+        </svg>
+    </span>
+    <span class="theme-applied-orbit" aria-hidden="true"></span>
+</div>
+<span class="theme-applied-announcement" data-theme-applied-announcement role="status" aria-live="polite"></span>
+<dialog class="theme-confirm-dialog" data-theme-confirm aria-labelledby="theme-confirm-title">
+    <span class="theme-confirm-symbol" aria-hidden="true">↺</span>
+    <h2 id="theme-confirm-title">要改回先前設定嗎？</h2>
+    <p>確認目前的佈景、字體與顏色是否適合。</p>
+    <p class="theme-confirm-countdown"><span data-theme-confirm-seconds>15</span> 秒後自動還原先前設定</p>
+    <div class="theme-confirm-actions"><button type="button" class="ghost-button" data-theme-confirm-revert>改回先前設定</button><button type="button" class="primary-button" data-theme-confirm-keep>保留新設定</button></div>
+</dialog>
+<script src="~/js/theme-confirm.js" asp-append-version="true"></script>
+<link rel="stylesheet" href="~/css/theme-applied-notice.css" asp-append-version="true" />
+<script src="~/js/theme-applied-notice.js" asp-append-version="true"></script>
+<script src="~/js/theme-color-wheel.js" asp-append-version="true"></script>
+<script src="~/js/theme-demo-preview.js" asp-append-version="true"></script>
+<script>
+    (function () {
+        const page = document.querySelector("[data-theme-settings]");
+
+        if (!page) {
+            return;
+        }
+
+        const preview = page.querySelector("[data-theme-preview]");
+        const saveState = page.querySelector("[data-theme-save-state]");
+        const themeForm = page.querySelector("[data-theme-form]");
+        const applyButton = page.querySelector("[data-theme-apply]");
+        const storageKey = "healthsys:theme-settings";
+        let isRestoringTheme = false;
+        const defaults = {
+            color: "@Model.DefaultColor",
+            radius: "@Model.DefaultRadius",
+            rowHeight: "@Model.DefaultRowHeight",
+            mode: "@Model.DefaultMode",
+            density: "@Model.DefaultDensity",
+            font: "@Model.DefaultFont",
+            textColor: "",
+            zoom: "100%（預設）",
+            fixedHeader: true,
+            cardShadow: true,
+            motion: true
+        };
+        let selectedColor = defaults.color;
+
+        function selectColor(color) {
+            selectedColor = /^#[0-9a-f]{6}$/i.test(color || "") ? color.toLowerCase() : defaults.color;
+            const swatches = Array.from(page.querySelectorAll("[data-theme-color]"));
+            setActive(swatches, swatches.find(button => button.dataset.themeColor === selectedColor));
+            colorPicker?.setColor(selectedColor);
+        }
+
+        function setActive(buttons, activeButton) {
+            buttons.forEach((button) => {
+                const selected = button === activeButton;
+                button.classList.toggle("is-selected", selected);
+
+                if (button.hasAttribute("aria-pressed")) {
+                    button.setAttribute("aria-pressed", String(selected));
+                }
+            });
+        }
+
+        function setSavedState(message) {
+            if (!saveState) {
+                return;
+            }
+
+            saveState.textContent = message || "";
+        }
+
+        function applyMode(mode) {
+            const effectiveMode = mode === "system"
+                ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : mode;
+            page.dataset.themeMode = mode;
+            preview?.classList.toggle("is-preview-dark", effectiveMode === "dark");
+            preview?.classList.toggle("is-preview-gray", mode === "gray");
+            preview?.classList.toggle("is-preview-system", mode === "system");
+        }
+
+        function applyDensity(density) {
+            preview?.setAttribute("data-preview-density", density);
+        }
+
+        function applyFont(font) {
+            preview?.setAttribute("data-preview-font", font);
+            preview?.style.setProperty("--app-font-scale", font === "small" ? "0.9" : font === "large" ? "1.15" : "1");
+        }
+
+        function updateRangeOutput(input, output) {
+            if (!input || !output) {
+                return;
+            }
+
+            output.textContent = `${input.value} px`;
+        }
+
+        function readStoredTheme() {
+            try {
+                return JSON.parse(localStorage.getItem(storageKey) || "null");
+            } catch {
+                return null;
+            }
+        }
+
+        function collectThemeSettings() {
+            return {
+                mode: page.querySelector("[data-theme-mode-choice]:checked")?.value || defaults.mode,
+                color: selectedColor,
+                radius: Number.parseInt(radiusInput?.value || defaults.radius, 10),
+                rowHeight: Number.parseInt(rowInput?.value || defaults.rowHeight, 10),
+                density: page.querySelector("[data-theme-density].is-selected")?.dataset.themeDensity || defaults.density,
+                font: page.querySelector("[data-theme-font].is-selected")?.dataset.themeFont || defaults.font,
+                textColor: page.querySelector("[data-theme-text-auto]")?.getAttribute("aria-pressed") === "false" ? page.querySelector("[data-theme-text-color]")?.value || "" : "",
+                zoom: page.querySelector("[data-theme-zoom]")?.value || "100%（預設）",
+                fixedHeader: page.querySelectorAll("[data-theme-toggle]")[0]?.checked === true,
+                cardShadow: page.querySelectorAll("[data-theme-toggle]")[1]?.checked === true,
+                motion: page.querySelectorAll("[data-theme-toggle]")[2]?.checked === true
+            };
+        }
+
+        let previewFrame = 0;
+        function schedulePreview() {
+            if (isRestoringTheme || previewFrame) return;
+            if (!window.requestAnimationFrame) { updatePreview(); return; }
+            previewFrame = window.requestAnimationFrame(function () {
+                previewFrame = 0;
+                updatePreview();
+            });
+        }
+
+        function updatePreview() {
+            if (isRestoringTheme) return;
+            if (previewFrame) {
+                window.cancelAnimationFrame(previewFrame);
+                previewFrame = 0;
+            }
+            const theme = collectThemeSettings();
+            page.querySelectorAll("[data-theme-text-preset]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.themeTextPreset === theme.textColor)));
+            page.style.setProperty("--theme-accent", theme.color);
+            page.style.setProperty("--theme-radius", `${theme.radius}px`);
+            page.style.setProperty("--theme-row-height", `${theme.rowHeight}px`);
+            applyMode(theme.mode);
+            applyDensity(theme.density);
+            applyFont(theme.font);
+            const summary = page.querySelector("[data-theme-preview-summary]");
+            if (summary) {
+                const modes = { light: "淺色模式", dark: "深色模式", gray: "灰色模式", simple: "單色模式", system: "跟隨系統" };
+                const fonts = { small: "小字體", medium: "中字體", large: "大字體" };
+                summary.textContent = `${modes[theme.mode]} · 圓角 ${theme.radius}px · 列高 ${theme.rowHeight}px · ${fonts[theme.font]}`;
+            }
+            window.healthSysApplyTheme?.(theme);
+        }
+
+        function createApplyFormData(theme) {
+            const formData = new FormData(themeForm || undefined);
+
+            formData.set("ThemeMode", theme.mode);
+            formData.set("AccentColor", theme.color);
+            formData.set("Radius", String(theme.radius));
+            formData.set("RowHeight", String(theme.rowHeight));
+            formData.set("Density", theme.density);
+            formData.set("FontSize", theme.font);
+            formData.set("TextColor", theme.textColor);
+            formData.set("PageZoom", theme.zoom);
+            formData.set("FixedHeader", String(theme.fixedHeader));
+            formData.set("CardShadow", String(theme.cardShadow));
+            formData.set("Motion", String(theme.motion));
+
+            return formData;
+        }
+
+        function applyPreviewTheme(theme) {
+            isRestoringTheme = true;
+            const textColorInput = page.querySelector("[data-theme-text-color]");
+            const textColorAuto = page.querySelector("[data-theme-text-auto]");
+            const hasTextColor = /^#[0-9a-f]{6}$/i.test(theme.textColor || "");
+            if (textColorInput) textColorInput.value = hasTextColor ? theme.textColor : "#263850";
+            textColorAuto?.setAttribute("aria-pressed", String(!hasTextColor));
+            textColorAuto?.classList.toggle("is-selected", !hasTextColor);
+
+            const modeInput = page.querySelector(`[data-theme-mode-choice][value="${theme.mode || defaults.mode}"]`);
+            const densityButton = page.querySelector(`[data-theme-density="${theme.density || defaults.density}"]`);
+            const fontButton = page.querySelector(`[data-theme-font="${theme.font || defaults.font}"]`);
+            const zoomSelect = page.querySelector("[data-theme-zoom]");
+            const toggles = page.querySelectorAll("[data-theme-toggle]");
+
+            selectColor(theme.color || defaults.color);
+
+            if (modeInput) {
+                modeInput.checked = true;
+                modeInput.dispatchEvent(new Event("change"));
+            }
+
+            if (radiusInput && Number.isFinite(Number(theme.radius))) {
+                radiusInput.value = String(theme.radius);
+                radiusInput.dispatchEvent(new Event("input"));
+            }
+
+            if (rowInput && Number.isFinite(Number(theme.rowHeight))) {
+                rowInput.value = String(theme.rowHeight);
+                rowInput.dispatchEvent(new Event("input"));
+            }
+
+            densityButton?.click();
+            fontButton?.click();
+
+            if (zoomSelect && theme.zoom) {
+                zoomSelect.value = theme.zoom;
+            }
+
+            if (toggles.length >= 3) {
+                toggles[0].checked = theme.fixedHeader !== false;
+                toggles[1].checked = theme.cardShadow !== false;
+                toggles[2].checked = theme.motion !== false;
+            }
+
+            isRestoringTheme = false;
+            updatePreview();
+        }
+
+        async function applySelectedTheme() {
+            if (themeForm?.reportValidity && !themeForm.reportValidity()) return;
+            updatePreview();
+            const applyUrl = page.dataset.themeApplyUrl || "";
+            const selectedTheme = collectThemeSettings();
+
+            if (!applyUrl) {
+                return;
+            }
+
+            if (applyButton) {
+                applyButton.disabled = true;
+            }
+
+            setSavedState("套用中...");
+
+            try {
+                const response = await fetch(applyUrl, {
+                    method: "post",
+                    body: createApplyFormData(selectedTheme),
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+
+                if (!response.ok) {
+                    setSavedState("套用失敗");
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (result?.applied !== true || !result.theme) {
+                    setSavedState("套用失敗");
+                    return;
+                }
+
+                const previousTheme = readStoredTheme() || Object.assign({}, defaults);
+                localStorage.setItem(storageKey, JSON.stringify(result.theme));
+                window.healthSysApplyTheme?.(result.theme);
+                setSavedState("");
+                window.healthSysShowThemeApplied?.();
+                window.healthSysConfirmThemeChange?.(() => {
+                    localStorage.setItem(storageKey, JSON.stringify(previousTheme));
+                    applyPreviewTheme(previousTheme);
+                    setSavedState("");
+                });
+            } catch {
+                setSavedState("套用失敗");
+            } finally {
+                if (applyButton) {
+                    applyButton.disabled = false;
+                }
+            }
+        }
+
+        function applyDefaults() {
+            applyPreviewTheme(defaults);
+        }
+
+        page.querySelectorAll("[data-theme-mode-choice]").forEach((input) => {
+            input.addEventListener("change", function () {
+                const label = input.closest("[data-theme-mode-option]");
+                setActive(Array.from(page.querySelectorAll("[data-theme-mode-option]")), label);
+                applyMode(input.value);
+                updatePreview();
+                setSavedState("");
+            });
+        });
+
+        page.querySelectorAll("[data-theme-color]").forEach((button) => {
+            button.addEventListener("click", function () {
+                selectColor(button.dataset.themeColor || defaults.color);
+                updatePreview();
+
+                setSavedState("");
+            });
+        });
+
+        page.querySelectorAll("[data-theme-density]").forEach((button) => {
+            button.addEventListener("click", function () {
+                setActive(Array.from(page.querySelectorAll("[data-theme-density]")), button);
+                applyDensity(button.dataset.themeDensity || defaults.density);
+                updatePreview();
+                setSavedState("");
+            });
+        });
+
+        page.querySelectorAll("[data-theme-font]").forEach((button) => {
+            button.addEventListener("click", function () {
+                setActive(Array.from(page.querySelectorAll("[data-theme-font]")), button);
+                applyFont(button.dataset.themeFont || defaults.font);
+                updatePreview();
+                setSavedState("");
+            });
+        });
+
+        const radiusInput = page.querySelector("[data-theme-radius]");
+        const radiusOutput = page.querySelector("[data-theme-radius-output]");
+        const rowInput = page.querySelector("[data-theme-row-height]");
+        const rowOutput = page.querySelector("[data-theme-row-output]");
+
+        radiusInput?.addEventListener("input", function () {
+            page.style.setProperty("--theme-radius", `${radiusInput.value}px`);
+            updateRangeOutput(radiusInput, radiusOutput);
+            schedulePreview();
+            setSavedState("");
+        });
+
+        rowInput?.addEventListener("input", function () {
+            page.style.setProperty("--theme-row-height", `${rowInput.value}px`);
+            updateRangeOutput(rowInput, rowOutput);
+            schedulePreview();
+            setSavedState("");
+        });
+
+        page.querySelector("[data-theme-reset]")?.addEventListener("click", function () {
+            applyDefaults();
+            setSavedState("已還原預設，按套用生效");
+        });
+
+        applyButton?.addEventListener("click", applySelectedTheme);
+        page.querySelectorAll("[data-theme-text-preset]").forEach(button => button.addEventListener("click", function () {
+            const input = page.querySelector("[data-theme-text-color]");
+            if (input) { input.value = button.dataset.themeTextPreset; input.dispatchEvent(new Event("input")); }
+        }));
+        page.querySelector("[data-theme-text-color]")?.addEventListener("input", function () {
+            const automatic = page.querySelector("[data-theme-text-auto]");
+            automatic?.setAttribute("aria-pressed", "false");
+            automatic?.classList.remove("is-selected");
+            schedulePreview();
+            setSavedState("");
+        });
+        page.querySelector("[data-theme-text-auto]")?.addEventListener("click", function () {
+            this.setAttribute("aria-pressed", "true");
+            this.classList.add("is-selected");
+            updatePreview();
+            setSavedState("");
+        });
+
+        page.querySelector("[data-theme-preview-refresh]")?.addEventListener("click", function () {
+            preview?.classList.add("is-refreshing");
+
+            window.setTimeout(function () {
+                preview?.classList.remove("is-refreshing");
+            }, 260);
+        });
+
+        page.querySelector("[data-theme-zoom]")?.addEventListener("change", function () {
+            updatePreview();
+            setSavedState("");
+        });
+
+        page.querySelectorAll("[data-theme-toggle]").forEach((toggle) => {
+            toggle.addEventListener("change", function () {
+                updatePreview();
+                setSavedState("");
+            });
+        });
+
+        const colorPicker = window.healthSysCreateColorPicker?.(page, function (color) {
+            selectColor(color);
+            schedulePreview();
+            setSavedState("");
+        });
+        applyPreviewTheme(Object.assign({}, defaults, readStoredTheme() || {}));
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+            if (collectThemeSettings().mode === "system") updatePreview();
+        });
+        setSavedState("");
+    })();
+</script>
+
+
+
+
+
+

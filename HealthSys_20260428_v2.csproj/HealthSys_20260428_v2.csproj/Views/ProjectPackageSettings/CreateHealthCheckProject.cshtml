@@ -1,0 +1,834 @@
+@model HealthSys_20260428_v2.csproj.Models.HealthProjectWizardViewModel
+
+@{
+    var pageTitle = Model.IsEditMode ? "編輯健檢專案" : "建立健檢專案";
+    var routeMode = Model.IsEditMode ? "edit" : null;
+    var routeCode = Model.IsEditMode ? Model.Project.Code : null;
+    var routeProjectNo = Model.IsEditMode ? null : Model.Project.Code;
+    var routeIsPastHistory = Model.Project.IsPastHistoryEnabled ? "Y" : "N";
+    var routeIsOralCheck = Model.Project.IsOralCheckEnabled ? "Y" : "N";
+    var routeIsOnlineQuestion = Model.Project.IsOnlineQuestionEnabled ? "Y" : "N";
+    var currentRocYear = DateTime.Today.Year - 1911;
+    var currentRocYearText = currentRocYear.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    string ToRocYearText(string? value)
+    {
+        var yearText = value?.Trim() ?? "";
+
+        if (!int.TryParse(yearText, out var parsedYear))
+        {
+            return yearText;
+        }
+
+        var rocYear = parsedYear >= 1912 ? parsedYear - 1911 : parsedYear;
+
+        return rocYear.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    string[] MergeSelectedOption(string? selectedValue, params string[] values)
+    {
+        var selected = selectedValue?.Trim() ?? "";
+
+        if (string.IsNullOrWhiteSpace(selected) || values.Contains(selected, StringComparer.Ordinal))
+        {
+            return values;
+        }
+
+        return new[] { selected }.Concat(values).ToArray();
+    }
+    var projectYearOptions = Enumerable.Range(0, 6)
+        .Select(offset => (currentRocYear - offset).ToString(System.Globalization.CultureInfo.InvariantCulture))
+        .ToArray();
+    var selectedProjectYear = ToRocYearText(Model.Project.Year);
+
+    if (string.IsNullOrWhiteSpace(selectedProjectYear))
+    {
+        selectedProjectYear = currentRocYearText;
+    }
+
+    if (!projectYearOptions.Contains(selectedProjectYear, StringComparer.Ordinal))
+    {
+        projectYearOptions = new[] { selectedProjectYear }.Concat(projectYearOptions).ToArray();
+    }
+
+    var customerLookupYears = Model.CustomerLookupItems
+        .Select(item => item.CheckYear)
+        .Where(year => !string.IsNullOrWhiteSpace(year))
+        .Distinct()
+        .OrderByDescending(year => year)
+        .ToArray();
+
+    var compareValOptions = MergeSelectedOption(Model.Project.Category, "成人一般", "高階健檢");
+    var flowSheetOptions = MergeSelectedOption(Model.Project.FlowSheet, "一般健檢流程單", "高階健檢流程單");
+
+    ViewData["Title"] = pageTitle;
+}
+
+<section class="project-wizard-page" aria-label="@pageTitle" data-project-wizard-create>
+    <header class="project-wizard-heading">
+        <p>@(Model.IsEditMode ? "已帶入既有專案資料，請調整內容後進入下一步。" : "請先填寫專案基本資料，之後可在下一步加入組套醫令。")</p>
+    </header>
+
+    <nav class="project-wizard-stepper compact" aria-label="@(Model.IsEditMode ? "編輯專案步驟" : "建立專案步驟")">
+        @foreach (var step in Model.Steps)
+        {
+            <div class="project-wizard-step @step.State">
+                <span class="project-wizard-step-number">@step.Number</span>
+                <strong>@step.Title</strong>
+            </div>
+        }
+    </nav>
+
+    <div class="project-wizard-grid">
+        <section class="project-wizard-card project-wizard-form-card" aria-labelledby="project-basic-title">
+            <h2 id="project-basic-title">專案基本資料</h2>
+
+            <div class="project-wizard-form-grid">
+                <label class="project-wizard-field project-name-field">
+                    <span>專案名稱 <em>*</em></span>
+                    <input type="text" value="@Model.Project.Name" aria-label="專案名稱" data-project-field="projectName" />
+                </label>
+                <label class="project-wizard-field is-compact project-company-code-field">
+                    <span>公司編號 <em>*</em></span>
+                    <input type="text" value="@Model.Project.CustomerNo" aria-label="公司編號" readonly data-customer-no-input data-project-field="customerNo" />
+                </label>
+                <div class="project-wizard-field project-client-unit-field">
+                    <span>受檢單位 <em>*</em></span>
+                    <div class="project-customer-lookup-control">
+                        <select aria-label="受檢單位" data-customer-unit-input data-project-field="clientUnit">
+                            @foreach (var option in Model.ClientUnitOptions)
+                            {
+                                <option value="@option.Value" selected="@option.IsSelected">@option.Text</option>
+                            }
+                        </select>
+                        <button class="project-customer-lookup-button" type="button" data-open-customer-lookup>查詢</button>
+                        <a class="project-customer-lookup-button project-customer-add-button" asp-controller="CustomerMaintenance" asp-action="CustomerMaintenance">新增</a>
+                    </div>
+                </div>
+                <label class="project-wizard-field is-compact project-year-field">
+                    <span>體檢年度 <em>*</em></span>
+                    <select aria-label="體檢年度" data-project-year-select data-project-field="year">
+                        @foreach (var year in projectYearOptions)
+                        {
+                            <option value="@year" selected="@(year == selectedProjectYear)">@year</option>
+                        }
+                    </select>
+                </label>
+                <label class="project-wizard-field date-range">
+                    <span class="project-wizard-field-label">體檢 開始/結束 <em>*</em></span>
+                    <span class="project-date-range-control">
+                        <input type="text" value="@Model.Project.CheckStartDate" aria-label="體檢開始日期" data-project-field="checkStartDate" />
+                        <i aria-hidden="true">~</i>
+                        <input type="text" value="@Model.Project.CheckEndDate" aria-label="體檢結束日期" data-project-field="checkEndDate" />
+                    </span>
+                </label>
+                <label class="project-wizard-field">
+                    <span>比對值</span>
+                    <select aria-label="比對值" data-project-field="compareVal">
+                        <option value="" selected="@string.IsNullOrWhiteSpace(Model.Project.Category)">請選擇比對值</option>
+                        @foreach (var option in compareValOptions)
+                        {
+                            <option value="@option" selected="@(Model.Project.Category == option)">@option</option>
+                        }
+                    </select>
+                </label>
+                <label class="project-wizard-field">
+                    <span>流程單</span>
+                    <select aria-label="流程單" data-project-field="flowName">
+                        <option value="" selected="@string.IsNullOrWhiteSpace(Model.Project.FlowSheet)">請選擇流程單</option>
+                        @foreach (var option in flowSheetOptions)
+                        {
+                            <option value="@option" selected="@(Model.Project.FlowSheet == option)">@option</option>
+                        }
+                    </select>
+                </label>
+                <label class="project-wizard-field">
+                    <span>預設執行區域</span>
+                    <select aria-label="預設執行區域" data-project-field="defaultArea">
+                        @foreach (var option in Model.DefaultAreaOptions)
+                        {
+                            <option value="@option.Value" selected="@option.IsSelected">@option.Text</option>
+                        }
+                    </select>
+                </label>
+                <label class="project-wizard-field notes">
+                    <span>備註</span>
+                    <textarea maxlength="200" aria-label="備註" data-project-field="notes">@Model.Project.Notes</textarea>
+                </label>
+            </div>
+
+            <div class="project-wizard-checks">
+                <label><input type="checkbox" checked="@Model.Project.IsPastHistoryEnabled" data-project-flag="isPastHistory" /> 過去病史</label>
+                <label><input type="checkbox" checked="@Model.Project.IsOralCheckEnabled" data-project-flag="isOralCheck" /> 口腔檢查</label>
+
+            </div>
+
+        </section>
+
+        <aside class="project-wizard-side">
+            <section class="project-wizard-card">
+                <h2>專案摘要</h2>
+                <dl class="project-wizard-summary-list">
+                    <div>
+                        <dt>專案編號</dt>
+                        <dd>@(Model.IsEditMode ? Model.Project.Code : "儲存後自動產生")</dd>
+                    </div>
+                    <div>
+                        <dt>建立者</dt>
+                        <dd>@Model.Project.Owner</dd>
+                    </div>
+                    <div>
+                        <dt>建立日期</dt>
+                        <dd>@Model.Project.CreatedAt</dd>
+                    </div>
+                </dl>
+            </section>
+            <section class="project-wizard-note">
+                <strong>@(Model.IsEditMode ? "此專案已建立，可更新基本資料並同步後續組套設定。" : "儲存草稿後，系統將自動產生專案編號，並可於專案管理中進行後續編輯與設定。")</strong>
+            </section>
+        </aside>
+    </div>
+
+    <footer class="project-wizard-footer">
+        <a class="ghost-button" asp-controller="ProjectPackageSettings" asp-action="HealthCheckProjectManagement">取消</a>
+        <button class="ghost-button" type="button">
+            <span class="project-save-icon" aria-hidden="true"></span>
+            <span>@(Model.IsEditMode ? "儲存修改" : "儲存草稿")</span>
+        </button>
+        <a class="primary-button" asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProjectOrders" asp-route-mode="@routeMode" asp-route-code="@routeCode" asp-route-projectNo="@routeProjectNo" asp-route-isPastHistory="@routeIsPastHistory" asp-route-isOralCheck="@routeIsOralCheck" asp-route-isOnlineQuestion="@routeIsOnlineQuestion" data-project-next-link>
+            <span>下一步：加入組套醫令</span>
+            <span aria-hidden="true">›</span>
+        </a>
+    </footer>
+</section>
+
+<div class="project-lookup-modal project-customer-lookup-modal" data-customer-lookup-modal hidden>
+    <button class="patient-lookup-backdrop" type="button" data-close-customer-lookup aria-label="關閉受檢資料查詢視窗"></button>
+    <div class="project-lookup-shell" role="dialog" aria-modal="true" aria-labelledby="customer-lookup-title">
+        <header class="project-lookup-header">
+            <h2 id="customer-lookup-title">受檢資料查詢</h2>
+            <button class="project-lookup-close" type="button" data-close-customer-lookup aria-label="關閉受檢資料查詢視窗">×</button>
+        </header>
+        <div class="project-lookup-body">
+            <div class="project-lookup-filters project-customer-lookup-filters" aria-label="受檢資料搜尋條件">
+                <label>
+                    <span>年度</span>
+                    <input type="search" list="customer-lookup-years" data-customer-filter="year" />
+                    <datalist id="customer-lookup-years">
+                        @foreach (var year in customerLookupYears)
+                        {
+                            <option value="@year"></option>
+                        }
+                    </datalist>
+                </label>
+                <label>
+                    <span>受檢名稱</span>
+                    <input type="search" data-customer-filter="name" />
+                </label>
+            </div>
+            <table class="project-lookup-table project-customer-lookup-table">
+                <thead>
+                    <tr>
+                        <th>年度</th>
+                        <th>受檢名稱</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var customer in Model.CustomerLookupItems)
+                    {
+                        <tr data-customer-row
+                            data-customer-year="@customer.CheckYear"
+                            data-customer-no="@customer.CustomerNo"
+                            data-customer-name="@customer.CustomerName"
+                            data-customer-unit="@customer.CustUnit">
+                            <td>@customer.CheckYear</td>
+                            <td>@customer.CustomerName</td>
+                            <td><button type="button" data-customer-select>選擇</button></td>
+                        </tr>
+                    }
+                    <tr class="project-lookup-empty" data-customer-empty hidden="@(Model.CustomerLookupItems.Count > 0)">
+                        <td colspan="3">查無符合條件的受檢資料</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="project-lookup-modal project-self-pay-accounting-modal" data-self-pay-accounting-modal hidden>
+    <button class="patient-lookup-backdrop" type="button" data-close-self-pay-accounting-lookup aria-label="關閉優待身分查詢視窗"></button>
+    <div class="project-lookup-shell" role="dialog" aria-modal="true" aria-labelledby="self-pay-accounting-lookup-title">
+        <header class="project-lookup-header project-self-pay-accounting-header">
+            <div class="project-self-pay-accounting-heading">
+                <span class="project-self-pay-accounting-heading-icon" aria-hidden="true">帳</span>
+                <div>
+                    <h2 id="self-pay-accounting-lookup-title">優待身分查詢</h2>
+                    <p>輸入代碼或單位名稱，選擇要套用的記帳單號</p>
+                </div>
+            </div>
+            <button class="project-lookup-close" type="button" data-close-self-pay-accounting-lookup aria-label="關閉優待身分查詢視窗">×</button>
+        </header>
+        <div class="project-lookup-body">
+            <div class="project-lookup-filters project-self-pay-accounting-filters" aria-label="優待身分搜尋條件">
+                <label>
+                    <span>代碼</span>
+                    <input type="search" placeholder="請輸入代碼" autocomplete="off" data-self-pay-accounting-filter="code" />
+                </label>
+                <label>
+                    <span>優待身分</span>
+                    <input type="search" placeholder="請輸入優待身分" autocomplete="off" data-self-pay-accounting-filter="name" />
+                </label>
+                <button class="ghost-button project-self-pay-accounting-clear" type="button" data-clear-self-pay-accounting-filters>清除</button>
+            </div>
+            <div class="suite-category-tabs project-self-pay-accounting-tabs" aria-label="優待身分兩字搜尋" data-self-pay-accounting-tabs></div>
+            <div class="project-lookup-results">
+                <table class="project-lookup-table project-self-pay-accounting-table">
+                    <thead>
+                        <tr>
+                            <th>代碼</th>
+                            <th>優待身分</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var accountingUnit in Model.SelfPayAccountingUnits)
+                        {
+                            <tr data-self-pay-accounting-row
+                                data-accounting-code="@accountingUnit.Code"
+                                data-accounting-name="@accountingUnit.Name"
+                                data-accounting-end-date="@accountingUnit.EndDateValue">
+                                <td>@accountingUnit.Code</td>
+                                <td>@accountingUnit.Name</td>
+                                <td><button type="button" data-self-pay-accounting-select>選擇</button></td>
+                            </tr>
+                        }
+                        <tr class="project-lookup-empty" data-self-pay-accounting-empty hidden="@(Model.SelfPayAccountingUnits.Count > 0)">
+                            <td colspan="3">查無符合條件的優待身分</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const page = document.querySelector("[data-project-wizard-create]");
+
+        if (!page) {
+            return;
+        }
+
+        const sourceQuery = new URLSearchParams(window.location.search);
+        const modal = document.querySelector("[data-customer-lookup-modal]");
+        const selfPayAccountingModal = document.querySelector("[data-self-pay-accounting-modal]");
+        const openButton = page.querySelector("[data-open-customer-lookup]");
+        const openSelfPayAccountingButton = page.querySelector("[data-open-self-pay-accounting-lookup]");
+        const clearSelfPayAccountingSelectionButton = page.querySelector("[data-clear-self-pay-accounting-selection]");
+        const closeButtons = Array.from(document.querySelectorAll("[data-close-customer-lookup]"));
+        const closeSelfPayAccountingButtons = Array.from(document.querySelectorAll("[data-close-self-pay-accounting-lookup]"));
+        const customerNoInput = page.querySelector("[data-customer-no-input]");
+        const customerUnitInput = page.querySelector("[data-customer-unit-input]");
+        const selfPayAccountingDisplay = page.querySelector("[data-self-pay-accounting-display]");
+        const selfPayAccountingValue = page.querySelector("[data-self-pay-accounting-value]");
+        const selfPayAccountingFilters = Array.from(document.querySelectorAll("[data-self-pay-accounting-filter]"));
+        const clearSelfPayAccountingFiltersButton = document.querySelector("[data-clear-self-pay-accounting-filters]");
+
+        const selfPayAccountingTabs = document.querySelector("[data-self-pay-accounting-tabs]");
+        const selfPayAccountingRows = Array.from(document.querySelectorAll("[data-self-pay-accounting-row]"));
+        const selfPayAccountingEmpty = document.querySelector("[data-self-pay-accounting-empty]");
+        const yearSelect = page.querySelector("[data-project-year-select]");
+        const projectNextLink = page.querySelector("[data-project-next-link]");
+        const projectFieldControls = Array.from(page.querySelectorAll("[data-project-field]"));
+        const projectFlagControls = Array.from(page.querySelectorAll("[data-project-flag]"));
+
+
+        const filterInputs = Array.from(document.querySelectorAll("[data-customer-filter]"));
+        const rows = Array.from(document.querySelectorAll("[data-customer-row]"));
+        const emptyRow = document.querySelector("[data-customer-empty]");
+        let previousFocus = null;
+        let previousSelfPayAccountingFocus = null;
+        let activeSelfPayAccountingPrefix = "";
+
+        function normalize(value) {
+            return String(value || "").trim().toUpperCase();
+        }
+
+        function accountingPrefix(row) {
+            const text = String(row && (row.dataset.accountingName || row.dataset.accountingCode) || "").trim();
+
+            return Array.from(text).slice(0, 2).join("");
+        }
+
+        function setSelfPayAccountingUnit(row) {
+            const code = String(row && row.dataset.accountingCode || "").trim();
+            const name = String(row && row.dataset.accountingName || "").trim();
+
+            if (selfPayAccountingDisplay) {
+                selfPayAccountingDisplay.value = code ? (name ? "[" + code + "] " + name : code) : "";
+            }
+
+            if (selfPayAccountingValue) {
+                selfPayAccountingValue.value = code;
+                selfPayAccountingValue.dispatchEvent(new Event("input", { bubbles: true }));
+                selfPayAccountingValue.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+
+            if (clearSelfPayAccountingSelectionButton) {
+                clearSelfPayAccountingSelectionButton.disabled = !code;
+            }
+        }
+
+        function syncSelfPayAccountingFromClientUnit() {
+            const clientUnitName = String(customerUnitInput?.value || "")
+                .trim()
+                .replace(/^\[[^\]]*\]\s*/, "");
+            const clientUnitPrefix = normalize(Array.from(clientUnitName).slice(0, 2).join(""));
+            const likelyRow = clientUnitPrefix
+                ? selfPayAccountingRows
+                    .filter(function (row) {
+                        return normalize(row.dataset.accountingName).includes(clientUnitPrefix);
+                    })
+                    .sort(function (left, right) {
+                        const leftEndDate = /^\d+$/.test(left.dataset.accountingEndDate || "")
+                            ? Number(left.dataset.accountingEndDate)
+                            : Number.NEGATIVE_INFINITY;
+                        const rightEndDate = /^\d+$/.test(right.dataset.accountingEndDate || "")
+                            ? Number(right.dataset.accountingEndDate)
+                            : Number.NEGATIVE_INFINITY;
+
+                        return rightEndDate - leftEndDate
+                            || String(left.dataset.accountingCode || "").localeCompare(String(right.dataset.accountingCode || ""));
+                    })[0] || null
+                : null;
+            const defaultRow = selfPayAccountingRows.find(function (row) {
+                return normalize(row.dataset.accountingCode) === "00";
+            }) || { dataset: { accountingCode: "00", accountingName: "無優待" } };
+
+            setSelfPayAccountingUnit(likelyRow || defaultRow);
+        }
+
+        function renderSelfPayAccountingTabs() {
+            if (!selfPayAccountingTabs) {
+                return;
+            }
+
+            const nameFilter = selfPayAccountingFilters.find(function (input) {
+                return input.dataset.selfPayAccountingFilter === "name";
+            });
+            const namePrefixKeyword = normalize(
+                Array.from(String(nameFilter ? nameFilter.value : "").trim()).slice(0, 2).join("")
+            ) || normalize(activeSelfPayAccountingPrefix);
+            const prefixes = Array.from(new Set(selfPayAccountingRows.map(accountingPrefix).filter(Boolean)))
+                .filter(function (prefix) {
+                    return !namePrefixKeyword || normalize(prefix).includes(namePrefixKeyword);
+                });
+            const tabs = [{ value: "", text: "全部" }].concat(prefixes.map(function (prefix) {
+                return { value: prefix, text: prefix };
+            }));
+
+            selfPayAccountingTabs.replaceChildren();
+
+            tabs.forEach(function (tab) {
+                const button = document.createElement("button");
+                const icon = document.createElement("span");
+                const label = document.createElement("span");
+                const tones = ["blue", "red", "green", "amber", "purple", "teal", "pink", "brown"];
+
+                button.type = "button";
+                button.classList.add(tones[selfPayAccountingTabs.childElementCount % tones.length]);
+                button.classList.toggle("active", tab.value === activeSelfPayAccountingPrefix);
+                button.setAttribute("aria-pressed", String(tab.value === activeSelfPayAccountingPrefix));
+
+                icon.className = "package-category-icon " + (tab.value ? "sample" : "stethoscope");
+                icon.setAttribute("aria-hidden", "true");
+                label.textContent = tab.text;
+
+                button.addEventListener("click", function () {
+                    selfPayAccountingFilters.forEach(function (input) {
+                        input.value = "";
+                    });
+                    activeSelfPayAccountingPrefix = tab.value;
+                    renderSelfPayAccountingTabs();
+                    renderSelfPayAccountingRows();
+                });
+                button.append(icon, label);
+                selfPayAccountingTabs.appendChild(button);
+            });
+        }
+
+        function renderSelfPayAccountingRows() {
+            const codeFilter = selfPayAccountingFilters.find(function (input) {
+                return input.dataset.selfPayAccountingFilter === "code";
+            });
+            const nameFilter = selfPayAccountingFilters.find(function (input) {
+                return input.dataset.selfPayAccountingFilter === "name";
+            });
+            const codeKeyword = normalize(codeFilter ? codeFilter.value : "");
+            const nameKeyword = normalize(nameFilter ? nameFilter.value : "");
+            let visibleCount = 0;
+
+            selfPayAccountingRows.forEach(function (row) {
+                const matchesPrefix = !activeSelfPayAccountingPrefix
+                    || accountingPrefix(row) === activeSelfPayAccountingPrefix;
+                const matchesCode = !codeKeyword
+                    || normalize(row.dataset.accountingCode).includes(codeKeyword);
+                const matchesName = !nameKeyword
+                    || normalize(row.dataset.accountingName).includes(nameKeyword);
+                const visible = matchesPrefix && matchesCode && matchesName;
+
+                row.hidden = !visible;
+
+                if (visible) {
+                    visibleCount += 1;
+                }
+            });
+
+            if (selfPayAccountingEmpty) {
+                selfPayAccountingEmpty.hidden = visibleCount > 0;
+            }
+        }
+
+        function filterValue(name) {
+            const input = filterInputs.find(function (candidate) {
+                return candidate.dataset.customerFilter === name;
+            });
+
+            return normalize(input ? input.value : "");
+        }
+
+        function setInputValue(input, value) {
+            if (!input) {
+                return;
+            }
+
+            const nextValue = String(value || "").trim();
+
+            if (input instanceof HTMLSelectElement && nextValue) {
+                const options = Array.from(input.options);
+
+                if (!options.some(function (option) { return option.value === nextValue || option.text === nextValue; })) {
+                    input.add(new Option(nextValue, nextValue));
+                }
+            }
+
+            input.value = nextValue;
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        function syncProjectRouteValues() {
+            if (!projectNextLink) {
+                return;
+            }
+
+            const url = new URL(projectNextLink.href, window.location.href);
+            const selectedOrders = sourceQuery.get("selectedOrders");
+            const selectedSuites = sourceQuery.get("selectedSuites");
+            const selectedSpecialOperations = sourceQuery.get("selectedSpecialOperations");
+
+            if (selectedOrders) {
+                url.searchParams.set("selectedOrders", selectedOrders);
+            }
+
+            if (selectedSuites) {
+                url.searchParams.set("selectedSuites", selectedSuites);
+            }
+
+            if (selectedSpecialOperations) {
+                url.searchParams.set("selectedSpecialOperations", selectedSpecialOperations);
+            }
+
+            projectFieldControls.forEach(function (control) {
+                const fieldName = control.dataset.projectField;
+
+                if (!fieldName) {
+                    return;
+                }
+
+                url.searchParams.set(fieldName, control.value || "");
+            });
+
+            projectFlagControls.forEach(function (control) {
+                const flagName = control.dataset.projectFlag;
+
+                if (!flagName) {
+                    return;
+                }
+
+                url.searchParams.set(flagName, control.checked ? "Y" : "N");
+            });
+
+
+            projectNextLink.href = url.href;
+        }
+
+
+        function normalizeProjectYearValue(value) {
+            const yearText = String(value || "").trim();
+            const parsedYear = Number.parseInt(yearText, 10);
+
+            if (!yearText || !/^\d+$/.test(yearText) || !Number.isFinite(parsedYear)) {
+                return yearText;
+            }
+
+            return String(parsedYear >= 1912 ? parsedYear - 1911 : parsedYear);
+        }
+
+        function setSelectValue(select, value) {
+            if (!select) {
+                return;
+            }
+
+            const nextValue = select === yearSelect
+                ? normalizeProjectYearValue(value)
+                : String(value || "").trim();
+
+            if (!nextValue) {
+                return;
+            }
+
+            const options = Array.from(select.options);
+            const matchedOption = options.find(function (option) {
+                return option.value === nextValue || option.text === nextValue;
+            });
+
+            if (!matchedOption && select === yearSelect) {
+                return;
+            }
+
+            if (!matchedOption) {
+                select.add(new Option(nextValue, nextValue));
+            }
+
+            select.value = matchedOption?.value || nextValue;
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        function findCustomerRowByUnit(value) {
+            const target = normalize(value);
+
+            if (!target) {
+                return null;
+            }
+
+            return rows.find(function (row) {
+                return normalize(row.dataset.customerUnit) === target;
+            }) || null;
+        }
+
+        function syncCustomerFromUnit() {
+            const row = findCustomerRowByUnit(customerUnitInput?.value);
+
+            syncSelfPayAccountingFromClientUnit();
+
+            if (!row) {
+                return;
+            }
+
+            setInputValue(customerNoInput, row.dataset.customerNo);
+            setSelectValue(yearSelect, row.dataset.customerYear);
+        }
+
+        function renderRows() {
+            const year = filterValue("year");
+            const name = filterValue("name");
+            let visibleCount = 0;
+
+            rows.forEach(function (row) {
+                const matchesYear = !year || normalize(row.dataset.customerYear).includes(year);
+                const matchesName = !name || normalize([
+                    row.dataset.customerName,
+                    row.dataset.customerUnit,
+                    row.dataset.customerNo
+                ].join(" ")).includes(name);
+                const visible = matchesYear && matchesName;
+
+                row.hidden = !visible;
+
+                if (visible) {
+                    visibleCount += 1;
+                }
+            });
+
+            if (emptyRow) {
+                emptyRow.hidden = visibleCount > 0;
+            }
+        }
+
+        function applyCustomer(row) {
+            if (!row) {
+                return;
+            }
+
+            setInputValue(customerNoInput, row.dataset.customerNo);
+            setInputValue(customerUnitInput, row.dataset.customerUnit);
+            setSelectValue(yearSelect, row.dataset.customerYear);
+            syncSelfPayAccountingFromClientUnit();
+        }
+
+        function openLookup() {
+            if (!modal) {
+                return;
+            }
+
+            previousFocus = document.activeElement;
+            renderRows();
+            modal.hidden = false;
+            document.body.classList.add("project-lookup-open");
+            filterInputs[0]?.focus();
+        }
+
+        function closeLookup() {
+            if (!modal) {
+                return;
+            }
+
+            modal.hidden = true;
+            document.body.classList.remove("project-lookup-open");
+
+            if (previousFocus && typeof previousFocus.focus === "function") {
+                previousFocus.focus();
+            }
+        }
+
+        function openSelfPayAccountingLookup() {
+            if (!selfPayAccountingModal) {
+                return;
+            }
+
+            previousSelfPayAccountingFocus = document.activeElement;
+            activeSelfPayAccountingPrefix = "";
+
+            selfPayAccountingFilters.forEach(function (input) { input.value = ""; });
+
+            renderSelfPayAccountingTabs();
+            renderSelfPayAccountingRows();
+            selfPayAccountingModal.hidden = false;
+            document.body.classList.add("project-lookup-open");
+            if (selfPayAccountingFilters.length > 0) {
+                selfPayAccountingFilters[0].focus();
+            }
+        }
+
+        function closeSelfPayAccountingLookup() {
+            if (!selfPayAccountingModal) {
+                return;
+            }
+
+            selfPayAccountingModal.hidden = true;
+            document.body.classList.remove("project-lookup-open");
+
+            if (previousSelfPayAccountingFocus && typeof previousSelfPayAccountingFocus.focus === "function") {
+                previousSelfPayAccountingFocus.focus();
+            }
+        }
+
+        openButton?.addEventListener("click", openLookup);
+        openSelfPayAccountingButton?.addEventListener("click", openSelfPayAccountingLookup);
+        clearSelfPayAccountingSelectionButton?.addEventListener("click", function () {
+            setSelfPayAccountingUnit(null);
+        });
+        customerUnitInput?.addEventListener("change", syncCustomerFromUnit);
+
+        projectFieldControls.forEach(function (control) {
+            control.addEventListener("input", syncProjectRouteValues);
+            control.addEventListener("change", syncProjectRouteValues);
+        });
+        projectFlagControls.forEach(function (control) {
+            control.addEventListener("change", syncProjectRouteValues);
+        });
+
+        closeButtons.forEach(function (button) {
+            button.addEventListener("click", closeLookup);
+        });
+
+        closeSelfPayAccountingButtons.forEach(function (button) {
+            button.addEventListener("click", closeSelfPayAccountingLookup);
+        });
+
+        function applySelfPayAccountingTextFilters() {
+            const nameFilter = selfPayAccountingFilters.find(function (input) {
+                return input.dataset.selfPayAccountingFilter === "name";
+            });
+            const typedPrefix = Array.from(String(nameFilter?.value || "").trim()).slice(0, 2).join("");
+
+            activeSelfPayAccountingPrefix = Array.from(new Set(selfPayAccountingRows.map(accountingPrefix).filter(Boolean)))
+                .find(function (prefix) {
+                    return typedPrefix && normalize(prefix) === normalize(typedPrefix);
+                }) || "";
+
+            renderSelfPayAccountingTabs();
+            renderSelfPayAccountingRows();
+        }
+
+        clearSelfPayAccountingFiltersButton?.addEventListener("click", function () {
+            selfPayAccountingFilters.forEach(function (input) {
+                input.value = "";
+            });
+            activeSelfPayAccountingPrefix = "";
+            renderSelfPayAccountingTabs();
+            renderSelfPayAccountingRows();
+            selfPayAccountingFilters[0]?.focus();
+        });
+
+        selfPayAccountingFilters.forEach(function (input) {
+            input.addEventListener("input", applySelfPayAccountingTextFilters);
+            input.addEventListener("change", applySelfPayAccountingTextFilters);
+            input.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    applySelfPayAccountingTextFilters();
+                }
+            });
+        });
+
+
+        filterInputs.forEach(function (input) {
+            input.addEventListener("input", renderRows);
+            input.addEventListener("change", renderRows);
+        });
+
+        document.querySelectorAll("[data-customer-select]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                applyCustomer(button.closest("[data-customer-row]"));
+                closeLookup();
+            });
+        });
+
+        rows.forEach(function (row) {
+            row.addEventListener("dblclick", function () {
+                applyCustomer(row);
+                closeLookup();
+            });
+        });
+
+        document.querySelectorAll("[data-self-pay-accounting-select]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                setSelfPayAccountingUnit(button.closest("[data-self-pay-accounting-row]"));
+                closeSelfPayAccountingLookup();
+            });
+        });
+
+        selfPayAccountingRows.forEach(function (row) {
+            row.addEventListener("dblclick", function () {
+                setSelfPayAccountingUnit(row);
+                closeSelfPayAccountingLookup();
+            });
+        });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && modal && !modal.hidden) {
+                closeLookup();
+            }
+
+            if (event.key === "Escape" && selfPayAccountingModal && !selfPayAccountingModal.hidden) {
+                closeSelfPayAccountingLookup();
+            }
+        });
+
+
+        syncProjectRouteValues();
+    })();
+</script>

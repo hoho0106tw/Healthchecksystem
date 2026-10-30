@@ -1,0 +1,780 @@
+@model HealthSys_20260428_v2.csproj.Models.AppointmentManagementViewModel
+
+<link rel="stylesheet" href="~/css/checkin-responsive.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/appointment-sorting.css" asp-append-version="true" />
+
+@{
+    var isTodayCheckIn = ViewData["IsTodayCheckIn"] is true;
+    var filterAction = isTodayCheckIn ? "TodayCheckIn" : "CheckInOperation";
+    ViewData["Title"] = isTodayCheckIn ? "今日報到" : "報到作業";
+    const int defaultPageSize = 20;
+    var initialPageSize = Model.PageSizeOptions.Contains(defaultPageSize)
+        ? defaultPageSize
+        : Model.PageSizeOptions.FirstOrDefault();
+    initialPageSize = initialPageSize > 0 ? initialPageSize : defaultPageSize;
+    var initialVisibleCount = Math.Min(initialPageSize, Model.Appointments.Count);
+    var registeredCount = Model.Appointments.Count(appointment => appointment.ReserveStatus == "4");
+    var checkedInCount = Model.Appointments.Count(appointment => appointment.ReserveStatus == "5");
+}
+
+<section class="appointment-page appointment-list-page today-appointment-page checkin-operation-page"
+         id="@(isTodayCheckIn ? "today-checkin-list" : "checkin-work")"
+         aria-label="@(isTodayCheckIn ? "今日報到" : "報到作業")"
+         data-check-in-url="@Url.Action("CheckInAppointment", "Appointment")"
+         data-cancel-check-in-url="@Url.Action("CancelCheckInAppointment", "Appointment")">
+    @Html.AntiForgeryToken()
+    <div data-ai-page="@(isTodayCheckIn ? "todayCheckin" : "checkin")" data-ai-result-count="@Model.Appointments.Count" data-ai-query-error="@Model.QueryErrorMessage" hidden></div>
+
+    <header class="appointment-page-header">
+        <div>
+            <nav class="breadcrumb" aria-label="頁面路徑">
+                <span>首頁</span>
+                <span>報到管理</span>
+                <span>@(isTodayCheckIn ? "今日報到" : "報到作業")</span>
+            </nav>
+            <div class="appointment-page-meta" aria-label="待報到摘要">
+                <strong>@Model.PageDateText</strong>
+                <span>共 <b class="indigo" data-check-in-total>@Model.Appointments.Count</b> 筆</span>
+                <span>@(isTodayCheckIn ? "今日已掛號／已報到清單" : "已掛號／已報到清單")</span>
+            </div>
+        </div>
+        <div class="appointment-page-actions">
+            @if (isTodayCheckIn)
+            {
+                <label class="today-auto-refresh-toggle" title="勾選後每 1 分鐘自動重新載入今日報到">
+                    <input type="checkbox" data-today-auto-refresh checked />
+                    <span class="today-auto-refresh-track" aria-hidden="true"></span>
+                    <span>每 1 分鐘自動刷新</span>
+                </label>
+            }
+            <button class="ghost-button appointment-refresh-button" type="button" data-check-in-refresh>
+                <span class="refresh-mini-icon" aria-hidden="true"></span>
+                <span>重新整理</span>
+            </button>
+        </div>
+    </header>
+
+    @if (isTodayCheckIn)
+    {
+        <section class="checkin-summary-grid today-checkin-dashboard" aria-label="今日報到儀表板">
+            <article class="checkin-summary-card blue">
+                <span class="checkin-stat-icon people" aria-hidden="true"></span>
+                <div>
+                    <span>預估報到人數</span>
+                    <strong><b data-today-expected-count>@Model.Appointments.Count</b> <small>人</small></strong>
+                </div>
+            </article>
+            <article class="checkin-summary-card amber">
+                <span class="checkin-stat-icon clock" aria-hidden="true"></span>
+                <div>
+                    <span>已掛號人數</span>
+                    <strong><b data-today-registered-count>@registeredCount</b> <small>人</small></strong>
+                </div>
+            </article>
+            <article class="checkin-summary-card green">
+                <span class="checkin-stat-icon check" aria-hidden="true"></span>
+                <div>
+                    <span>已報到人數</span>
+                    <strong><b data-today-checked-in-count>@checkedInCount</b> <small>人</small></strong>
+                </div>
+            </article>
+        </section>
+    }
+
+    <div class="appointment-list-layout">
+        <div class="appointment-list-main">
+            <form class="panel appointment-filter-panel checkin-operation-filter @(isTodayCheckIn ? "today-checkin-filter" : "")" method="get" asp-controller="Appointment" asp-action="@filterAction" aria-label="報到清單查詢條件">
+                @if (!isTodayCheckIn)
+                {
+                    <div class="field-group appointment-time-range-field">
+                        <span>預約日期</span>
+                        <span class="appointment-time-range">
+                            <input type="date" name="startDate" value="@Model.FilterStartDate.Replace("/", "-")" aria-label="預約開始日期" />
+                            <span aria-hidden="true">至</span>
+                            <input type="date" name="endDate" value="@Model.FilterEndDate.Replace("/", "-")" aria-label="預約結束日期" />
+                        </span>
+                    </div>
+                }
+                <label class="field-group">
+                    <span>預約區域</span>
+                    <select name="reservationArea" aria-label="預約區域">
+                        @foreach (var option in Model.ReservationAreaOptions)
+                        {
+                            <option value="@option.Value" selected="@(option.IsSelected ? "selected" : null)">@option.Text</option>
+                        }
+                    </select>
+                </label>
+                <label class="field-group">
+                    <span>預約狀態</span>
+                    <select name="reserveStatus" aria-label="預約狀態">
+                        @foreach (var option in Model.AppointmentStatusOptions)
+                        {
+                            <option value="@option.Value" selected="@(option.IsSelected ? "selected" : null)">@option.Text</option>
+                        }
+                    </select>
+                </label>
+                <label class="field-group search-field">
+                    <span>關鍵字搜尋</span>
+                    <span class="appointment-search-box">
+                        <input type="search" name="keyword" value="@Model.FilterKeyword" placeholder="姓名 / 身分證 / 專案編號 / Barcode / 公司" aria-label="報到清單關鍵字搜尋" />
+                    </span>
+                </label>
+                <div class="appointment-filter-actions">
+                    <button class="primary-button appointment-filter-search-button" type="submit">
+                        <span class="search-icon" aria-hidden="true"></span>
+                        <span>搜尋</span>
+                    </button>
+                </div>
+            </form>
+
+            @if (!string.IsNullOrWhiteSpace(Model.QueryErrorMessage))
+            {
+                <div class="panel checkin-operation-message error" role="alert">@Model.QueryErrorMessage</div>
+            }
+
+            <section class="panel appointment-table-panel" aria-label="@(isTodayCheckIn ? "今日報到" : "已掛號待報到清單")">
+                <div class="appointment-batch-toolbar" aria-label="報到清單說明">
+                    <div class="appointment-batch-selection" aria-live="polite">
+                        <strong>@(isTodayCheckIn ? "今日報到" : "報到作業清單")</strong>
+                        <span>已掛號可執行報到；已報到可取消報到</span>
+                    </div>
+                    @if (isTodayCheckIn)
+                    {
+                        <div class="appointment-batch-actions">
+                            <button class="primary-button brcode-checkin-button" type="button" data-brcode-checkin-open>
+                                BrCode報到
+                            </button>
+                        </div>
+                    }
+                </div>
+                <div class="appointment-table-frame">
+                    <div class="appointment-table-wrap">
+                        <table class="appointment-table today-appointment-table checkin-operation-table">
+                            <thead>
+                                <tr>
+                                    <th>報到</th>
+                                    <th>受檢者</th>
+                                    <th>病歷號</th>
+                                    <th aria-sort="none"><button type="button" class="appointment-sort-button" data-check-in-sort="appointmentDate" aria-label="預約日期：點擊遞增排序">預約日期<span class="appointment-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                    <th aria-sort="none"><button type="button" class="appointment-sort-button" data-check-in-sort="time" aria-label="時段：點擊遞增排序">時段<span class="appointment-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                    <th>預約狀態</th>
+                                    <th aria-sort="none"><button type="button" class="appointment-sort-button" data-check-in-sort="checkInDate" aria-label="報到日期：點擊遞增排序">報到日期<span class="appointment-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                    <th aria-sort="none"><button type="button" class="appointment-sort-button" data-check-in-sort="checkInTime" aria-label="報到時間：點擊遞增排序">報到時間<span class="appointment-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                    <th>看診醫師</th>
+                                    <th>診間號</th>
+                                    <th>預約區域</th>
+                                    <th>類型</th>
+                                    <th>公司 / 團體</th>
+                                    <th>方案</th>
+                                    <th>聯絡電話</th>
+                                    <th>專案編號</th>
+                                    <th>Barcode編號</th>
+                                </tr>
+                            </thead>
+                            <tbody data-check-in-rows>
+                                @foreach (var appointment in Model.Appointments)
+                                {
+                                    var isCheckedIn = appointment.ReserveStatus == "5";
+                                    var hasRequiredKey = !string.IsNullOrWhiteSpace(appointment.Barcode)
+                                        && !string.IsNullOrWhiteSpace(appointment.ProjectNumber);
+                                    var canChangeCheckIn = appointment.ReserveStatus is "4" or "5"
+                                        && hasRequiredKey;
+                                    <tr data-check-in-row tabindex="-1"
+                                        data-barcode="@appointment.Barcode"
+                                        data-project-number="@appointment.ProjectNumber"
+                                        data-name="@appointment.Name"
+                                        data-appointment-date="@appointment.AppointmentDate"
+                                        data-time="@appointment.Time"
+                                        data-check-in-date="@appointment.CheckInDate"
+                                        data-check-in-time="@appointment.CheckInTime"
+                                        data-reserve-status="@appointment.ReserveStatus">
+                                        <td>
+                                            <button class="primary-button checkin-row-button @(isCheckedIn ? "is-cancel-check-in" : "")"
+                                                    type="button"
+                                                    data-check-in-button
+                                                    aria-label="@(isCheckedIn ? $"取消 {appointment.Name} 的報到" : $"將 {appointment.Name} 設為已報到")"
+                                                    disabled="@(!canChangeCheckIn ? "disabled" : null)">
+                                                <span class="checkin-row-button-icon" aria-hidden="true"></span>
+                                                <span data-check-in-button-label>@(isCheckedIn ? "取消報到" : "已報到")</span>
+                                            </button>
+                                        </td>
+                                        <td>@appointment.Name</td>
+                                        <td>@appointment.PatNo</td>
+                                        <td>@appointment.AppointmentDate</td>
+                                        <td>@appointment.Time</td>
+                                        <td><span class="appointment-status @appointment.AppointmentTone" data-check-in-status>@appointment.AppointmentStatus</span></td>
+                                        <td>@(string.IsNullOrWhiteSpace(appointment.CheckInDate) ? "—" : appointment.CheckInDate)</td>
+                                        <td>@(string.IsNullOrWhiteSpace(appointment.CheckInTime) ? "—" : appointment.CheckInTime)</td>
+                                        <td>@appointment.DoctorName</td>
+                                        <td>@appointment.RoomNo</td>
+                                        <td>@appointment.WorkArea</td>
+                                        <td><span class="appointment-kind @appointment.TypeTone">@appointment.Type</span></td>
+                                        <td>@appointment.Company</td>
+                                        <td>@appointment.Plan</td>
+                                        <td>@appointment.Phone</td>
+                                        <td>@appointment.ProjectNumber</td>
+                                        <td>@appointment.Barcode</td>
+                                    </tr>
+                                }
+                                <tr class="lookup-empty-row" data-check-in-empty hidden="@(Model.Appointments.Count > 0)">
+                                    <td colspan="17">目前沒有符合條件的報到資料</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="appointment-table-scrollbar" data-check-in-table-scrollbar tabindex="0" aria-label="報到清單水平捲動">
+                        <div class="appointment-table-scrollbar-content" data-check-in-table-scrollbar-content></div>
+                    </div>
+                </div>
+                <footer class="table-footer">
+                    <span data-check-in-page-info>
+                        @if (Model.Appointments.Any())
+                        {
+                            @:顯示第 1 - @initialVisibleCount 筆，共 @Model.Appointments.Count 筆
+                        }
+                        else
+                        {
+                            @:顯示 0 筆，共 0 筆
+                        }
+                    </span>
+                    <div class="pagination-controls">
+                        <select class="page-select" aria-label="每頁筆數" data-check-in-page-size>
+                            @foreach (var pageSize in Model.PageSizeOptions)
+                            {
+                                <option value="@pageSize" selected="@(pageSize == initialPageSize ? "selected" : null)">@pageSize 筆/頁</option>
+                            }
+                        </select>
+                        <div class="pagination" aria-label="分頁">
+                            <button type="button" data-check-in-prev disabled aria-label="上一頁">‹</button>
+                            <button type="button" class="active" data-check-in-page-number aria-current="page">1</button>
+                            <button type="button" data-check-in-next aria-label="下一頁">›</button>
+                        </div>
+                    </div>
+                </footer>
+            </section>
+        </div>
+    </div>
+</section>
+
+<div class="appointment-confirm-modal checkin-action-modal" data-check-in-modal data-mode="confirm" hidden>
+    <button class="appointment-confirm-backdrop" type="button" data-check-in-modal-close aria-label="關閉報到視窗"></button>
+    <div class="appointment-confirm-dialog checkin-action-dialog" role="dialog" aria-modal="true" aria-labelledby="checkin-modal-title" aria-describedby="checkin-modal-message">
+        <div class="checkin-dialog-heading">
+            <span class="checkin-dialog-icon" aria-hidden="true"></span>
+            <div>
+                <span class="checkin-dialog-kicker" data-check-in-modal-kicker>CHECK-IN CONFIRMATION</span>
+                <h2 id="checkin-modal-title" data-check-in-modal-title>確認辦理報到</h2>
+            </div>
+        </div>
+        <p id="checkin-modal-message" data-check-in-modal-message>請確認受檢者與報到資訊是否正確。</p>
+        <dl class="checkin-dialog-summary">
+            <div><dt>受檢者</dt><dd data-check-in-modal-name></dd></div>
+            <div><dt>專案編號</dt><dd data-check-in-modal-project></dd></div>
+            <div><dt>Barcode</dt><dd data-check-in-modal-barcode></dd></div>
+            <div><dt>狀態變更</dt><dd><span class="checkin-status-flow"><b data-check-in-flow-from>已掛號</b><i aria-hidden="true">→</i><strong data-check-in-flow-to>已報到</strong></span></dd></div>
+        </dl>
+        <div class="checkin-dialog-notice">
+            <span aria-hidden="true"></span>
+            <p data-check-in-modal-notice>確認後將立即完成報到，DataGrid 狀態會同步更新。</p>
+        </div>
+        <div class="checkin-dialog-progress" data-check-in-modal-progress hidden>
+            <span class="checkin-dialog-spinner" aria-hidden="true"></span>
+            <span>正在更新報到狀態，請稍候…</span>
+        </div>
+        <div class="appointment-confirm-actions">
+            <button class="ghost-button" type="button" data-check-in-modal-cancel>取消</button>
+            <button class="primary-button checkin-dialog-confirm" type="button" data-check-in-modal-confirm>
+                <span class="checkin-dialog-confirm-icon" aria-hidden="true"></span>
+                <span data-check-in-modal-confirm-label>確認報到</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (isTodayCheckIn)
+{
+    <div class="appointment-confirm-modal brcode-checkin-modal" data-brcode-checkin-modal hidden>
+        <button class="appointment-confirm-backdrop" type="button" data-brcode-checkin-close aria-label="關閉 BrCode 報到視窗"></button>
+        <div class="appointment-confirm-dialog brcode-checkin-dialog" role="dialog" aria-modal="true" aria-labelledby="brcode-checkin-title">
+            <h2 id="brcode-checkin-title">BrCode報到</h2>
+            <div class="brcode-checkin-input-wrap">
+                <label for="brcode-checkin-input">BrCode 序號</label>
+                <input id="brcode-checkin-input"
+                       type="text"
+                       inputmode="text"
+                       autocomplete="off"
+                       placeholder="BrCode 序號"
+                       data-brcode-checkin-input />
+                <span class="brcode-checkin-error" data-brcode-checkin-error role="alert" hidden></span>
+            </div>
+            <div class="appointment-confirm-actions">
+                <button class="ghost-button" type="button" data-brcode-checkin-close>取消</button>
+                <button class="primary-button" type="button" data-brcode-checkin-submit>確認報到</button>
+            </div>
+        </div>
+    </div>
+}
+
+<script>
+    (() => {
+        const page = document.querySelector(".checkin-operation-page");
+        if (!page) return;
+
+        const checkInUrl = page.dataset.checkInUrl || "";
+        const cancelCheckInUrl = page.dataset.cancelCheckInUrl || "";
+        const token = page.querySelector("input[name='__RequestVerificationToken']")?.value || "";
+        const rowsHost = page.querySelector("[data-check-in-rows]");
+        const emptyRow = page.querySelector("[data-check-in-empty]");
+        const totalTarget = page.querySelector("[data-check-in-total]");
+        const todayRegisteredTarget = page.querySelector("[data-today-registered-count]");
+        const todayCheckedInTarget = page.querySelector("[data-today-checked-in-count]");
+        const todayAutoRefresh = page.querySelector("[data-today-auto-refresh]");
+        const pageInfo = page.querySelector("[data-check-in-page-info]");
+        const pageSizeSelect = page.querySelector("[data-check-in-page-size]");
+        const pageNumber = page.querySelector("[data-check-in-page-number]");
+        const previousButton = page.querySelector("[data-check-in-prev]");
+        const nextButton = page.querySelector("[data-check-in-next]");
+        const tableWrap = page.querySelector(".appointment-table-wrap");
+        const table = page.querySelector(".checkin-operation-table");
+        const tableScrollbar = page.querySelector("[data-check-in-table-scrollbar]");
+        const tableScrollbarContent = page.querySelector("[data-check-in-table-scrollbar-content]");
+        const modal = document.querySelector("[data-check-in-modal]");
+        const modalTitle = modal?.querySelector("[data-check-in-modal-title]");
+        const modalKicker = modal?.querySelector("[data-check-in-modal-kicker]");
+        const modalMessage = modal?.querySelector("[data-check-in-modal-message]");
+        const modalName = modal?.querySelector("[data-check-in-modal-name]");
+        const modalProject = modal?.querySelector("[data-check-in-modal-project]");
+        const modalBarcode = modal?.querySelector("[data-check-in-modal-barcode]");
+        const modalFlowFrom = modal?.querySelector("[data-check-in-flow-from]");
+        const modalFlowTo = modal?.querySelector("[data-check-in-flow-to]");
+        const modalNotice = modal?.querySelector("[data-check-in-modal-notice]");
+        const modalProgress = modal?.querySelector("[data-check-in-modal-progress]");
+        const modalCancel = modal?.querySelector("[data-check-in-modal-cancel]");
+        const modalConfirm = modal?.querySelector("[data-check-in-modal-confirm]");
+        const modalConfirmLabel = modal?.querySelector("[data-check-in-modal-confirm-label]");
+        const brcodeOpenButton = page.querySelector("[data-brcode-checkin-open]");
+        const brcodeModal = document.querySelector("[data-brcode-checkin-modal]");
+        const brcodeInput = brcodeModal?.querySelector("[data-brcode-checkin-input]");
+        const brcodeError = brcodeModal?.querySelector("[data-brcode-checkin-error]");
+        const brcodeSubmit = brcodeModal?.querySelector("[data-brcode-checkin-submit]");
+        let currentPage = 1;
+        let pendingRow = null;
+        let pendingButton = null;
+        let previousFocus = null;
+        let isSubmitting = false;
+        let isSyncingHorizontalScroll = false;
+        let pendingConfirmLabel = "確認報到";
+        let autoRefreshTimer = null;
+
+        const getRows = () => Array.from(rowsHost.querySelectorAll("[data-check-in-row]"));
+
+        function selectRow(selectedRow, focus = false) {
+            getRows().forEach((row) => {
+                const selected = row === selectedRow;
+                row.classList.toggle("is-selected", selected);
+                row.tabIndex = selected ? 0 : -1;
+            });
+            if (focus && selectedRow) selectedRow.focus({ preventScroll: true });
+        }
+
+        let sortKey = "";
+        let sortDirection = "asc";
+        const originalSortOrder = new WeakMap(getRows().map((row, index) => [row, index]));
+        const sortButtons = Array.from(page.querySelectorAll("[data-check-in-sort]"));
+
+        function getSortValue(row, key) {
+            const text = String(row.dataset[key] || "").trim();
+            if (key.endsWith("Date")) {
+                const parts = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(text);
+                if (!parts) return null;
+                const year = Number(parts[1]), month = Number(parts[2]), day = Number(parts[3]);
+                const date = new Date(Date.UTC(year, month - 1, day));
+                return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+                    ? date.getTime() : null;
+            }
+            const parts = /^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*[-–]\s*\d{1,2}:\d{2}(?::\d{2})?)?$/.exec(text)
+                || /^(\d{2})(\d{2})(\d{2})?$/.exec(text);
+            if (!parts) return null;
+            const hour = Number(parts[1]), minute = Number(parts[2]), second = Number(parts[3] || 0);
+            return hour < 24 && minute < 60 && second < 60 ? hour * 3600 + minute * 60 + second : null;
+        }
+
+        function compareRows(left, right) {
+            const a = getSortValue(left, sortKey), b = getSortValue(right, sortKey);
+            // Keep missing timestamps last in either direction, and preserve ties.
+            if (a === null && b !== null) return 1;
+            if (b === null && a !== null) return -1;
+            const compared = a === b ? 0 : a - b;
+            return compared ? compared * (sortDirection === "asc" ? 1 : -1)
+                : originalSortOrder.get(left) - originalSortOrder.get(right);
+        }
+
+        sortButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                const key = button.dataset.checkInSort;
+                sortDirection = sortKey === key && sortDirection === "asc" ? "desc" : "asc";
+                sortKey = key;
+                sortButtons.forEach((item) => {
+                    const active = item === button;
+                    item.closest("th").setAttribute("aria-sort", active ? (sortDirection === "asc" ? "ascending" : "descending") : "none");
+                    item.querySelectorAll("[data-sort-direction]").forEach((arrow) => {
+                        arrow.classList.toggle("is-active", active && arrow.dataset.sortDirection === sortDirection);
+                    });
+                    const label = item.firstChild.textContent.trim();
+                    item.setAttribute("aria-label", label + (active ? (sortDirection === "asc" ? "：目前遞增，點擊遞減排序" : "：目前遞減，點擊遞增排序") : "：點擊遞增排序"));
+                });
+                currentPage = 1;
+                renderPage();
+            });
+        });
+
+        function adjustTodayCount(target, delta) {
+            if (!target) return;
+            const currentValue = Number.parseInt(target.textContent || "0", 10);
+            target.textContent = String(Math.max(0, (Number.isNaN(currentValue) ? 0 : currentValue) + delta));
+        }
+
+        function configureAutoRefresh() {
+            if (autoRefreshTimer) {
+                window.clearInterval(autoRefreshTimer);
+                autoRefreshTimer = null;
+            }
+
+            if (!todayAutoRefresh?.checked) return;
+
+            autoRefreshTimer = window.setInterval(() => {
+                const modalIsOpen = (modal && !modal.hidden) || (brcodeModal && !brcodeModal.hidden);
+                if (isSubmitting || modalIsOpen) return;
+                window.location.reload();
+            }, 60000);
+        }
+
+        function getFixedColumnsWidth() {
+            const fixedHeaderCells = table?.querySelectorAll("thead th:nth-child(-n + 5)");
+            return fixedHeaderCells?.length
+                ? Array.from(fixedHeaderCells).reduce((width, cell) => width + cell.getBoundingClientRect().width, 0)
+                : 0;
+        }
+
+        function syncHorizontalScrollbarMetrics() {
+            if (!tableWrap || !table || !tableScrollbar || !tableScrollbarContent) return;
+            const fixedColumnsWidth = getFixedColumnsWidth();
+            const visibleScrollWidth = tableWrap.clientWidth - fixedColumnsWidth;
+            const scrollableContentWidth = tableWrap.scrollWidth - fixedColumnsWidth;
+            const hasHorizontalOverflow = tableWrap.scrollWidth > tableWrap.clientWidth + 1 && visibleScrollWidth > 0;
+            const scrollbarLeft = Math.max(0, Math.min(fixedColumnsWidth, tableWrap.clientWidth));
+
+            tableScrollbar.hidden = !hasHorizontalOverflow;
+            page.style.setProperty("--today-fixed-columns-width", `${scrollbarLeft}px`);
+            tableScrollbar.style.left = `${scrollbarLeft}px`;
+            tableScrollbarContent.style.width = `${Math.max(scrollableContentWidth, visibleScrollWidth)}px`;
+            if (hasHorizontalOverflow) tableScrollbar.scrollLeft = tableWrap.scrollLeft;
+        }
+
+        function renderPage() {
+            const rows = getRows();
+            if (sortKey) {
+                rows.sort(compareRows);
+                const fragment = document.createDocumentFragment();
+                rows.forEach((row) => fragment.appendChild(row));
+                rowsHost.insertBefore(fragment, emptyRow);
+            }
+            const pageSize = Math.max(1, Number.parseInt(pageSizeSelect?.value || "20", 10));
+            const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+            currentPage = Math.min(Math.max(1, currentPage), pageCount);
+            const start = (currentPage - 1) * pageSize;
+            const end = Math.min(start + pageSize, rows.length);
+
+            rows.forEach((row, index) => { row.hidden = index < start || index >= end; });
+            const selectedRow = rows.find((row) => row.classList.contains("is-selected") && !row.hidden);
+            selectRow(selectedRow || rows[start] || null);
+            emptyRow.hidden = rows.length > 0;
+            totalTarget.textContent = String(rows.length);
+            pageNumber.textContent = String(currentPage);
+            previousButton.disabled = currentPage <= 1;
+            nextButton.disabled = currentPage >= pageCount;
+            pageInfo.textContent = rows.length
+                ? `顯示第 ${start + 1} - ${end} 筆，共 ${rows.length} 筆`
+                : "顯示 0 筆，共 0 筆";
+            window.requestAnimationFrame(syncHorizontalScrollbarMetrics);
+        }
+
+        function setModalMode(mode, title, message) {
+            modal.dataset.mode = mode;
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modalProgress.hidden = mode !== "loading";
+            modalCancel.hidden = mode !== "confirm";
+            modalConfirm.disabled = mode === "loading";
+            modalConfirmLabel.textContent = mode === "confirm" ? pendingConfirmLabel : "關閉";
+            modalKicker.textContent = mode === "success"
+                ? "CHECK-IN COMPLETED"
+                : mode === "error"
+                    ? "CHECK-IN FAILED"
+                    : mode === "loading"
+                        ? "PROCESSING CHECK-IN"
+                        : "CHECK-IN CONFIRMATION";
+        }
+
+        function openCheckInModal(row, button) {
+            const currentReserveStatus = row.dataset.reserveStatus;
+            if (!modal || !["4", "5"].includes(currentReserveStatus)) return;
+            if (currentReserveStatus === "4" && !checkInUrl) return;
+            if (currentReserveStatus === "5" && !cancelCheckInUrl) return;
+
+            selectRow(row);
+
+            const isCancelCheckIn = currentReserveStatus === "5";
+
+            pendingRow = row;
+            pendingButton = button;
+            previousFocus = button;
+            pendingConfirmLabel = isCancelCheckIn ? "確認取消報到" : "確認已報到";
+            modalName.textContent = row.dataset.name || "未提供";
+            modalProject.textContent = row.dataset.projectNumber || "未提供";
+            modalBarcode.textContent = row.dataset.barcode || "未提供";
+            modalFlowFrom.textContent = isCancelCheckIn ? "已報到" : "已掛號";
+            modalFlowTo.textContent = isCancelCheckIn ? "已掛號" : "已報到";
+            modalNotice.textContent = isCancelCheckIn
+                ? "確認後將取消報到並恢復為已掛號，DataGrid 狀態會同步更新。"
+                : "確認後將立即完成報到，DataGrid 狀態會同步更新。";
+            setModalMode(
+                "confirm",
+                isCancelCheckIn ? "確認取消報到" : "確認設為已報到",
+                isCancelCheckIn
+                    ? "請確認是否要取消此受檢者的報到狀態。"
+                    : "請確認受檢者與報到資訊。完成後狀態將更新為「已報到」。");
+            modal.hidden = false;
+            window.requestAnimationFrame(() => modalConfirm.focus());
+        }
+
+        function closeCheckInModal() {
+            if (!modal || isSubmitting) return;
+            modal.hidden = true;
+            pendingRow = null;
+            pendingButton = null;
+            if (previousFocus?.isConnected) previousFocus.focus();
+            previousFocus = null;
+        }
+
+        function showBrcodeError(message) {
+            if (!brcodeError) return;
+            brcodeError.textContent = message;
+            brcodeError.hidden = false;
+        }
+
+        function openBrcodeModal() {
+            if (!brcodeModal || !brcodeInput) return;
+            brcodeError.hidden = true;
+            brcodeError.textContent = "";
+            brcodeInput.value = "";
+            brcodeModal.hidden = false;
+            window.requestAnimationFrame(() => brcodeInput.focus());
+        }
+
+        function closeBrcodeModal() {
+            if (!brcodeModal) return;
+            brcodeModal.hidden = true;
+            brcodeOpenButton?.focus();
+        }
+
+        function submitBrcodeCheckIn() {
+            const brcode = brcodeInput?.value.trim() || "";
+            if (!brcode) {
+                showBrcodeError("請輸入 BrCode 序號。");
+                brcodeInput?.focus();
+                return;
+            }
+
+            const row = getRows().find(item =>
+                (item.dataset.barcode || "").trim().toLocaleLowerCase() === brcode.toLocaleLowerCase());
+            if (!row) {
+                showBrcodeError("找不到此 BrCode 序號的今日報到資料。");
+                brcodeInput?.select();
+                return;
+            }
+            if (row.dataset.reserveStatus === "5") {
+                showBrcodeError("此 BrCode 已完成報到。");
+                brcodeInput?.select();
+                return;
+            }
+
+            const button = row.querySelector("[data-check-in-button]");
+            if (row.dataset.reserveStatus !== "4" || !button || button.disabled) {
+                showBrcodeError("此 BrCode 目前無法執行報到。");
+                brcodeInput?.select();
+                return;
+            }
+
+            brcodeModal.hidden = true;
+            openCheckInModal(row, button);
+        }
+
+        async function submitCheckIn() {
+            const row = pendingRow;
+            const button = pendingButton;
+            const currentReserveStatus = row?.dataset.reserveStatus;
+            if (!row || !button || isSubmitting || !["4", "5"].includes(currentReserveStatus)) return;
+
+            const isCancelCheckIn = currentReserveStatus === "5";
+            const actionUrl = isCancelCheckIn ? cancelCheckInUrl : checkInUrl;
+            if (!actionUrl) return;
+
+            isSubmitting = true;
+            button.disabled = true;
+            button.classList.add("is-processing");
+            setModalMode(
+                "loading",
+                isCancelCheckIn ? "正在取消報到" : "正在更新報到狀態",
+                isCancelCheckIn
+                    ? "系統正在確認已報到狀態並恢復為已掛號。"
+                    : "系統正在確認掛號狀態並更新報到資料。");
+            const formData = new FormData();
+            formData.append("__RequestVerificationToken", token);
+            formData.append("Barcode", row.dataset.barcode || "");
+            formData.append("ProjectNumber", row.dataset.projectNumber || "");
+
+            let checkInSucceeded = false;
+
+            try {
+                const response = await fetch(actionUrl, {
+                    method: "POST",
+                    body: formData,
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+                const result = await response.json().catch(() => null);
+
+                if (!response.ok || result?.updated !== true) {
+                    throw new Error(result?.message || "報到失敗，請稍後再試。");
+                }
+
+                const nextReserveStatus = result.reserveStatus || (isCancelCheckIn ? "4" : "5");
+                const isNowCheckedIn = nextReserveStatus === "5";
+                row.dataset.reserveStatus = nextReserveStatus;
+                const status = row.querySelector("[data-check-in-status]");
+                if (status) {
+                    status.textContent = result.status || (isNowCheckedIn ? "已報到" : "已掛號");
+                    status.className = `appointment-status ${isNowCheckedIn ? "checked-in" : "registered"}`;
+                }
+                button.classList.remove("is-processing");
+                button.classList.toggle("is-cancel-check-in", isNowCheckedIn);
+                button.querySelector("[data-check-in-button-label]").textContent = isNowCheckedIn ? "取消報到" : "已報到";
+                button.setAttribute(
+                    "aria-label",
+                    isNowCheckedIn
+                        ? `取消 ${row.dataset.name || "受檢者"} 的報到`
+                        : `將 ${row.dataset.name || "受檢者"} 設為已報到`);
+                button.disabled = false;
+                adjustTodayCount(todayRegisteredTarget, isNowCheckedIn ? -1 : 1);
+                adjustTodayCount(todayCheckedInTarget, isNowCheckedIn ? 1 : -1);
+                renderPage();
+                checkInSucceeded = true;
+            } catch (error) {
+                button.disabled = false;
+                button.classList.remove("is-processing");
+                setModalMode("error", "報到未完成", error.message || "報到失敗，請稍後再試。");
+            } finally {
+                isSubmitting = false;
+                if (checkInSucceeded) {
+                    closeCheckInModal();
+                    // Reload the database value written by SYSDATE, keeping the current query filters.
+                    window.location.reload();
+                } else if (modal.dataset.mode === "loading") {
+                    setModalMode("error", "報到未完成", "系統未回傳報到結果，請稍後再試。");
+                }
+            }
+        }
+
+        rowsHost.addEventListener("click", (event) => {
+            const row = event.target.closest("[data-check-in-row]");
+            if (!row) return;
+            const button = event.target.closest("[data-check-in-button]");
+            selectRow(row, !event.target.closest("button, input, select, textarea, a"));
+            if (button && !button.disabled) openCheckInModal(row, button);
+        });
+
+        rowsHost.addEventListener("keydown", (event) => {
+            if (event.target.closest("button, input, select, textarea, a")) return;
+            const row = event.target.closest("[data-check-in-row]");
+            if (!row) return;
+            const visibleRows = getRows().filter((item) => !item.hidden);
+            const index = visibleRows.indexOf(row);
+            let nextIndex;
+            switch (event.key) {
+                case "ArrowUp": nextIndex = Math.max(0, index - 1); break;
+                case "ArrowDown": nextIndex = Math.min(visibleRows.length - 1, index + 1); break;
+                case "Home": nextIndex = 0; break;
+                case "End": nextIndex = visibleRows.length - 1; break;
+                default: return;
+            }
+            event.preventDefault();
+            const nextRow = visibleRows[nextIndex];
+            selectRow(nextRow, true);
+            nextRow?.scrollIntoView({ block: "nearest", inline: "nearest" });
+        });
+
+        modal?.querySelectorAll("[data-check-in-modal-close], [data-check-in-modal-cancel]").forEach((button) => {
+            button.addEventListener("click", closeCheckInModal);
+        });
+        modalConfirm?.addEventListener("click", () => {
+            if (modal.dataset.mode === "confirm") submitCheckIn();
+            else if (modal.dataset.mode !== "loading") closeCheckInModal();
+        });
+        brcodeOpenButton?.addEventListener("click", openBrcodeModal);
+        brcodeModal?.querySelectorAll("[data-brcode-checkin-close]").forEach((button) => {
+            button.addEventListener("click", closeBrcodeModal);
+        });
+        brcodeSubmit?.addEventListener("click", submitBrcodeCheckIn);
+        brcodeInput?.addEventListener("input", () => {
+            if (brcodeError) brcodeError.hidden = true;
+        });
+        brcodeInput?.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                submitBrcodeCheckIn();
+            }
+        });
+        window.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape") return;
+            if (brcodeModal && !brcodeModal.hidden) closeBrcodeModal();
+            else if (modal && !modal.hidden) closeCheckInModal();
+        });
+
+        tableWrap?.addEventListener("scroll", () => {
+            if (isSyncingHorizontalScroll || !tableScrollbar) return;
+            isSyncingHorizontalScroll = true;
+            tableScrollbar.scrollLeft = tableWrap.scrollLeft;
+            isSyncingHorizontalScroll = false;
+        });
+        tableScrollbar?.addEventListener("scroll", () => {
+            if (isSyncingHorizontalScroll || !tableWrap) return;
+            isSyncingHorizontalScroll = true;
+            tableWrap.scrollLeft = tableScrollbar.scrollLeft;
+            isSyncingHorizontalScroll = false;
+        });
+        tableWrap?.addEventListener("wheel", (event) => {
+            const horizontalDelta = event.shiftKey ? event.deltaY : event.deltaX;
+            if (!horizontalDelta || tableScrollbar?.hidden) return;
+            const maxScrollLeft = tableWrap.scrollWidth - tableWrap.clientWidth;
+            const nextScrollLeft = Math.min(Math.max(tableWrap.scrollLeft + horizontalDelta, 0), maxScrollLeft);
+            if (nextScrollLeft === tableWrap.scrollLeft) return;
+            tableWrap.scrollLeft = nextScrollLeft;
+            event.preventDefault();
+        }, { passive: false });
+        if (typeof ResizeObserver === "function" && tableWrap && table) {
+            const resizeObserver = new ResizeObserver(syncHorizontalScrollbarMetrics);
+            resizeObserver.observe(tableWrap);
+            resizeObserver.observe(table);
+        } else {
+            window.addEventListener("resize", syncHorizontalScrollbarMetrics);
+        }
+
+        page.querySelector("[data-check-in-refresh]")?.addEventListener("click", () => window.location.reload());
+        todayAutoRefresh?.addEventListener("change", configureAutoRefresh);
+        pageSizeSelect?.addEventListener("change", () => { currentPage = 1; renderPage(); });
+        previousButton?.addEventListener("click", () => { currentPage -= 1; renderPage(); });
+        nextButton?.addEventListener("click", () => { currentPage += 1; renderPage(); });
+        configureAutoRefresh();
+        renderPage();
+    })();
+</script>

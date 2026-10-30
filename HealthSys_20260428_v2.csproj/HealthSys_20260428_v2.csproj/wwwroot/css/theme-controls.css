@@ -1,0 +1,390 @@
+/* Shared controls for saved themes and the live theme preview. */
+body.hc {
+    zoom: var(--app-page-zoom, 1);
+    --app-deduction-color: var(--app-accent-dark, #125ca8);
+}
+html[data-theme-mode="dark"] body.hc { --app-deduction-color: var(--app-lightbar, #8dbdff); }
+
+html[data-theme-fixed-header="true"] .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+html[data-theme-fixed-header="false"] .topbar {
+    position: relative;
+    top: auto;
+}
+
+/* Pages normally scroll inside a viewport-height main element. Release that
+   scroll container when the header should scroll away with the document. */
+html[data-theme-fixed-header="false"] body.hc .page {
+    height: auto;
+    min-height: calc(100vh - 78px);
+    overflow: visible;
+}
+
+html[data-theme-radius] body.hc :is(
+    .panel, .metric-card, .theme-section, .theme-preview-panel,
+    .theme-preview-card, .theme-preview-metrics article, .theme-announcement,
+    .checkin-summary-card, .station-card, .person-card, [role="dialog"],
+    .primary-button, .ghost-button, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select, textarea, .menu-item, .submenu-item, .search-box, .customer-view-mode,
+    .customer-table-wrap, .theme-sample-table-wrap, .theme-demo-group, .theme-demo-metric,
+    .theme-demo-chart-row, .theme-demo-button, .theme-demo-input, .theme-demo-stations > div,
+    [class$="-panel"], [class*="-panel "], [class$="-card"], [class*="-card "],
+    .pagination button, .page-list button
+) {
+    border-radius: var(--app-radius, 8px) !important;
+}
+
+html[data-theme-row-height] body.hc table :is(th, td):not(.is-image-view td):not(.is-image-view th) {
+    height: var(--app-row-height, 40px) !important;
+    box-sizing: border-box;
+    padding-block: min(4px, calc((var(--app-row-height, 40px) - 24px) / 2)) !important;
+}
+
+html[data-theme-row-height] body.hc table :is(th, td):not(.is-image-view td):not(.is-image-view th) :is(input:not([type="checkbox"]):not([type="radio"]), select, .primary-button, .ghost-button, .suite-row-actions button) {
+    height: calc(var(--app-row-height, 40px) - 10px) !important;
+    min-height: 0 !important;
+    padding-block: 0 !important;
+}
+
+html[data-theme-card-shadow="true"] body.hc :is(
+    .panel, .metric-card, .checkin-summary-card, .theme-preview-card,
+    .theme-preview-metrics article, .theme-announcement, .station-card, .person-card, [role="dialog"]
+) {
+    box-shadow: var(--shadow, 0 8px 24px rgba(31, 45, 61, .12)) !important;
+}
+
+html[data-theme-card-shadow="false"] body.hc :is(
+    .panel, .metric-card, .checkin-summary-card, .theme-preview-card,
+    .theme-preview-metrics article, .theme-announcement, .station-card, .person-card, [role="dialog"]
+) {
+    box-shadow: none !important;
+}
+
+html[data-theme-density="comfortable"] {
+    --app-control-height: 42px;
+    --app-density-gap: 16px;
+    --app-density-padding: 18px;
+}
+
+html[data-theme-density="compact"] {
+    --app-control-height: 32px;
+    --app-density-gap: 6px;
+    --app-density-padding: 10px;
+}
+
+html:is([data-theme-density="comfortable"], [data-theme-density="compact"]) body.hc :is(
+    .table-toolbar, .appointment-filter-panel, .appointment-page-actions,
+    .field-group, .theme-preview-panel, .theme-preview-main, .theme-preview-metrics
+) {
+    gap: var(--app-density-gap) !important;
+}
+
+html:is([data-theme-density="comfortable"], [data-theme-density="compact"]) body.hc :is(
+    .panel-header, .table-toolbar, .appointment-filter-panel,
+    .theme-preview-card, .theme-preview-metrics article, .theme-announcement
+) {
+    padding: var(--app-density-padding) !important;
+}
+
+html:is([data-theme-density="comfortable"], [data-theme-density="compact"]) body.hc :is(
+    .primary-button, .ghost-button, .field-group input:not([type="checkbox"]):not([type="radio"]),
+    .field-group select, .table-toolbar input, .table-toolbar select
+) {
+    height: var(--app-control-height) !important;
+    min-height: var(--app-control-height) !important;
+}
+
+html[data-theme-motion="false"] body.hc *,
+html[data-theme-motion="false"] body.hc *::before,
+html[data-theme-motion="false"] body.hc *::after {
+    /* A brief single iteration preserves completion events used by components. */
+    animation-duration: .01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+}
+
+.theme-settings-page .theme-color-row {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    row-gap: 12px;
+}
+
+.theme-settings-page .theme-color-swatch {
+    grid-template-rows: 36px minmax(32px, auto);
+    align-content: start;
+}
+
+.theme-settings-page .theme-color-swatch > span:last-child {
+    display: grid;
+    place-items: start center;
+    line-height: 1.4;
+}
+
+.theme-custom-color {
+    display: grid;
+    grid-template-columns: 156px minmax(0, 1fr);
+    align-items: center;
+    gap: 20px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+}
+
+.theme-color-wheel {
+    --wheel-darkness: 0;
+    position: relative;
+    width: 156px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background:
+        linear-gradient(rgba(0, 0, 0, var(--wheel-darkness)), rgba(0, 0, 0, var(--wheel-darkness))),
+        radial-gradient(circle closest-side, var(--app-surface, #fff), rgba(255, 255, 255, 0)),
+        conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+    box-shadow: 0 0 0 1px var(--line);
+    cursor: crosshair;
+    touch-action: none;
+    user-select: none;
+}
+
+.theme-color-wheel:focus-visible {
+    outline: 3px solid var(--theme-accent);
+    outline-offset: 5px;
+}
+
+.theme-color-marker {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--app-border, #fff);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px #111827;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.theme-color-fields {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+}
+
+.theme-color-fields > p {
+    margin: 0;
+}
+
+.theme-custom-color-value {
+    display: grid;
+    gap: 8px;
+}
+
+.theme-custom-color-inputs {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+}
+
+html[data-theme-radius] body.hc .theme-custom-color-inputs input[type="color"] {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 50% !important;
+    background: transparent;
+    cursor: pointer;
+}
+
+.theme-custom-color-inputs input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.theme-custom-color-inputs input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
+.theme-custom-color-inputs input[type="color"]::-moz-color-swatch { border: 0; border-radius: 50%; }
+
+.theme-custom-color-inputs input[type="text"] {
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    color: var(--text);
+    background: var(--panel);
+    font: inherit;
+}
+
+.theme-color-brightness {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) 48px;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+}
+
+.theme-color-brightness input {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    accent-color: var(--theme-accent);
+}
+
+.theme-color-brightness output { text-align: right; font-variant-numeric: tabular-nums; }
+
+.theme-settings-page .theme-control-grid > .theme-section {
+    padding: 16px;
+    align-self: stretch;
+}
+
+.theme-settings-page :is(.theme-control-group, .theme-range-control, .theme-select-control) {
+    grid-template-rows: 20px 40px;
+    gap: 8px;
+    align-items: center;
+    margin-top: 14px;
+}
+
+.theme-settings-page :is(.theme-segmented, .theme-size-row) {
+    box-sizing: border-box;
+    height: 40px;
+}
+
+.theme-settings-page :is(.theme-segmented, .theme-size-row) button {
+    height: 32px;
+    padding-inline: 6px;
+}
+
+.theme-settings-page .theme-range-track {
+    min-height: 40px;
+    grid-template-columns: 28px minmax(0, 1fr) 28px 56px;
+    gap: 8px;
+}
+
+.theme-settings-page .theme-range-track input { margin: 0; }
+.theme-settings-page .theme-range-track output { min-width: 0; width: 56px; height: 38px; }
+.theme-settings-page .theme-select-control select { height: 40px; }
+.theme-settings-page .theme-toggle-row { min-height: 58px; align-items: center; }
+
+@media (max-width: 500px) {
+    .theme-custom-color {
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: center;
+    }
+    .theme-color-fields { width: 100%; }
+}
+
+@media (max-width: 600px) {
+    .theme-settings-page .theme-color-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+/* Report navigation labels are regular text; clinical alerts keep their state colors. */
+html[data-theme-mode] body.hc .inspection-task-page :is(.station, .station b, .station:not(.success) strong, .station small, .it-side-nav b, .it-subview h2, .it-image-report h3, .it-image-report p, .it-image-report-tab em) {
+    color: var(--app-text-color) !important;
+}
+html[data-theme-mode] body.hc .inspection-task-page .station {
+    background: var(--app-surface) !important;
+    border-color: var(--app-border) !important;
+    border-radius: var(--app-radius, 8px) !important;
+}
+html[data-theme-mode] body.hc .inspection-task-page :is(.it-image-report-tab b, .it-image-report-meta) { color: var(--app-muted) !important; }
+html[data-theme-text-color="custom"] body.hc .inspection-task-page :is(.it-image-report-tab b, .it-image-report-meta, .it-subview header p, .it-subview-person > div > span) { color: var(--app-text-color) !important; }
+html[data-theme-text-color="custom"] body.hc { color: var(--app-text-color); }
+html[data-theme-text-color="custom"] body.hc :is(h1, h2, h3, h4, .field-group > label, .metric-card p, .metric-card strong, .metric-percentage, table th, table td, .theme-section > p, .theme-control-group > span, .theme-range-control > span:first-child, .theme-select-control > span:first-child, .theme-toggle-row strong) { color: var(--app-text-color) !important; }
+html[data-theme-text-color="custom"] body.hc .sidebar :is(.menu-item, .menu-label, .submenu-item:not(.is-disabled), .menu-submenu-toggle, .menu-arrow, .menu-icon) { color: var(--app-text-color) !important; }
+html[data-theme-radius] body.hc :is(dialog, [class$="-dialog"], [class*="-dialog "], .modal-content) { border-radius: var(--app-radius, 8px) !important; }
+html[data-theme-card-shadow="true"] body.hc :is([class$="-panel"], [class*="-panel "], [class$="-card"], [class*="-card "], .theme-demo-group) { box-shadow: var(--shadow) !important; }
+html[data-theme-card-shadow="false"] body.hc :is([class$="-panel"], [class*="-panel "], [class$="-card"], [class*="-card "], .theme-demo-group) { box-shadow: none !important; }
+html[data-theme-text-color="custom"] body.hc :is(.field-group label, .customer-field > span, .customer-field input, .table-toolbar input, .field-group input, .field-group select, textarea) { color: var(--app-text-color) !important; }
+html[data-theme-radius] body.hc :is([role="tab"], .customer-pagination button, .theme-demo-page-list button, .it-tabs button, .it-report-tabs button) { border-radius: var(--app-radius, 8px) !important; }
+#theme-feature-preview .theme-status.assigned { color: var(--app-status-arrived, #20b979); background: color-mix(in srgb, var(--app-status-arrived, #20b979) 14%, var(--sample-surface)); }
+#theme-feature-preview .theme-status.reserved { color: var(--app-status-reserved, #4daee9); background: color-mix(in srgb, var(--app-status-reserved, #4daee9) 14%, var(--sample-surface)); }
+#theme-feature-preview .theme-status.in-progress { color: var(--app-status-checking, #f59e0b); background: color-mix(in srgb, var(--app-status-checking, #f59e0b) 14%, var(--sample-surface)); }
+/* Shared component surfaces override legacy mode-specific gradients. */
+html[data-theme-mode] body.hc :is(.panel, .metric-card, .theme-section, .customer-filter-panel, .customer-list-panel, .theme-settings-footer, [class$="-card"], [class*="-card "], [class$="-panel"], [class*="-panel "], [class$="-dialog"], [class*="-dialog "], [class$="-frame"], [class*="-frame "]) { background: var(--app-surface, #fff) !important; border-color: var(--app-border, #e5ebf2) !important; }
+html[data-theme-mode] body.hc .home-dashboard :is(.metric-card, .progress-panel, .examinee-panel, .flow-panel, .details-panel) { background: var(--app-surface, #fff) !important; border-color: var(--app-border, #e5ebf2) !important; }
+html[data-theme-mode] body.hc :is(.topbar, .sidebar) { background: var(--app-surface, #fff) !important; border-color: var(--app-border, #e5ebf2) !important; }
+html[data-theme-mode] body.hc :is(.table-toolbar, .table-footer, .panel-header, .customer-list-header, .customer-table-footer) { background: var(--app-surface-soft, #f5f8fc) !important; border-color: var(--app-border, #e5ebf2) !important; }
+html[data-theme-mode] body.hc :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea, .ghost-button:not(.danger):not(.success), .icon-button, .menu-submenu-toggle, .sidebar-toggle-button, .view-button, .row-more-button, .pager-arrow, .page-select, .dashboard-sort-button) { color: var(--app-text-color, #263850) !important; background: var(--app-surface-soft, #f5f8fc) !important; border-color: var(--app-border, #e5ebf2) !important; }
+html[data-theme-mode] body.hc .menu-toggle span { background: var(--app-text-color, #263850) !important; }
+html[data-theme-mode] body.hc .account-query {
+    --aq-surface: var(--app-surface) !important;
+    --aq-input: var(--app-surface-soft) !important;
+    --aq-soft: var(--app-surface-soft) !important;
+    --aq-row: var(--app-surface) !important;
+    --aq-row-alt: var(--app-surface-soft) !important;
+    --aq-hover: var(--app-surface-strong) !important;
+    --aq-project: color-mix(in srgb, var(--app-accent) 8%, var(--app-surface)) !important;
+    --aq-total: color-mix(in srgb, var(--app-accent) 8%, var(--app-surface)) !important;
+    --aq-highlight: color-mix(in srgb, var(--app-accent) 13%, var(--app-surface)) !important;
+    --aq-line: var(--app-border) !important;
+    --aq-text: var(--app-text-color) !important;
+    --aq-title: var(--app-text-color) !important;
+    --aq-muted: var(--app-muted) !important;
+}
+html[data-theme-mode] body.hc .inspection-task-page { --it-border: var(--app-border); }
+
+/* Simple mode also covers legacy components that still use fixed category colors. */
+html[data-theme-preference="simple"] {
+    --app-simple-ink: var(--app-status-reserved, #37516c);
+    --app-simple-soft: color-mix(in srgb, var(--app-simple-ink) 9%, var(--app-surface, #fff));
+    --app-simple-border: color-mix(in srgb, var(--app-simple-ink) 24%, var(--app-surface, #fff));
+}
+
+html[data-theme-preference="simple"] body.hc :is(
+    .summary-icon, .group-summary-icon, .checkin-stat-icon, .suite-total-icon,
+    .panel-title-icon, .patient-section-icon, .emergency-section-icon,
+    .identity-section-icon, .contact-section-icon, .roster-empty-icon
+) {
+    color: var(--app-simple-ink) !important;
+    background: var(--app-simple-soft) !important;
+    border-color: var(--app-simple-border) !important;
+}
+
+html[data-theme-preference="simple"] body.hc :is(
+    .menu-icon, .package-category-icon, .package-item-icon, .suite-header-svg-icon,
+    .theme-preview-stat-icon, .excel-mini-icon, .reservation-mini-icon,
+    .lookup-title-icon, .my-health-button-icon
+) {
+    color: var(--app-simple-ink) !important;
+}
+
+html[data-theme-preference="simple"] body.hc :is(
+    .group-summary-card, .group-headcount-card, .group-detail-modal-stats > div,
+    .appointment-summary-card, .checkin-summary-card, .theme-demo-stations > div
+) {
+    background: var(--app-surface, #fff) !important;
+    border-color: var(--app-simple-border) !important;
+}
+
+html[data-theme-preference="simple"] body.hc :is(
+    .group-summary-card strong, .group-detail-modal-stats strong,
+    .group-headcount-value, .appointment-summary-card strong, .checkin-summary-card strong,
+    .theme-demo-stations strong, .theme-demo-stations em
+) {
+    color: var(--app-simple-ink) !important;
+}
+
+html[data-theme-preference="simple"] body.hc :is(
+    .group-count-pill, .group-headcount-value, .group-detail-modal-status,
+    .group-appointment-page .appointment-status, .package-category,
+    .theme-demo-stations .is-complete
+) {
+    color: var(--app-simple-ink) !important;
+    background: var(--app-simple-soft) !important;
+    border-color: var(--app-simple-border) !important;
+}
+
+html[data-theme-preference="simple"] body.hc .group-appointment-page .activity-dot {
+    background: var(--app-simple-ink) !important;
+}
+
+html[data-theme-preference="simple"] body.hc :is(
+    .inspection-task-page .station:not(.danger) .station-icon,
+    .theme-demo-button.success
+) {
+    color: var(--app-simple-ink) !important;
+    background-color: var(--app-simple-soft) !important;
+    border-color: var(--app-simple-border) !important;
+}

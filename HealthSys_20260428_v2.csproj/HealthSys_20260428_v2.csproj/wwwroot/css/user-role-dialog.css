@@ -1,0 +1,78 @@
+dialog.user-role-result {
+    --result-color: #16a36b;
+    --result-soft: #e9f9f1;
+    box-sizing: border-box;
+    width: min(420px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    overflow: auto;
+    border: 1px solid var(--app-border, #dbe6ef);
+    border-radius: 20px;
+    background: var(--app-surface, #fff);
+    color: var(--app-text-color, #1e293b);
+    box-shadow: 0 28px 90px #0f172a38;
+    font-family: inherit;
+}
+dialog.user-role-result::backdrop {
+    background: #0f172a66;
+    backdrop-filter: blur(5px);
+}
+dialog.user-role-result[data-state="error"] {
+    --result-color: #dc5260;
+    --result-soft: #fff0f1;
+}
+.user-role-result-accent {
+    height: 5px;
+    background: var(--result-color);
+}
+.user-role-result-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 30px 26px;
+    text-align: center;
+}
+.user-role-result-icon {
+    display: grid;
+    width: 68px;
+    height: 68px;
+    margin-bottom: 20px;
+    place-items: center;
+    border: 7px solid var(--result-soft);
+    border-radius: 50%;
+    background: var(--result-color);
+    color: #fff;
+}
+.user-role-result-icon svg { width: 30px; height: 30px; }
+.user-role-result-label {
+    color: var(--app-muted, #64748b);
+    font-size: 12px;
+    letter-spacing: .12em;
+}
+.user-role-result h2 {
+    margin: 9px 0 10px;
+    color: inherit;
+    font-size: 23px;
+    font-weight: 800;
+}
+.user-role-result p {
+    margin: 0 0 26px;
+    color: var(--app-text-color, #475569);
+    font-size: 15px;
+    line-height: 1.8;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+.user-role-result .user-role-result-confirm {
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    border-radius: 10px;
+}
+@media (prefers-reduced-motion: no-preference) {
+    .user-role-result[open] { animation: user-role-result-enter .2s ease-out; }
+    @keyframes user-role-result-enter {
+        from { opacity: 0; transform: translateY(10px) scale(.97); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+}

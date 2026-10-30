@@ -1,0 +1,684 @@
+@{
+    ViewData["Title"] = "今日報到";
+
+    var summaryCards = new[]
+    {
+        new { Label = "應到人數", Value = "128", Unit = "人", Tone = "blue", Icon = "people" },
+        new { Label = "已報到", Value = "68", Unit = "人", Tone = "green", Icon = "check" },
+        new { Label = "待報到", Value = "50", Unit = "人", Tone = "amber", Icon = "clock" },
+        new { Label = "未到", Value = "10", Unit = "人", Tone = "red", Icon = "missed" }
+    };
+
+    var namePool = new[] { "王小明", "李大同", "張小華", "陳美玲", "黃志浩", "林佳慧", "劉俊傑", "吳孟謙", "許家豪", "鄭佩君", "周明哲", "蔡宜芳", "楊宗翰", "謝佳穎", "郭俊廷", "曾筱婷" };
+    var idPrefixes = new[] { "A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "L", "M", "N", "P", "Q", "R" };
+    var periods = new[] { "08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00" };
+    var statusPattern = new[]
+    {
+        new { Status = "已報到", Tone = "arrived" },
+        new { Status = "待報到", Tone = "pending" },
+        new { Status = "已報到", Tone = "arrived" },
+        new { Status = "待報到", Tone = "pending" },
+        new { Status = "已報到", Tone = "arrived" },
+        new { Status = "未到", Tone = "missed" },
+        new { Status = "已報到", Tone = "arrived" },
+        new { Status = "待報到", Tone = "pending" }
+    };
+    var checkIns = Enumerable.Range(1, 128).Select(index =>
+    {
+        var status = statusPattern[(index - 1) % statusPattern.Length];
+        var period = periods[(index - 1) % periods.Length];
+        var hour = 8 + ((index - 1) % periods.Length);
+        var minute = 10 + ((index * 7) % 45);
+
+        return new
+        {
+            No = index,
+            Name = $"{namePool[(index - 1) % namePool.Length]}{index:000}",
+            IdNumber = $"{idPrefixes[(index - 1) % idPrefixes.Length]}{123456789 + index:000000000}",
+            Phone = $"09{(10000000 + index * 7919) % 100000000:00000000}",
+            Period = period,
+            Status = status.Status,
+            Tone = status.Tone,
+            CheckInTime = status.Status == "已報到" ? $"{hour:00}:{minute:00}" : "-"
+        };
+    }).ToArray();
+}
+
+<section class="appointment-page today-checkin-page" id="today-checkin-list" aria-labelledby="today-checkin-title">
+    <header class="checkin-page-header">
+        <div>
+            <nav class="breadcrumb checkin-breadcrumb" aria-label="頁面位置">
+                <span>報到管理</span>
+                <span>今日報到</span>
+            </nav>
+            <h1 id="today-checkin-title">今日報到</h1>
+            <div class="checkin-date-row" aria-label="清單日期">
+                <span class="checkin-date-icon" aria-hidden="true"></span>
+                <span>2026/06/02（三）</span>
+            </div>
+        </div>
+        <button class="ghost-button checkin-refresh-button" type="button">
+            <span class="refresh-mini-icon" aria-hidden="true"></span>
+            <span>重新整理</span>
+        </button>
+    </header>
+
+    <section class="checkin-summary-grid" aria-label="今日報到統計">
+        @foreach (var card in summaryCards)
+        {
+            <article class="checkin-summary-card @card.Tone">
+                <span class="checkin-stat-icon @card.Icon" aria-hidden="true"></span>
+                <div>
+                    <span>@card.Label</span>
+                    <strong>@card.Value <small>@card.Unit</small></strong>
+                </div>
+            </article>
+        }
+    </section>
+
+    <section class="panel checkin-filter-panel" aria-label="報到清單篩選">
+        <label class="field-group checkin-search-field">
+            <span>搜尋</span>
+            <span class="checkin-search-box">
+                <input type="search" placeholder="請輸入姓名 / 身分證 / 手機" aria-label="搜尋姓名、身分證或手機" />
+                <span class="search-icon" aria-hidden="true"></span>
+            </span>
+        </label>
+        <label class="field-group">
+            <span>報到狀態</span>
+            <select aria-label="報到狀態">
+                <option>全部</option>
+                <option>已報到</option>
+                <option>待報到</option>
+                <option>未到</option>
+            </select>
+        </label>
+        <label class="field-group">
+            <span>時段</span>
+            <select aria-label="時段">
+                <option>全部時段</option>
+                <option>08:00 - 09:00</option>
+                <option>09:00 - 10:00</option>
+                <option>10:00 - 11:00</option>
+                <option>11:00 - 12:00</option>
+            </select>
+        </label>
+        <div class="checkin-filter-actions">
+            <button class="ghost-button checkin-export-button" type="button">
+                <span class="download-mini-icon" aria-hidden="true"></span>
+                <span>匯出清單</span>
+            </button>
+            <button class="primary-button checkin-filter-button" type="button">
+                <span class="filter-mini-icon" aria-hidden="true"></span>
+                <span>篩選</span>
+            </button>
+        </div>
+    </section>
+
+    <section class="panel checkin-table-panel" aria-label="今日報到">
+        <div class="checkin-table-wrap">
+            <table class="checkin-table">
+                <thead>
+                    <tr>
+                        <th>序號</th>
+                        <th>姓名</th>
+                        <th>身分證字號</th>
+                        <th>手機</th>
+                        <th>時段</th>
+                        <th>報到狀態</th>
+                        <th>報到時間</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var person in checkIns)
+                    {
+                        <tr data-checkin-row>
+                            <td>@person.No</td>
+                            <td>@person.Name</td>
+                            <td>@person.IdNumber</td>
+                            <td>@person.Phone</td>
+                            <td>@person.Period</td>
+                            <td><span class="checkin-status-pill @person.Tone">@person.Status</span></td>
+                            <td>@person.CheckInTime</td>
+                            <td>
+                                <button class="checkin-view-button" type="button" aria-label="查看 @person.Name">
+                                    <span>查看</span>
+                                    <span class="eye-mini-icon" aria-hidden="true"></span>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <footer class="checkin-table-footer">
+            <span data-checkin-page-summary>顯示第 1 - 10 筆，共 128 筆</span>
+            <nav class="checkin-pagination" aria-label="分頁" data-checkin-pagination>
+                <button type="button" disabled aria-label="上一頁">
+                    <span class="pager-arrow prev" aria-hidden="true"></span>
+                </button>
+                <button type="button" class="active" aria-current="page">1</button>
+                <button type="button">2</button>
+                <button type="button">3</button>
+                <button type="button" class="ellipsis" aria-label="更多頁面">...</button>
+                <button type="button">16</button>
+                <button type="button" aria-label="下一頁">
+                    <span class="pager-arrow next" aria-hidden="true"></span>
+                </button>
+            </nav>
+            <label class="checkin-page-size">
+                <span>每頁顯示</span>
+                <select aria-label="每頁顯示" data-checkin-page-size>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+            </label>
+        </footer>
+    </section>
+</section>
+
+<section class="appointment-page checkin-work-page" id="checkin-work" aria-labelledby="checkin-work-title" hidden>
+    <header class="checkin-work-header">
+        <div>
+            <nav class="breadcrumb checkin-breadcrumb" aria-label="頁面位置">
+                <span>報到管理</span>
+                <span>報到作業</span>
+            </nav>
+            <h1 id="checkin-work-title">報到作業</h1>
+            <p>可透過身分證號、手機號碼或預約條碼快速完成報到</p>
+        </div>
+    </header>
+
+    <div class="checkin-work-layout">
+        <section class="panel checkin-lookup-panel" aria-labelledby="checkin-lookup-title">
+            <h2 id="checkin-lookup-title"><span class="lookup-title-icon" aria-hidden="true"></span>報到查詢</h2>
+
+            <div class="checkin-lookup-tabs" role="tablist" aria-label="查詢方式">
+                <button class="is-active" type="button" data-checkin-lookup-tab="id">
+                    <span class="id-card-mini-icon" aria-hidden="true"></span>
+                    <span>身分證號</span>
+                </button>
+                <button type="button" data-checkin-lookup-tab="phone">
+                    <span class="phone-mini-icon" aria-hidden="true"></span>
+                    <span>手機號碼</span>
+                </button>
+                <button type="button" data-checkin-lookup-tab="barcode">
+                    <span class="barcode-mini-icon" aria-hidden="true"></span>
+                    <span>預約條碼</span>
+                </button>
+            </div>
+
+            <div class="checkin-lookup-search">
+                <label>
+                    <span class="sr-only">查詢關鍵字</span>
+                    <input type="search" placeholder="請輸入身分證號或掃描條碼" value="" data-checkin-lookup-input />
+                </label>
+                <button class="primary-button" type="button" data-checkin-lookup-button>
+                    <span class="search-button-icon" aria-hidden="true"></span>
+                    <span>查詢</span>
+                </button>
+            </div>
+
+            <section class="checkin-reservation-card" aria-labelledby="checkin-reservation-title">
+                <h3 id="checkin-reservation-title"><span class="reservation-mini-icon" aria-hidden="true"></span>預約資訊</h3>
+                <div class="checkin-reservation-grid">
+                    <div><span>姓名</span><strong data-work-field="name">王小明</strong></div>
+                    <div><span>身分證字號</span><strong data-work-field="idNo">A1234****56</strong></div>
+                    <div><span>性別</span><strong data-work-field="gender">男</strong></div>
+                    <div><span>出生日期</span><strong data-work-field="birthDate">1988/03/12</strong></div>
+                    <div><span>手機</span><strong data-work-field="phone">0910-000-123</strong></div>
+                    <div><span>預約日期</span><strong data-work-field="date">2026/06/02（二）</strong></div>
+                    <div><span>報到時段</span><strong data-work-field="period">08:00 - 09:00</strong></div>
+                    <div><span>健檢方案</span><strong data-work-field="plan">高階全身健檢</strong></div>
+                    <div><span>櫃台</span><strong data-work-field="counter">A櫃台</strong></div>
+                    <div><span>狀態</span><strong><span class="checkin-status-pill pending" data-work-field="status">待報到</span></strong></div>
+                </div>
+            </section>
+
+        </section>
+
+        <aside class="checkin-work-side">
+            <section class="panel checkin-live-summary" aria-labelledby="checkin-live-summary-title">
+                <h2 id="checkin-live-summary-title"><span class="calendar-mini-icon" aria-hidden="true"></span>今日報到概況</h2>
+                <div class="checkin-live-cards">
+                    <article>
+                        <span class="checkin-stat-icon people" aria-hidden="true"></span>
+                        <div><span>應到</span><strong>128 <small>人</small></strong></div>
+                    </article>
+                    <article>
+                        <span class="checkin-stat-icon check" aria-hidden="true"></span>
+                        <div><span>已報到</span><strong>68 <small>人</small></strong></div>
+                    </article>
+                    <article>
+                        <span class="checkin-stat-icon clock" aria-hidden="true"></span>
+                        <div><span>待報到</span><strong>50 <small>人</small></strong></div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="panel checkin-confirm-panel" aria-labelledby="checkin-confirm-title">
+                <h2 id="checkin-confirm-title"><span class="shield-mini-icon" aria-hidden="true"></span>報到確認</h2>
+                <ul class="checkin-confirm-list">
+                    <li><span class="check-mini-icon" aria-hidden="true"></span>已核對身分</li>
+                    <li><span class="check-mini-icon" aria-hidden="true"></span>已確認預約資訊</li>
+                    <li><span class="check-mini-icon" aria-hidden="true"></span>已告知注意事項</li>
+                </ul>
+                <div class="checkin-ticket">
+                    <span>報到號碼</span>
+                    <strong data-checkin-ticket>A-023</strong>
+                </div>
+                <button class="primary-button checkin-confirm-button" type="button" data-confirm-checkin>
+                    <span class="shield-mini-icon" aria-hidden="true"></span>
+                    <span>確認報到</span>
+                </button>
+                <div class="checkin-confirm-actions">
+                    <button class="ghost-button" type="button">
+                        <span class="print-mini-icon" aria-hidden="true"></span>
+                        <span>列印報到單</span>
+                    </button>
+                    <button class="ghost-button cancel" type="button">
+                        <span class="cancel-icon" aria-hidden="true"></span>
+                        <span>取消</span>
+                    </button>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <section class="panel checkin-recent-panel" aria-labelledby="checkin-recent-title">
+        <header>
+            <h2 id="checkin-recent-title"><span class="clock-mini-icon" aria-hidden="true"></span>最近報到紀錄</h2>
+            <button class="ghost-button" type="button">
+                <span>查看全部</span>
+                <span class="pager-arrow next" aria-hidden="true"></span>
+            </button>
+        </header>
+        <div class="checkin-recent-table-wrap">
+            <table class="checkin-recent-table">
+                <thead>
+                    <tr>
+                        <th>時間</th>
+                        <th>姓名</th>
+                        <th>身分證字號</th>
+                        <th>健檢方案</th>
+                        <th>狀態</th>
+                        <th>操作人員</th>
+                    </tr>
+                </thead>
+                <tbody data-recent-checkin-body>
+                    <tr>
+                        <td>2026/06/02 08:32</td>
+                        <td>張小華</td>
+                        <td>B1234****78</td>
+                        <td>標準健康檢查</td>
+                        <td><span class="checkin-status-pill arrived">已報到</span></td>
+                        <td>管理員</td>
+                    </tr>
+                    <tr>
+                        <td>2026/06/02 08:28</td>
+                        <td>李大同</td>
+                        <td>C2345****90</td>
+                        <td>高階全身健檢</td>
+                        <td><span class="checkin-status-pill arrived">已報到</span></td>
+                        <td>管理員</td>
+                    </tr>
+                    <tr>
+                        <td>2026/06/02 08:21</td>
+                        <td>陳美玲</td>
+                        <td>D3456****12</td>
+                        <td>心血管檢查專案</td>
+                        <td><span class="checkin-status-pill printed">已列印</span></td>
+                        <td>管理員</td>
+                    </tr>
+                    <tr>
+                        <td>2026/06/02 08:15</td>
+                        <td>林佳慧</td>
+                        <td>E4567****34</td>
+                        <td>標準健康檢查</td>
+                        <td><span class="checkin-status-pill arrived">已報到</span></td>
+                        <td>管理員</td>
+                    </tr>
+                    <tr>
+                        <td>2026/06/02 08:07</td>
+                        <td>黃志明</td>
+                        <td>F5678****56</td>
+                        <td>高階全身健檢</td>
+                        <td><span class="checkin-status-pill printed">已列印</span></td>
+                        <td>管理員</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+
+<script>
+    (function () {
+        const page = document.querySelector(".today-checkin-page");
+
+        if (!page) {
+            return;
+        }
+
+        const rows = Array.from(page.querySelectorAll("[data-checkin-row]"));
+        const pageSummary = page.querySelector("[data-checkin-page-summary]");
+        const pagination = page.querySelector("[data-checkin-pagination]");
+        const pageSizeSelect = page.querySelector("[data-checkin-page-size]");
+        let currentPage = 1;
+
+        function getPageSize() {
+            const parsed = Number.parseInt(pageSizeSelect ? pageSizeSelect.value : "10", 10);
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+        }
+
+        function createPageButton(label, pageNumber, options) {
+            const button = document.createElement("button");
+            button.type = "button";
+
+            if (options?.isArrow) {
+                const arrow = document.createElement("span");
+                arrow.className = "pager-arrow " + options.direction;
+                arrow.setAttribute("aria-hidden", "true");
+                button.appendChild(arrow);
+            } else {
+                button.textContent = label;
+            }
+
+            if (options?.ellipsis) {
+                button.classList.add("ellipsis");
+                button.disabled = true;
+            }
+
+            if (options?.active) {
+                button.classList.add("active");
+                button.setAttribute("aria-current", "page");
+            }
+
+            if (options?.disabled) {
+                button.disabled = true;
+            }
+
+            if (options?.ariaLabel) {
+                button.setAttribute("aria-label", options.ariaLabel);
+            }
+
+            button.addEventListener("click", function () {
+                if (button.disabled || pageNumber === currentPage) {
+                    return;
+                }
+
+                currentPage = pageNumber;
+                renderCheckInPage();
+            });
+
+            return button;
+        }
+
+        function getVisiblePageNumbers(pageCount) {
+            const pages = new Set([1, pageCount]);
+
+            for (let pageNumber = currentPage - 1; pageNumber <= currentPage + 1; pageNumber += 1) {
+                if (pageNumber >= 1 && pageNumber <= pageCount) {
+                    pages.add(pageNumber);
+                }
+            }
+
+            return Array.from(pages).sort(function (a, b) {
+                return a - b;
+            });
+        }
+
+        function renderPagination(pageCount) {
+            if (!pagination) {
+                return;
+            }
+
+            pagination.innerHTML = "";
+            pagination.appendChild(createPageButton("", Math.max(1, currentPage - 1), {
+                isArrow: true,
+                direction: "prev",
+                disabled: currentPage <= 1,
+                ariaLabel: "上一頁"
+            }));
+
+            let previousPage = 0;
+            getVisiblePageNumbers(pageCount).forEach(function (pageNumber) {
+                if (previousPage && pageNumber - previousPage > 1) {
+                    pagination.appendChild(createPageButton("...", previousPage + 1, {
+                        ellipsis: true,
+                        ariaLabel: "更多頁面"
+                    }));
+                }
+
+                pagination.appendChild(createPageButton(String(pageNumber), pageNumber, {
+                    active: pageNumber === currentPage,
+                    ariaLabel: "第 " + pageNumber + " 頁"
+                }));
+                previousPage = pageNumber;
+            });
+
+            pagination.appendChild(createPageButton("", Math.min(pageCount, currentPage + 1), {
+                isArrow: true,
+                direction: "next",
+                disabled: currentPage >= pageCount,
+                ariaLabel: "下一頁"
+            }));
+        }
+
+        function renderCheckInPage() {
+            if (!rows.length) {
+                return;
+            }
+
+            const pageSize = getPageSize();
+            const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+            currentPage = Math.min(Math.max(currentPage, 1), pageCount);
+
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, rows.length);
+
+            rows.forEach(function (row, index) {
+                row.hidden = index < startIndex || index >= endIndex;
+            });
+
+            if (pageSummary) {
+                pageSummary.textContent = "顯示第 " + (startIndex + 1) + " - " + endIndex + " 筆，共 " + rows.length + " 筆";
+            }
+
+            renderPagination(pageCount);
+        }
+
+        pageSizeSelect?.addEventListener("change", function () {
+            currentPage = 1;
+            renderCheckInPage();
+        });
+
+        renderCheckInPage();
+    })();
+
+    (function () {
+        const todayList = document.querySelector("#today-checkin-list");
+        const checkinWork = document.querySelector("#checkin-work");
+        const sectionLinks = Array.from(document.querySelectorAll("a[href$='#today-checkin-list'], a[href$='#checkin-work']"));
+
+        function normalizeTargetHash(hash) {
+            return hash === "#checkin-work" ? "#checkin-work" : "#today-checkin-list";
+        }
+
+        function setActiveCheckInSection(targetHash) {
+            const activeHash = normalizeTargetHash(targetHash || window.location.hash);
+            const showWork = activeHash === "#checkin-work";
+
+            if (todayList) {
+                todayList.hidden = showWork;
+                todayList.classList.toggle("is-hidden", showWork);
+                todayList.setAttribute("aria-hidden", String(showWork));
+            }
+
+            if (checkinWork) {
+                checkinWork.hidden = !showWork;
+                checkinWork.classList.toggle("is-hidden", !showWork);
+                checkinWork.setAttribute("aria-hidden", String(!showWork));
+            }
+
+            sectionLinks.forEach(function (link) {
+                const linkHash = normalizeTargetHash(new URL(link.href, window.location.href).hash);
+                link.classList.toggle("active", linkHash === activeHash);
+            });
+
+            if (window.location.hash !== activeHash) {
+                history.pushState(null, "", activeHash);
+            }
+        }
+
+        sectionLinks.forEach(function (link) {
+            link.addEventListener("click", function (event) {
+                const url = new URL(link.href, window.location.href);
+
+                if (url.pathname !== window.location.pathname) {
+                    return;
+                }
+
+                event.preventDefault();
+                setActiveCheckInSection(url.hash);
+            });
+        });
+
+        window.addEventListener("hashchange", function () {
+            setActiveCheckInSection(window.location.hash);
+        });
+
+        window.addEventListener("popstate", function () {
+            setActiveCheckInSection(window.location.hash);
+        });
+
+        setActiveCheckInSection();
+    })();
+
+    (function () {
+        const workPage = document.querySelector(".checkin-work-page");
+
+        if (!workPage) {
+            return;
+        }
+
+        const tabButtons = Array.from(workPage.querySelectorAll("[data-checkin-lookup-tab]"));
+        const lookupInput = workPage.querySelector("[data-checkin-lookup-input]");
+        const lookupButton = workPage.querySelector("[data-checkin-lookup-button]");
+        const confirmButton = workPage.querySelector("[data-confirm-checkin]");
+        const statusField = workPage.querySelector("[data-work-field='status']");
+        const recentBody = workPage.querySelector("[data-recent-checkin-body]");
+        const ticket = workPage.querySelector("[data-checkin-ticket]");
+        const samplePeople = {
+            id: {
+                placeholder: "請輸入身分證號或掃描條碼",
+                ticket: "A-023",
+                name: "王小明",
+                idNo: "A1234****56",
+                gender: "男",
+                birthDate: "1988/03/12",
+                phone: "0910-000-123",
+                plan: "高階全身健檢",
+                counter: "A櫃台"
+            },
+            phone: {
+                placeholder: "請輸入手機號碼",
+                ticket: "A-024",
+                name: "陳美玲",
+                idNo: "D4567****12",
+                gender: "女",
+                birthDate: "1991/09/20",
+                phone: "0944-345-678",
+                plan: "心血管檢查專案",
+                counter: "B櫃台"
+            },
+            barcode: {
+                placeholder: "請掃描或輸入預約條碼",
+                ticket: "A-025",
+                name: "林佳慧",
+                idNo: "F6789****34",
+                gender: "女",
+                birthDate: "1986/12/05",
+                phone: "0966-345-678",
+                plan: "標準健康檢查",
+                counter: "A櫃台"
+            }
+        };
+
+        function setText(field, value) {
+            const target = workPage.querySelector("[data-work-field='" + field + "']");
+            if (target) {
+                target.textContent = value;
+            }
+        }
+
+        function applyLookupMode(mode) {
+            const person = samplePeople[mode] || samplePeople.id;
+
+            tabButtons.forEach(function (button) {
+                button.classList.toggle("is-active", button.dataset.checkinLookupTab === mode);
+            });
+
+            if (lookupInput) {
+                lookupInput.placeholder = person.placeholder;
+                lookupInput.value = "";
+            }
+
+            if (ticket) {
+                ticket.textContent = person.ticket;
+            }
+
+            Object.keys(person).forEach(function (field) {
+                if (field !== "placeholder" && field !== "ticket") {
+                    setText(field, person[field]);
+                }
+            });
+
+            if (statusField) {
+                statusField.textContent = "待報到";
+                statusField.className = "checkin-status-pill pending";
+            }
+        }
+
+        function prependRecentRecord() {
+            if (!recentBody) {
+                return;
+            }
+
+            const now = new Date();
+            const timeText = "2026/06/02 " + String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+            const row = document.createElement("tr");
+            row.innerHTML = [
+                "<td>" + timeText + "</td>",
+                "<td>" + (workPage.querySelector("[data-work-field='name']")?.textContent || "") + "</td>",
+                "<td>" + (workPage.querySelector("[data-work-field='idNo']")?.textContent || "") + "</td>",
+                "<td>" + (workPage.querySelector("[data-work-field='plan']")?.textContent || "") + "</td>",
+                '<td><span class="checkin-status-pill arrived">已報到</span></td>',
+                "<td>管理員</td>"
+            ].join("");
+            recentBody.prepend(row);
+        }
+
+        tabButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                applyLookupMode(button.dataset.checkinLookupTab || "id");
+            });
+        });
+
+        lookupButton?.addEventListener("click", function () {
+            const activeTab = workPage.querySelector("[data-checkin-lookup-tab].is-active");
+            applyLookupMode(activeTab?.dataset.checkinLookupTab || "id");
+        });
+
+        confirmButton?.addEventListener("click", function () {
+            if (statusField) {
+                statusField.textContent = "已報到";
+                statusField.className = "checkin-status-pill arrived";
+            }
+
+            prependRecentRecord();
+        });
+    })();
+</script>

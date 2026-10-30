@@ -1,0 +1,779 @@
+@model HealthSys_20260428_v2.csproj.Models.HealthCheckProjectManagementViewModel
+
+@{
+    ViewData["Title"] = "專案維護";
+    var initialPageSize = Model.PageSizeOptions.Contains(20) ? 20 : Model.PageSizeOptions.FirstOrDefault();
+    initialPageSize = initialPageSize > 0 ? initialPageSize : 10;
+    var initialVisibleCount = Math.Min(initialPageSize, Model.Projects.Count);
+    var focusProject = Context.Request.Query["focusProject"].ToString();
+}
+
+<section class="basic-data-page health-project-page" aria-label="專案維護" data-health-project-page data-health-project-total="@Model.TotalProjectCount" data-project-detail-frame-url="@Url.Action("HealthCheckProjectDetail", "ProjectPackageSettings")" data-project-delete-url="@Url.Action("DeleteHealthCheckProject", "ProjectPackageSettings")" data-focus-project="@focusProject">
+    @Html.AntiForgeryToken()
+    <div data-ai-page="projects" data-ai-result-count="@Model.Projects.Count" data-ai-revision="0" hidden></div>
+    <header class="basic-data-header health-project-header">
+        <div>
+            <p>查詢、建立與維護健檢專案資料。</p>
+        </div>
+    </header>
+
+    <section class="health-project-filter-panel" aria-label="專案查詢條件">
+        <div class="health-project-filter-grid">
+            <label class="health-project-field is-wide">
+                <span>專案名稱/公司名稱</span>
+                <input type="search" placeholder="請輸入專案名稱或公司名稱" aria-label="專案名稱或公司名稱" data-project-filter="nameOrCustomer" />
+            </label>
+            <label class="health-project-field">
+                <span>專案編號</span>
+                <input type="search" placeholder="請輸入專案編號" aria-label="專案編號" data-project-filter="code" />
+            </label>
+            <label class="health-project-field is-compact">
+                <span>公司編號</span>
+                <select aria-label="公司編號" data-project-filter="customer">
+                    @foreach (var option in Model.CustomerNoOptions)
+                    {
+                        <option value="@option.Value" selected="@option.IsSelected">@(string.IsNullOrWhiteSpace(option.Value) ? "全部" : option.Text)</option>
+                    }
+                </select>
+            </label>
+            <label class="health-project-field">
+                <span>受檢單位</span>
+                <select aria-label="受檢單位" data-project-filter="clientUnit">
+                    @foreach (var option in Model.ClientUnitOptions.Where(option =>
+                        !string.Equals(option.Value?.Trim(), "[]", StringComparison.Ordinal)
+                        && !string.Equals(option.Text?.Trim(), "[]", StringComparison.Ordinal)))
+                    {
+                        <option value="@option.Value" selected="@option.IsSelected">@(string.IsNullOrWhiteSpace(option.Value) ? "全部" : option.Text)</option>
+                    }
+                </select>
+            </label>
+            <label class="health-project-field is-compact">
+                <span>年度</span>
+                <select aria-label="年度" data-project-filter="year">
+                    @foreach (var option in Model.YearOptions)
+                    {
+                        <option value="@option.Value" selected="@option.IsSelected">@(string.IsNullOrWhiteSpace(option.Value) ? "全部" : option.Text)</option>
+                    }
+                </select>
+            </label>
+            <label class="health-project-field is-compact">
+                <span>檢查年度</span>
+                <select aria-label="檢查年度" data-project-filter="checkyear">
+                    @foreach (var option in Model.CheckYearOptions)
+                    {
+                        <option value="@option.Value" selected="@option.IsSelected">@(string.IsNullOrWhiteSpace(option.Value) ? "全部" : option.Text)</option>
+                    }
+                </select>
+            </label>
+            <div class="health-project-filter-actions">
+                <button class="primary-button" type="button" data-project-search>
+                    <span class="customer-action-icon search" aria-hidden="true"></span>
+                    <span>查詢</span>
+                </button>
+                <a class="ghost-button health-project-inline-create-button" asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProject">
+                    <span class="customer-action-icon add" aria-hidden="true"></span>
+                    <span>新增</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="basic-data-panel health-project-table-panel" aria-label="專案清單">
+        <header class="health-project-list-header">
+            <div class="health-project-list-title">
+                <h2>專案清單</h2>
+                <span data-project-count-label>共 @Model.TotalProjectCount 筆</span>
+            </div>
+        </header>
+
+        <div class="basic-table-wrap health-project-table-wrap">
+            <table class="basic-data-table health-project-table">
+                <thead>
+                    <tr>
+                        <th>操作</th>
+                        <th>專案名稱</th>
+                        <th>公司名稱</th>
+                        <th>專案編號</th>
+                        <th>公司編號</th>
+                        <th>年度</th>
+                        <th>檢查年度</th>
+                        <th>檢查日期</th>
+                        <th>建立日期</th>
+                        <th>修改日期</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var project in Model.Projects)
+                    {
+                        var keywords = $"{project.Code} {project.Name} {project.CustomerNo} {project.CustomerName} {project.ClientUnit} {project.Year} {project.CheckYear} {project.CheckDate} {project.CreatedAt} {project.UpdatedAt}";
+
+                        <tr data-project-row
+                            data-code="@project.Code"
+                            data-name="@project.Name"
+                            data-customer-name="@project.CustomerName"
+                            data-customer="@project.CustomerNo"
+                            data-client-unit="@project.ClientUnit"
+                            data-year="@project.Year"
+                            data-checkyear="@project.CheckYear"
+                            data-keywords="@keywords"
+                            tabindex="0"
+                            aria-selected="false">
+                            <td>
+                                <div class="table-actions health-project-row-actions">
+                                    <button class="row-more-button appointment-action-toggle health-project-action-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-label="開啟 @project.Name 的操作選單" data-project-more-toggle>
+                                        <span class="appointment-action-icon" aria-hidden="true"></span>
+                                    </button>
+                                    <div class="row-action-menu" role="menu" aria-label="@project.Name 的操作選單">
+                                        <button class="view" type="button" role="menuitem" data-project-detail-open aria-label="查看 @project.Name">查看</button>
+                                        <a class="edit" asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProject" asp-route-mode="edit" asp-route-code="@project.Code" role="menuitem">編輯</a>
+                                        <button class="danger" type="button" role="menuitem" data-project-delete>刪除專案</button>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>@project.Name</td>
+                            <td>@project.CustomerName</td>
+                            <td><strong>@project.Code</strong></td>
+                            <td>@project.CustomerNo</td>
+                            <td>@project.Year</td>
+                            <td>@project.CheckYear</td>
+                            <td>@project.CheckDate</td>
+                            <td>@project.CreatedAt</td>
+                            <td>@project.UpdatedAt</td>
+                        </tr>
+                    }
+                    <tr class="health-project-empty-row" data-project-empty hidden>
+                        <td colspan="10">查無符合條件的專案</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="table-footer health-project-footer">
+            @if (Model.Projects.Any())
+            {
+                <span data-project-result-summary>顯示第 1 - @initialVisibleCount 筆，共 @Model.TotalProjectCount 筆</span>
+            }
+            else
+            {
+                <span data-project-result-summary>顯示 0 筆，共 0 筆</span>
+            }
+            <div class="pagination-controls">
+                <select class="page-select" aria-label="每頁顯示筆數" data-project-page-size>
+                    @foreach (var pageSize in Model.PageSizeOptions)
+                    {
+                        <option value="@pageSize" selected="@(pageSize == initialPageSize)">@($"{pageSize}項")</option>
+                    }
+                </select>
+                <div class="pagination" aria-label="專案分頁" data-project-pagination></div>
+            </div>
+        </footer>
+    </section>
+
+    <div class="health-project-delete-modal" data-project-delete-modal hidden>
+        <button class="health-project-delete-backdrop" type="button" data-project-delete-close aria-label="關閉刪除確認視窗"></button>
+        <div class="health-project-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="health-project-delete-title" aria-describedby="health-project-delete-description">
+            <button class="health-project-delete-close" type="button" data-project-delete-close aria-label="關閉刪除確認視窗">×</button>
+            <div class="health-project-delete-heading">
+                <span class="health-project-delete-icon" aria-hidden="true"></span>
+                <h2 id="health-project-delete-title">確定要刪除此健檢專案嗎？</h2>
+            </div>
+            <div class="health-project-delete-divider"></div>
+            <div class="health-project-delete-details" id="health-project-delete-description">
+                <p>專案編號：<strong data-project-delete-code></strong></p>
+                <p>專案名稱：<strong data-project-delete-name></strong></p>
+            </div>
+            <p class="health-project-delete-warning">刪除後將無法復原，確認後會刪除資料庫中的專案資料。</p>
+            <div class="health-project-delete-actions">
+                <button class="ghost-button" type="button" data-project-delete-close>取消</button>
+                <button class="primary-button danger" type="button" data-project-delete-confirm>確認刪除</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="project-detail-frame-modal" data-project-detail-frame-modal hidden>
+        <button class="project-detail-frame-backdrop" type="button" data-project-detail-frame-close aria-label="關閉專案查看視窗"></button>
+        <div class="project-detail-frame-shell" role="dialog" aria-modal="true" aria-labelledby="project-detail-frame-dialog-title">
+            <span id="project-detail-frame-dialog-title" class="sr-only">專案查看</span>
+            <div data-project-detail-frame-host></div>
+        </div>
+    </div>
+</section>
+
+<script>
+    (function () {
+        const page = document.querySelector("[data-health-project-page]");
+
+        if (!page) {
+            return;
+        }
+
+        const rows = Array.from(page.querySelectorAll("[data-project-row]"));
+        const filters = Array.from(page.querySelectorAll("[data-project-filter]"));
+        const searchButton = page.querySelector("[data-project-search]");
+        const emptyRow = page.querySelector("[data-project-empty]");
+        const summary = page.querySelector("[data-project-result-summary]");
+        const countLabel = page.querySelector("[data-project-count-label]");
+        const pagination = page.querySelector("[data-project-pagination]");
+        const pageSizeSelect = page.querySelector("[data-project-page-size]");
+        let serverTotal = Number.parseInt(page.dataset.healthProjectTotal || String(rows.length), 10);
+        const deleteModal = page.querySelector("[data-project-delete-modal]");
+        const deleteCode = page.querySelector("[data-project-delete-code]");
+        const deleteName = page.querySelector("[data-project-delete-name]");
+        const deleteConfirm = page.querySelector("[data-project-delete-confirm]");
+        const deleteCloseButtons = Array.from(page.querySelectorAll("[data-project-delete-close]"));
+        const deleteUrl = page.dataset.projectDeleteUrl || "";
+        const antiForgeryToken = page.querySelector("input[name=\"__RequestVerificationToken\"]")?.value || "";
+        const detailFrameUrl = page.dataset.projectDetailFrameUrl || "";
+        const detailFrameModal = page.querySelector("[data-project-detail-frame-modal]");
+        const detailFrameHost = page.querySelector("[data-project-detail-frame-host]");
+        const detailFrameCloseButtons = Array.from(page.querySelectorAll("[data-project-detail-frame-close]"));
+        const focusProjectCode = normalize(page.dataset.focusProject || "");
+        let visibleRows = rows.slice();
+        let currentPage = 1;
+        let deleteTargetRow = null;
+        let selectedProjectRow = null;
+        let previousFocus = null;
+
+        function normalize(value) {
+            return (value || "").trim().toUpperCase();
+        }
+
+        function filterValue(key) {
+            return normalize(page.querySelector(`[data-project-filter="${key}"]`)?.value);
+        }
+
+        function includesFilter(row, key) {
+            const value = filterValue(key);
+
+            return !value || normalize(row.dataset[key]).includes(value);
+        }
+
+        function equalsFilter(row, key) {
+            const value = filterValue(key);
+
+            return !value || normalize(row.dataset[key]) === value;
+        }
+
+        function nameOrCustomerMatches(row) {
+            const value = filterValue("nameOrCustomer");
+
+            return !value
+                || normalize(row.dataset.name).includes(value)
+                || normalize(row.dataset.customerName).includes(value);
+        }
+
+        function rowMatches(row) {
+            return nameOrCustomerMatches(row)
+                && includesFilter(row, "code")
+                && equalsFilter(row, "year")
+                && equalsFilter(row, "customer")
+                && equalsFilter(row, "clientUnit")
+                && equalsFilter(row, "checkyear");
+        }
+
+        function pageSize() {
+            const value = Number.parseInt(pageSizeSelect?.value || "10", 10);
+
+            return Number.isFinite(value) && value > 0 ? value : 10;
+        }
+
+        function totalPages() {
+            return Math.max(1, Math.ceil(visibleRows.length / pageSize()));
+        }
+
+        function visiblePageNumbers() {
+            const pages = totalPages();
+            const maxVisiblePages = 7;
+
+            if (pages <= maxVisiblePages) {
+                const visiblePages = [];
+
+                for (let pageNumber = 1; pageNumber <= pages; pageNumber += 1) {
+                    visiblePages.push(pageNumber);
+                }
+
+                while (visiblePages.length < maxVisiblePages) {
+                    visiblePages.push(`placeholder-${visiblePages.length}`);
+                }
+
+                return visiblePages;
+            }
+
+            if (currentPage <= 4) {
+                return [1, 2, 3, 4, 5, "ellipsis-end", pages];
+            }
+
+            if (currentPage >= pages - 3) {
+                return [1, "ellipsis-start", pages - 4, pages - 3, pages - 2, pages - 1, pages];
+            }
+
+            return [1, "ellipsis-start", currentPage - 1, currentPage, currentPage + 1, "ellipsis-end", pages];
+        }
+
+        function makePageButton(label, targetPage, active, disabled, placeholder) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+            button.disabled = disabled;
+
+            if (placeholder) {
+                button.classList.add("pagination-placeholder");
+                button.disabled = true;
+                button.setAttribute("aria-hidden", "true");
+                button.tabIndex = -1;
+                return button;
+            }
+
+            if (active) {
+                button.classList.add("active");
+                button.setAttribute("aria-current", "page");
+            }
+
+            if (typeof targetPage === "number") {
+                button.dataset.page = String(targetPage);
+                button.setAttribute("aria-label", `第 ${targetPage} 頁`);
+            }
+
+            if (disabled) {
+                return button;
+            }
+
+            button.addEventListener("click", function () {
+                currentPage = targetPage;
+                renderRows(false);
+            });
+
+            return button;
+        }
+
+        function renderPagination() {
+            if (!pagination) {
+                return;
+            }
+
+            const pages = totalPages();
+            const buttons = [
+                makePageButton("‹", Math.max(1, currentPage - 1), false, currentPage === 1)
+            ];
+
+            visiblePageNumbers().forEach((pageNumber) => {
+                if (typeof pageNumber === "string" && pageNumber.startsWith("placeholder-")) {
+                    buttons.push(makePageButton("", null, false, true, true));
+                    return;
+                }
+
+                if (typeof pageNumber !== "number") {
+                    const ellipsis = makePageButton("...", null, false, true);
+                    ellipsis.setAttribute("aria-label", "省略頁碼");
+                    buttons.push(ellipsis);
+                    return;
+                }
+
+                buttons.push(makePageButton(String(pageNumber), pageNumber, pageNumber === currentPage, false));
+            });
+
+            buttons.push(makePageButton("›", Math.min(pages, currentPage + 1), false, currentPage === pages));
+            pagination.replaceChildren(...buttons);
+        }
+
+        function renderRows(resetPage) {
+            if (resetPage) {
+                currentPage = 1;
+            }
+
+            visibleRows = rows.filter(rowMatches);
+            const aiResult = document.querySelector('[data-ai-page="projects"]');
+            if (aiResult) {
+                aiResult.dataset.aiResultCount = String(visibleRows.length);
+                aiResult.dataset.aiRevision = String(Number(aiResult.dataset.aiRevision || 0) + 1);
+            }
+
+            const pages = totalPages();
+
+            if (currentPage > pages) {
+                currentPage = pages;
+            }
+
+            const start = (currentPage - 1) * pageSize();
+            const end = start + pageSize();
+            const rowsToShow = visibleRows.slice(start, end);
+
+            rows.forEach((row) => {
+                row.hidden = !rowsToShow.includes(row);
+            });
+
+            if (emptyRow) {
+                emptyRow.hidden = visibleRows.length > 0;
+            }
+
+            if (summary) {
+                const total = visibleRows.length;
+                const from = total > 0 ? start + 1 : 0;
+                const to = Math.min(end, total);
+                summary.textContent = total > 0
+                    ? `顯示第 ${from} - ${to} 筆，共 ${total} 筆`
+                    : "顯示 0 筆，共 0 筆";
+            }
+
+            if (countLabel) {
+                countLabel.textContent = visibleRows.length === rows.length
+                    ? `共 ${serverTotal} 筆`
+                    : `符合 ${visibleRows.length} 筆`;
+            }
+
+            renderPagination();
+        }
+
+        function selectProjectRow(row) {
+            if (!row || !rows.includes(row)) {
+                return;
+            }
+
+            if (selectedProjectRow && selectedProjectRow !== row) {
+                selectedProjectRow.classList.remove("is-selected");
+                selectedProjectRow.setAttribute("aria-selected", "false");
+            }
+
+            selectedProjectRow = row;
+            selectedProjectRow.classList.add("is-selected");
+            selectedProjectRow.setAttribute("aria-selected", "true");
+        }
+
+        function focusProjectRow() {
+            if (!focusProjectCode) {
+                return;
+            }
+
+            const targetRow = rows.find((row) => normalize(row.dataset.code) === focusProjectCode);
+
+            if (!targetRow) {
+                return;
+            }
+
+            filters.forEach((filter) => {
+                filter.value = "";
+            });
+
+            visibleRows = rows.filter(rowMatches);
+            const rowIndex = visibleRows.indexOf(targetRow);
+
+            if (rowIndex >= 0) {
+                currentPage = Math.floor(rowIndex / pageSize()) + 1;
+            }
+
+            renderRows(false);
+            selectProjectRow(targetRow);
+            targetRow.classList.add("is-new-project");
+            targetRow.hidden = false;
+            targetRow.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+
+        function closeMenus(exceptActions) {
+            page.querySelectorAll(".health-project-row-actions.is-open").forEach((actions) => {
+                if (actions === exceptActions) {
+                    return;
+                }
+
+                actions.classList.remove("is-open");
+                actions.querySelector("[data-project-more-toggle]")?.setAttribute("aria-expanded", "false");
+
+                const menu = actions.querySelector(".row-action-menu");
+
+                if (menu) {
+                    menu.style.left = "";
+                    menu.style.top = "";
+                }
+            });
+        }
+
+        function positionActionMenu(actions) {
+            const toggle = actions?.querySelector("[data-project-more-toggle]");
+            const menu = actions?.querySelector(".row-action-menu");
+
+            if (!toggle || !menu) {
+                return;
+            }
+
+            const toggleRect = toggle.getBoundingClientRect();
+            const spacing = 6;
+            const menuWidth = menu.offsetWidth || 168;
+            const menuHeight = menu.offsetHeight || 120;
+            const viewportPadding = 8;
+            const left = Math.min(
+                Math.max(toggleRect.left - menuWidth - spacing, viewportPadding),
+                window.innerWidth - menuWidth - viewportPadding
+            );
+            const top = Math.min(
+                Math.max(toggleRect.top, viewportPadding),
+                window.innerHeight - menuHeight - viewportPadding
+            );
+
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
+        }
+
+        function openActionMenu(actions) {
+            if (!actions) {
+                return;
+            }
+
+            closeMenus(actions);
+            actions.classList.add("is-open");
+            actions.querySelector("[data-project-more-toggle]")?.setAttribute("aria-expanded", "true");
+            positionActionMenu(actions);
+        }
+
+        function openDeleteModal(row) {
+            if (!deleteModal) {
+                return;
+            }
+
+            deleteTargetRow = row;
+
+            if (deleteCode) {
+                deleteCode.textContent = row.dataset.code || "";
+            }
+
+            if (deleteName) {
+                deleteName.textContent = row.dataset.name || "";
+            }
+
+            closeMenus();
+            deleteModal.hidden = false;
+            deleteConfirm?.focus();
+        }
+
+        function closeDeleteModal() {
+            if (!deleteModal) {
+                return;
+            }
+
+            deleteModal.hidden = true;
+            deleteTargetRow = null;
+        }
+
+        function openProjectDetailFrame(row) {
+            if (!detailFrameModal || !detailFrameHost || !detailFrameUrl || !row) {
+                return;
+            }
+
+            previousFocus = document.activeElement;
+            detailFrameHost.innerHTML = "";
+
+            const url = new URL(detailFrameUrl, window.location.href);
+            url.searchParams.set("code", row.dataset.code || "");
+
+            const iframe = document.createElement("iframe");
+            iframe.title = `專案查看 - ${row.dataset.name || row.dataset.code || ""}`.trim();
+            iframe.src = url.toString();
+            iframe.loading = "eager";
+            iframe.setAttribute("data-project-detail-frame", "");
+            detailFrameHost.appendChild(iframe);
+
+            closeMenus();
+            detailFrameModal.hidden = false;
+            document.body.classList.add("project-detail-frame-open");
+        }
+
+        function closeProjectDetailFrame() {
+            if (!detailFrameModal || !detailFrameHost) {
+                return;
+            }
+
+            detailFrameModal.hidden = true;
+            detailFrameHost.innerHTML = "";
+            document.body.classList.remove("project-detail-frame-open");
+
+            if (previousFocus && typeof previousFocus.focus === "function") {
+                previousFocus.focus();
+            }
+        }
+
+        async function confirmDeleteProject() {
+            if (!deleteTargetRow) {
+                closeDeleteModal();
+                return;
+            }
+
+            const projectNo = deleteTargetRow.dataset.code || "";
+
+            if (!projectNo || !deleteUrl) {
+                alert("缺少專案編號，無法刪除。");
+                return;
+            }
+
+            const originalText = deleteConfirm?.textContent || "確認刪除";
+
+            if (deleteConfirm) {
+                deleteConfirm.disabled = true;
+                deleteConfirm.textContent = "刪除中...";
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append("projectNo", projectNo);
+
+                if (antiForgeryToken) {
+                    formData.append("__RequestVerificationToken", antiForgeryToken);
+                }
+
+                const response = await fetch(deleteUrl, {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+
+                const result = await response.json().catch(() => null);
+
+                if (!response.ok || result?.deleted !== true) {
+                    alert(result?.message || "專案刪除失敗，請稍後再試。");
+                    return;
+                }
+
+                window.location.reload();
+            } catch {
+                alert("專案刪除失敗，請稍後再試。");
+            } finally {
+                if (deleteConfirm) {
+                    deleteConfirm.disabled = false;
+                    deleteConfirm.textContent = originalText;
+                }
+            }
+        }
+
+        filters.forEach((filter) => {
+            filter.addEventListener("keydown", function (event) {
+                if (event.key !== "Enter") {
+                    return;
+                }
+
+                event.preventDefault();
+                renderRows(true);
+            });
+        });
+
+        searchButton?.addEventListener("click", function () {
+            renderRows(true);
+        });
+
+        pageSizeSelect?.addEventListener("change", function () {
+            renderRows(true);
+        });
+
+        deleteCloseButtons.forEach((button) => {
+            button.addEventListener("click", closeDeleteModal);
+        });
+
+        detailFrameCloseButtons.forEach((button) => {
+            button.addEventListener("click", closeProjectDetailFrame);
+        });
+
+        deleteConfirm?.addEventListener("click", confirmDeleteProject);
+
+        page.addEventListener("click", function (event) {
+            if (!(event.target instanceof Element)) {
+                return;
+            }
+
+            const toggle = event.target.closest("[data-project-more-toggle]");
+
+            if (toggle && page.contains(toggle)) {
+                const row = toggle.closest("[data-project-row]");
+                selectProjectRow(row);
+
+                const actions = toggle.closest(".health-project-row-actions");
+
+                if (actions?.classList.contains("is-open")) {
+                    closeMenus();
+                } else {
+                    openActionMenu(actions);
+                }
+
+                event.stopPropagation();
+                return;
+            }
+
+            const detailButton = event.target.closest("[data-project-detail-open]");
+
+            if (detailButton && page.contains(detailButton)) {
+                event.preventDefault();
+
+                const row = detailButton.closest("[data-project-row]");
+
+                if (row) {
+                    selectProjectRow(row);
+                    openProjectDetailFrame(row);
+                }
+
+                return;
+            }
+
+            const deleteButton = event.target.closest("[data-project-delete]");
+
+            if (deleteButton && page.contains(deleteButton)) {
+                event.preventDefault();
+
+                const row = deleteButton.closest("[data-project-row]");
+
+                if (row) {
+                    selectProjectRow(row);
+                    openDeleteModal(row);
+                }
+
+                return;
+            }
+
+            if (!event.target.closest(".health-project-row-actions")) {
+                closeMenus();
+            }
+
+            const row = event.target.closest("[data-project-row]");
+
+            if (row && page.contains(row)) {
+                selectProjectRow(row);
+            }
+        });
+
+        page.addEventListener("keydown", function (event) {
+            if (!(event.target instanceof Element)) {
+                return;
+            }
+
+            if (event.target.closest("button, a, input, select, textarea, [role='menuitem']")) {
+                return;
+            }
+
+            const row = event.target.closest("[data-project-row]");
+
+            if (!row || !page.contains(row) || (event.key !== "Enter" && event.key !== " ")) {
+                return;
+            }
+
+            event.preventDefault();
+            selectProjectRow(row);
+        });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                closeMenus();
+                closeDeleteModal();
+                closeProjectDetailFrame();
+            }
+        });
+
+        window.addEventListener("message", function (event) {
+            if (event.origin !== window.location.origin || !event.data) {
+                return;
+            }
+
+            if (event.data.type === "healthsys:project-detail-frame-close") {
+                closeProjectDetailFrame();
+            }
+        });
+
+        renderRows(true);
+        focusProjectRow();
+    })();
+</script>

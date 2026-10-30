@@ -1,0 +1,1165 @@
+(function () {
+    const table = document.querySelector(".examinee-table");
+    const tableBody = table ? table.querySelector("tbody") : null;
+    const detailsPanel = document.querySelector(".details-panel");
+    const progressPanel = document.querySelector(".progress-panel");
+    const flowPanel = document.querySelector(".flow-panel");
+    const alertPanel = document.querySelector(".alert-panel");
+    const pagination = document.querySelector(".pagination");
+    const pageSelect = document.querySelector(".page-select");
+    const pageSummary = document.querySelector("[data-page-summary]");
+    const myHealthModal = document.querySelector("[data-my-health-modal]");
+    const openMyHealthButton = document.querySelector("[data-open-my-health]");
+    const closeMyHealthButtons = Array.from(document.querySelectorAll("[data-close-my-health]"));
+    const myHealthToggleSizeButton = document.querySelector("[data-my-health-toggle-size]");
+    const myHealthFrame = document.querySelector("[data-my-health-frame]");
+
+    if (!table || !tableBody || !detailsPanel) {
+        return;
+    }
+
+    const initialRows = Array.from(tableBody.querySelectorAll("tr[data-booking-time]"));
+
+    if (!initialRows.length) {
+        document.querySelectorAll("[data-detail], [data-profile]").forEach(function (target) {
+            target.textContent = "—";
+        });
+        return;
+    }
+
+    const statusClasses = ["checking", "done", "arrived", "unfinished"];
+    const statusText = {
+        checking: "檢查中",
+        done: "已完成",
+        arrived: "已報到",
+        unfinished: "未完成"
+    };
+    const defaultProgressByStatus = {
+        checking: {
+            completed: 8,
+            checking: 3,
+            pending: 2,
+            total: 13
+        },
+        done: {
+            completed: 13,
+            checking: 0,
+            pending: 0,
+            total: 13
+        },
+        arrived: {
+            completed: 1,
+            checking: 0,
+            pending: 12,
+            total: 13
+        },
+        unfinished: {
+            completed: 0,
+            checking: 0,
+            pending: 13,
+            total: 13
+        }
+    };
+    const generatedStatusTargets = {
+        done: 336,
+        checking: 96,
+        arrived: 40,
+        unfinished: 40
+    };
+    const generatedStatusPattern = [
+        "done",
+        "checking",
+        "done",
+        "arrived",
+        "done",
+        "unfinished",
+        "done",
+        "checking"
+    ];
+    const stationCycle = ["抽血檢查站", "X 光檢查站", "心電圖檢查站", "身體測量站", "醫師問診站"];
+    const pageSize = readPositiveNumber(pagination ? pagination.getAttribute("data-page-size") : "", initialRows.length);
+    const declaredTotalItems = readPositiveNumber(
+        pagination ? pagination.getAttribute("data-total-items") : "",
+        initialRows.length
+    );
+    const seedRecords = initialRows.map(readRecord);
+    const records = seedRecords;
+    const rowRecords = new WeakMap();
+    let visibleRows = [];
+    let currentPage = 1;
+    let previousMyHealthFocus = null;
+
+    const detailTargets = {
+        name: detailsPanel.querySelector('[data-detail="name"]'),
+        status: detailsPanel.querySelector('[data-detail="status"]'),
+        serial: detailsPanel.querySelector('[data-detail="serial"]'),
+        examNumber: detailsPanel.querySelector('[data-detail="examNumber"]'),
+        idNumber: detailsPanel.querySelector('[data-detail="idNumber"]'),
+        genderAge: detailsPanel.querySelector('[data-detail="genderAge"]'),
+        station: detailsPanel.querySelector('[data-detail="station"]'),
+        checkInTime: detailsPanel.querySelector('[data-detail="checkInTime"]')
+    };
+    const progressTargets = progressPanel
+        ? {
+            donut: progressPanel.querySelector(".donut"),
+            percent: progressPanel.querySelector('[data-progress="percent"]'),
+            status: progressPanel.querySelector('[data-progress="status"]'),
+            completed: progressPanel.querySelector('[data-progress="completed"]'),
+            checking: progressPanel.querySelector('[data-progress="checking"]'),
+            pending: progressPanel.querySelector('[data-progress="pending"]'),
+            total: progressPanel.querySelector('[data-progress="total"]')
+        }
+        : {};
+    const profileTargets = flowPanel
+        ? {
+            name: flowPanel.querySelector('[data-profile="name"]'),
+            genderAge: flowPanel.querySelector('[data-profile="genderAge"]'),
+            examNumber: flowPanel.querySelector('[data-profile="examNumber"]'),
+            idNumber: flowPanel.querySelector('[data-profile="idNumber"]'),
+            station: flowPanel.querySelector('[data-profile="station"]'),
+            checkInTime: flowPanel.querySelector('[data-profile="checkInTime"]')
+        }
+        : {};
+    const flowTargets = flowPanel
+        ? {
+            name: flowPanel.querySelector('[data-flow="name"]'),
+            examNumber: flowPanel.querySelector('[data-flow="examNumber"]'),
+            note: flowPanel.querySelector('[data-flow="note"]'),
+            currentStation: flowPanel.querySelector('[data-flow="currentStation"]'),
+            waitText: flowPanel.querySelector('[data-flow="waitText"]'),
+            currentTime: flowPanel.querySelector('[data-flow="currentTime"]'),
+            stationCard: flowPanel.querySelector('[data-flow="stationCard"]'),
+            stationIcon: flowPanel.querySelector('[data-flow="stationCard"] .alert-icon'),
+            steps: {
+                booking: flowPanel.querySelector('[data-flow-step="booking"]'),
+                checkin: flowPanel.querySelector('[data-flow-step="checkin"]'),
+                inspection: flowPanel.querySelector('[data-flow-step="inspection"]'),
+                station: flowPanel.querySelector('[data-flow-step="station"]'),
+                finish: flowPanel.querySelector('[data-flow-step="finish"]')
+            },
+            stepTimes: {
+                booking: flowPanel.querySelector('[data-flow-step-time="booking"]'),
+                checkin: flowPanel.querySelector('[data-flow-step-time="checkin"]'),
+                inspection: flowPanel.querySelector('[data-flow-step-time="inspection"]'),
+                station: flowPanel.querySelector('[data-flow-step-time="station"]'),
+                finish: flowPanel.querySelector('[data-flow-step-time="finish"]')
+            }
+        }
+        : {};
+    const metricTargets = {
+        values: {
+            total: document.querySelector('[data-metric-value="total"]'),
+            done: document.querySelector('[data-metric-value="done"]'),
+            checking: document.querySelector('[data-metric-value="checking"]'),
+            unfinished: document.querySelector('[data-metric-value="unfinished"]')
+        },
+        percents: {
+            done: document.querySelector('[data-metric-percent="done"]'),
+            checking: document.querySelector('[data-metric-percent="checking"]'),
+            unfinished: document.querySelector('[data-metric-percent="unfinished"]')
+        },
+        cards: {
+            total: document.querySelector('[data-metric-card="total"]'),
+            done: document.querySelector('[data-metric-card="done"]'),
+            checking: document.querySelector('[data-metric-card="checking"]'),
+            unfinished: document.querySelector('[data-metric-card="unfinished"]')
+        }
+    };
+    const alertTargets = alertPanel
+        ? {
+            list: alertPanel.querySelector("[data-alert-list]"),
+            total: alertPanel.querySelector("[data-alert-total]")
+        }
+        : {};
+
+    function readPositiveNumber(value, fallback) {
+        const parsedValue = Number.parseInt(value, 10);
+
+        return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
+    }
+
+    function getCellText(row, index) {
+        const cell = row.cells[index];
+
+        return cell ? cell.textContent.trim() : "";
+    }
+
+    function getStatus(row) {
+        const badge = row.cells[7] ? row.cells[7].querySelector(".status") : null;
+        const className = badge
+            ? statusClasses.find(function (name) {
+                return badge.classList.contains(name);
+            })
+            : "";
+
+        return {
+            text: badge ? badge.textContent.trim() : getCellText(row, 7),
+            className: className || "arrived"
+        };
+    }
+
+    function getProgressNumber(row, name, fallback) {
+        const value = Number.parseInt(row.getAttribute("data-progress-" + name), 10);
+
+        return Number.isFinite(value) ? value : fallback;
+    }
+
+    function readRecord(row) {
+        const status = getStatus(row);
+        const fallback = defaultProgressByStatus[status.className] || defaultProgressByStatus.arrived;
+        const examNumber = getCellText(row, 2);
+
+        return {
+            serial: getCellText(row, 1),
+            examNumber: examNumber,
+            name: getCellText(row, 3),
+            idNumber: getCellText(row, 4),
+            gender: getCellText(row, 5),
+            age: getCellText(row, 6),
+            status: status,
+            station: getCellText(row, 8),
+            checkInTime: getCellText(row, 9),
+            bookingTime: row.getAttribute("data-booking-time") || getGeneratedBookingTime(examNumber, getCellText(row, 1)),
+            progress: {
+                completed: getProgressNumber(row, "completed", fallback.completed),
+                checking: getProgressNumber(row, "checking", fallback.checking),
+                pending: getProgressNumber(row, "pending", fallback.pending),
+                total: getProgressNumber(row, "total", fallback.total)
+            }
+        };
+    }
+
+    function cloneRecord(record) {
+        return {
+            serial: record.serial,
+            examNumber: record.examNumber,
+            name: record.name,
+            idNumber: record.idNumber,
+            gender: record.gender,
+            age: record.age,
+            status: {
+                text: record.status.text,
+                className: record.status.className
+            },
+            station: record.station,
+            checkInTime: record.checkInTime,
+            bookingTime: record.bookingTime,
+            progress: {
+                completed: record.progress.completed,
+                checking: record.progress.checking,
+                pending: record.progress.pending,
+                total: record.progress.total
+            }
+        };
+    }
+
+    function buildRecords(sourceRecords, totalItems) {
+        const generatedNames = [
+            "王小明", "李雅婷", "陳志豪", "林美玲", "張國華", "黃怡君",
+            "吳建宏", "蔡佩蓉", "劉俊傑", "楊淑芬", "許家豪", "鄭惠如",
+            "謝承翰", "洪佳蓉", "郭柏宏", "邱怡婷", "曾志明", "賴雅雯",
+            "周冠宇", "葉佳琪", "廖俊宏", "徐佩君", "蘇建銘", "何婉婷"
+        ];
+        const result = [];
+        const statusCounts = {
+            done: 0,
+            checking: 0,
+            arrived: 0,
+            unfinished: 0
+        };
+
+        for (let index = 0; index < totalItems; index += 1) {
+            const source = cloneRecord(sourceRecords[index % sourceRecords.length]);
+
+            if (index < sourceRecords.length) {
+                result.push(source);
+                incrementStatusCount(statusCounts, source.status.className);
+                continue;
+            }
+
+            const serial = index + 1;
+            const nextStatus = pickGeneratedStatus(statusCounts);
+
+            source.serial = String(serial);
+            source.examNumber = "HC240501" + String(serial).padStart(3, "0");
+            source.name = generatedNames[index % generatedNames.length];
+            source.idNumber = getGeneratedIdNumber(source.idNumber, serial);
+            source.age = getGeneratedAge(source.age, index);
+            source.checkInTime = getGeneratedCheckInTime(source.checkInTime, index);
+            source.bookingTime = getGeneratedBookingTime(source.examNumber, serial);
+
+            applyGeneratedStatus(source, nextStatus, index);
+            result.push(source);
+            incrementStatusCount(statusCounts, nextStatus);
+        }
+
+        return result;
+    }
+
+    function incrementStatusCount(counts, statusClass) {
+        if (Object.prototype.hasOwnProperty.call(counts, statusClass)) {
+            counts[statusClass] += 1;
+        }
+    }
+
+    function pickGeneratedStatus(counts) {
+        for (let index = 0; index < generatedStatusPattern.length; index += 1) {
+            const statusClass = generatedStatusPattern[index];
+
+            if (counts[statusClass] < generatedStatusTargets[statusClass]) {
+                return statusClass;
+            }
+        }
+
+        return "unfinished";
+    }
+
+    function applyGeneratedStatus(record, statusClass, index) {
+        const baseTotal = 13;
+
+        record.status = {
+            text: statusText[statusClass],
+            className: statusClass
+        };
+
+        if (statusClass === "done") {
+            record.station = "完成";
+            record.checkInTime = record.checkInTime && record.checkInTime !== "-" ? record.checkInTime : getGeneratedCheckInTime("08:30", index);
+            record.progress = {
+                completed: baseTotal,
+                checking: 0,
+                pending: 0,
+                total: baseTotal
+            };
+            return;
+        }
+
+        if (statusClass === "checking") {
+            const completed = 5 + (index % 5);
+            const checking = 1 + (index % 3);
+
+            record.station = stationCycle[index % stationCycle.length];
+            record.checkInTime = record.checkInTime && record.checkInTime !== "-" ? record.checkInTime : getGeneratedCheckInTime("09:00", index);
+            record.progress = {
+                completed: completed,
+                checking: checking,
+                pending: Math.max(0, baseTotal - completed - checking),
+                total: baseTotal
+            };
+            return;
+        }
+
+        if (statusClass === "arrived") {
+            record.station = "報到站";
+            record.checkInTime = record.checkInTime && record.checkInTime !== "-" ? record.checkInTime : getGeneratedCheckInTime("09:10", index);
+            record.progress = {
+                completed: 1,
+                checking: 0,
+                pending: baseTotal - 1,
+                total: baseTotal
+            };
+            return;
+        }
+
+        record.station = "尚未開始";
+        record.checkInTime = "-";
+        record.progress = {
+            completed: 0,
+            checking: 0,
+            pending: baseTotal,
+            total: baseTotal
+        };
+    }
+
+    function getGeneratedIdNumber(baseIdNumber, serial) {
+        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const prefix = /^[A-Z]/.test(baseIdNumber)
+            ? baseIdNumber.charAt(0)
+            : letters[serial % letters.length];
+        const number = 100000000 + ((serial * 7919) % 900000000);
+
+        return prefix + String(number).padStart(9, "0");
+    }
+
+    function getGeneratedAge(baseAge, index) {
+        const age = readPositiveNumber(baseAge, 30);
+
+        return String(age + (Math.floor(index / initialRows.length) % 5));
+    }
+
+    function getGeneratedCheckInTime(baseTime, index) {
+        const match = /^(\d{2}):(\d{2})$/.exec(baseTime);
+
+        if (!match) {
+            return baseTime;
+        }
+
+        const addedMinutes = Math.floor(index / initialRows.length) * 3;
+        const totalMinutes = (Number(match[1]) * 60 + Number(match[2]) + addedMinutes) % (24 * 60);
+        const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+        const minutes = String(totalMinutes % 60).padStart(2, "0");
+
+        return hours + ":" + minutes;
+    }
+
+    function getGeneratedBookingTime(examNumber, serial) {
+        const examDate = getExamDate(examNumber) || "2024-05-01";
+        const bookingDate = shiftIsoDate(examDate, -3);
+        const serialNumber = readPositiveNumber(serial, 1);
+        const hour = 10 + (serialNumber % 7);
+        const minute = (serialNumber * 5) % 60;
+
+        return bookingDate + " " + String(hour).padStart(2, "0") + ":" + String(minute).padStart(2, "0");
+    }
+
+    function getExamDate(examNumber) {
+        const match = /^HC(\d{2})(\d{2})(\d{2})/.exec(examNumber);
+
+        if (!match) {
+            return "";
+        }
+
+        return "20" + match[1] + "-" + match[2] + "-" + match[3];
+    }
+
+    function shiftIsoDate(isoDate, offsetDays) {
+        const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+
+        if (!parts) {
+            return isoDate;
+        }
+
+        const date = new Date(Date.UTC(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]) + offsetDays));
+
+        return [
+            date.getUTCFullYear(),
+            String(date.getUTCMonth() + 1).padStart(2, "0"),
+            String(date.getUTCDate()).padStart(2, "0")
+        ].join("-");
+    }
+
+    function getCheckInDateTime(record) {
+        if (!record.checkInTime || record.checkInTime === "-") {
+            return "尚未報到";
+        }
+
+        return record.checkInTime;
+    }
+
+    function addMinutesToTime(time, minutes) {
+        const match = /^(\d{2}):(\d{2})$/.exec(time);
+
+        if (!match) {
+            return time;
+        }
+
+        const totalMinutes = (Number(match[1]) * 60 + Number(match[2]) + minutes) % (24 * 60);
+        const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+        const nextMinutes = String(totalMinutes % 60).padStart(2, "0");
+
+        return hours + ":" + nextMinutes;
+    }
+
+    function getCompletionTime(record) {
+        if (record.status.className !== "done" || !record.checkInTime || record.checkInTime === "-") {
+            return "尚未完成";
+        }
+
+        const date = getExamDate(record.examNumber);
+        const time = addMinutesToTime(record.checkInTime, 125);
+
+        return date ? date + " " + time : time;
+    }
+
+    function getMetricKey(statusClass) {
+        if (statusClass === "done") {
+            return "done";
+        }
+
+        if (statusClass === "checking") {
+            return "checking";
+        }
+
+        return "unfinished";
+    }
+
+    function updateMetricTotals() {
+        const counts = records.reduce(function (summary, record) {
+            summary[getMetricKey(record.status.className)] += 1;
+            return summary;
+        }, {
+            done: 0,
+            checking: 0,
+            unfinished: 0
+        });
+        const total = records.length || 1;
+
+        setPlainText(metricTargets.values.total, String(records.length));
+        setPlainText(metricTargets.values.done, String(counts.done));
+        setPlainText(metricTargets.values.checking, String(counts.checking));
+        setPlainText(metricTargets.values.unfinished, String(counts.unfinished));
+        setPlainText(metricTargets.percents.done, "(" + formatPercent(counts.done, total) + "%)");
+        setPlainText(metricTargets.percents.checking, "(" + formatPercent(counts.checking, total) + "%)");
+        setPlainText(metricTargets.percents.unfinished, "(" + formatPercent(counts.unfinished, total) + "%)");
+    }
+
+    function formatPercent(value, total) {
+        return ((value / total) * 100).toFixed(1);
+    }
+
+    function updateMetricHighlight(record) {
+        const selectedMetric = getMetricKey(record.status.className);
+
+        Object.keys(metricTargets.cards).forEach(function (key) {
+            const card = metricTargets.cards[key];
+
+            if (card) {
+                card.classList.toggle("is-current", key === selectedMetric);
+            }
+        });
+    }
+
+    function setPlainText(target, value) {
+        if (target) {
+            target.textContent = value;
+        }
+    }
+
+    function setDetailText(name, value) {
+        setPlainText(detailTargets[name], value);
+    }
+
+    function setStatus(status) {
+        const badge = detailTargets.status;
+
+        if (!badge) {
+            return;
+        }
+
+        badge.textContent = status.text;
+        badge.classList.remove.apply(badge.classList, statusClasses);
+        badge.classList.add(status.className);
+    }
+
+    function getProgress(record) {
+        const progress = record.progress;
+        const safeTotal = progress.total > 0 ? progress.total : 1;
+
+        return {
+            statusText: record.status.text,
+            completed: progress.completed,
+            checking: progress.checking,
+            pending: progress.pending,
+            total: progress.total,
+            completedPercent: Math.round((progress.completed / safeTotal) * 100),
+            activePercent: Math.round(((progress.completed + progress.checking) / safeTotal) * 100)
+        };
+    }
+
+    function setProgress(progress) {
+        if (!progressPanel) {
+            return;
+        }
+
+        const completedPercent = Math.min(100, Math.max(0, progress.completedPercent));
+        const activePercent = Math.min(100, Math.max(completedPercent, progress.activePercent));
+
+        if (progressTargets.donut) {
+            progressTargets.donut.style.setProperty("--progress-completed", completedPercent + "%");
+            progressTargets.donut.style.setProperty("--progress-active", activePercent + "%");
+            progressTargets.donut.setAttribute(
+                "aria-label",
+                progress.statusText + "，已完成 " + completedPercent + "%"
+            );
+        }
+
+        setPlainText(progressTargets.percent, completedPercent + "%");
+        setPlainText(progressTargets.status, progress.statusText);
+        setPlainText(progressTargets.completed, progress.completed + " 項");
+        setPlainText(progressTargets.checking, progress.checking + " 項");
+        setPlainText(progressTargets.pending, progress.pending + " 項");
+        setPlainText(progressTargets.total, "總檢查項目: " + progress.total + " 項");
+    }
+
+    function updateProfile(record) {
+        setPlainText(profileTargets.name, record.name);
+        setPlainText(profileTargets.genderAge, record.gender + " / " + record.age + " 歲");
+        setPlainText(profileTargets.examNumber, record.examNumber);
+        setPlainText(profileTargets.idNumber, record.idNumber);
+        setPlainText(profileTargets.station, record.station);
+        setPlainText(profileTargets.checkInTime, getCheckInDateTime(record));
+    }
+
+    function updateFlow(record) {
+        if (!flowPanel) {
+            return;
+        }
+
+        const checkInDateTime = getCheckInDateTime(record);
+        const completionTime = getCompletionTime(record);
+        const stationAlert = getStationAlert(record);
+
+        setPlainText(flowTargets.name, record.name);
+        setPlainText(flowTargets.examNumber, record.examNumber);
+        setFlowStep("booking", "complete", record.bookingTime);
+
+        if (record.status.className === "unfinished") {
+            setFlowStep("checkin", "active", "尚未報到");
+            setFlowStep("inspection", "pending", "等待報到");
+            setFlowStep("station", "pending", "尚未開始");
+            setFlowStep("finish", "pending", "尚未完成");
+            setPlainText(flowTargets.note, "目前步驟：" + record.name + " 尚未完成報到，請先至報到站確認身分。");
+        } else if (record.status.className === "arrived") {
+            setFlowStep("checkin", "complete", checkInDateTime);
+            setFlowStep("inspection", "active", "等待分派");
+            setFlowStep("station", "pending", "尚未開始");
+            setFlowStep("finish", "pending", "尚未完成");
+            setPlainText(flowTargets.note, "目前步驟：" + record.name + " 已完成報到，請安排進入第一個檢查站。");
+        } else if (record.status.className === "done") {
+            setFlowStep("checkin", "complete", checkInDateTime);
+            setFlowStep("inspection", "complete", checkInDateTime);
+            setFlowStep("station", "complete", "全部站別完成");
+            setFlowStep("finish", "complete", completionTime);
+            setPlainText(flowTargets.note, "目前步驟：" + record.name + " 已完成所有檢查，等待報告確認。");
+        } else {
+            setFlowStep("checkin", "complete", checkInDateTime);
+            setFlowStep("inspection", "complete", checkInDateTime);
+            setFlowStep("station", "active", record.station);
+            setFlowStep("finish", "pending", "尚未完成");
+            setPlainText(flowTargets.note, "目前步驟：" + record.name + " 正在「" + record.station + "」進行檢查，等待下一站檢查完成後更新狀態。");
+        }
+
+        setPlainText(flowTargets.currentStation, "抽血檢查");
+        setPlainText(flowTargets.waitText, "");
+        setPlainText(flowTargets.currentTime, "");
+        updateStationAlertTone(stationAlert.tone);
+    }
+
+    function updateMyHealthAction(record) {
+        if (!openMyHealthButton) {
+            return;
+        }
+
+        openMyHealthButton.setAttribute("aria-label", "在內嵌視窗顯示 " + record.name + " My Health+ WEB LINK");
+    }
+
+    function setFlowStep(name, state, time) {
+        const step = flowTargets.steps ? flowTargets.steps[name] : null;
+
+        if (step) {
+            step.classList.remove("is-complete", "is-active", "is-pending");
+            step.classList.add("is-" + state);
+
+            if (state === "active") {
+                step.setAttribute("aria-current", "step");
+            } else {
+                step.removeAttribute("aria-current");
+            }
+        }
+
+        setPlainText(flowTargets.stepTimes ? flowTargets.stepTimes[name] : null, time);
+    }
+
+    function updateStationAlertTone(tone) {
+        if (flowTargets.stationCard) {
+            flowTargets.stationCard.classList.remove("warn", "info", "success", "danger");
+            flowTargets.stationCard.classList.add(tone);
+        }
+
+        if (flowTargets.stationIcon) {
+            flowTargets.stationIcon.classList.remove("warn", "info", "success", "danger");
+            flowTargets.stationIcon.classList.add(tone);
+        }
+    }
+
+    function getStationAlert(record) {
+        const waitMinutes = 10 + (readPositiveNumber(record.serial, 1) % 8);
+
+        if (record.status.className === "done") {
+            return {
+                label: "全部檢查",
+                message: "流程已完成",
+                time: getCompletionTime(record).slice(-5),
+                tone: "success"
+            };
+        }
+
+        if (record.status.className === "arrived") {
+            return {
+                label: "報到完成",
+                message: "等待分派站別",
+                time: record.checkInTime,
+                tone: "info"
+            };
+        }
+
+        if (record.status.className === "unfinished") {
+            return {
+                label: "尚未報到",
+                message: "請櫃台追蹤",
+                time: "--",
+                tone: "danger"
+            };
+        }
+
+        return {
+            label: record.station.replace("站", ""),
+            message: "等待超過 " + waitMinutes + " 分鐘",
+            time: addMinutesToTime(record.checkInTime, waitMinutes),
+            tone: "warn"
+        };
+    }
+
+    function buildAlerts(record) {
+        const stationAlert = getStationAlert(record);
+
+        if (record.status.className === "done") {
+            return [
+                { tone: "success", title: "全部檢查", message: "已完成", time: stationAlert.time },
+                { tone: "info", title: "報告進度", message: "等待醫師確認", time: addMinutesToTime(stationAlert.time, 12) },
+                { tone: "info", title: "資料同步", message: "已更新流程", time: addMinutesToTime(stationAlert.time, 18) }
+            ];
+        }
+
+        if (record.status.className === "arrived") {
+            return [
+                { tone: "info", title: "報到完成", message: "已完成身分確認", time: record.checkInTime },
+                { tone: "warn", title: "站別分派", message: "等待安排", time: addMinutesToTime(record.checkInTime, 5) },
+                { tone: "info", title: "基本資料", message: "已同步", time: addMinutesToTime(record.checkInTime, 8) }
+            ];
+        }
+
+        if (record.status.className === "unfinished") {
+            return [
+                { tone: "danger", title: "尚未報到", message: "請櫃台追蹤", time: "--" },
+                { tone: "warn", title: "預約保留", message: "等待受檢者", time: "--" },
+                { tone: "info", title: "通知狀態", message: "可發送提醒", time: "--" }
+            ];
+        }
+
+        return [
+            { tone: stationAlert.tone, title: stationAlert.label, message: stationAlert.message, time: stationAlert.time },
+            { tone: "warn", title: getNextStation(record.station), message: "高候超過", time: addMinutesToTime(record.checkInTime, 5) },
+            { tone: "info", title: "檢體送驗", message: "已送出", time: record.checkInTime }
+        ];
+    }
+
+    function getNextStation(currentStation) {
+        const currentIndex = stationCycle.indexOf(currentStation);
+
+        if (currentIndex < 0) {
+            return "下一站檢查";
+        }
+
+        return stationCycle[(currentIndex + 1) % stationCycle.length].replace("站", "");
+    }
+
+    function renderAlerts(record) {
+        if (!alertTargets.list) {
+            return;
+        }
+
+        const alerts = buildAlerts(record);
+        const items = alerts.map(function (alert) {
+            const item = document.createElement("div");
+            const icon = document.createElement("span");
+            const title = document.createElement("strong");
+            const message = document.createElement("em");
+            const time = document.createElement("time");
+
+            item.className = "alert-item " + alert.tone;
+            icon.className = "alert-icon " + alert.tone;
+            icon.setAttribute("aria-hidden", "true");
+            title.textContent = alert.title;
+            message.textContent = alert.message;
+            time.textContent = alert.time;
+            item.appendChild(icon);
+            item.appendChild(title);
+            item.appendChild(message);
+            item.appendChild(time);
+
+            return item;
+        });
+
+        alertTargets.list.replaceChildren.apply(alertTargets.list, items);
+        setPlainText(alertTargets.total, "查看全部 (" + alerts.length + ")");
+    }
+
+    function pulsePanel(panel) {
+        if (!panel) {
+            return;
+        }
+
+        panel.classList.remove("is-updating");
+        window.requestAnimationFrame(function () {
+            panel.classList.add("is-updating");
+        });
+    }
+
+    function openMyHealthFrame() {
+        const baseUrl = openMyHealthButton ? openMyHealthButton.getAttribute("data-my-health-url") : "";
+
+        if (!baseUrl) {
+            return;
+        }
+
+        const targetUrl = new URL(baseUrl, window.location.href).toString();
+
+        if (!myHealthModal || !myHealthFrame) {
+            return;
+        }
+
+        previousMyHealthFocus = document.activeElement;
+        setMyHealthSize(myHealthModal.getAttribute("data-my-health-size") || "normal");
+        myHealthFrame.src = targetUrl;
+        myHealthModal.hidden = false;
+        document.body.classList.add("my-health-open");
+    }
+
+    function setMyHealthSize(size) {
+        if (!myHealthModal) {
+            return;
+        }
+
+        const nextSize = size === "large" ? "large" : "normal";
+
+        myHealthModal.setAttribute("data-my-health-size", nextSize);
+
+        if (myHealthToggleSizeButton) {
+            const isLarge = nextSize === "large";
+
+            myHealthToggleSizeButton.textContent = isLarge ? "▣" : "□";
+            myHealthToggleSizeButton.title = isLarge ? "還原" : "放大";
+            myHealthToggleSizeButton.setAttribute("aria-label", (isLarge ? "還原" : "放大") + " My Health+ 視窗");
+            myHealthToggleSizeButton.setAttribute("aria-pressed", String(isLarge));
+        }
+    }
+
+    function closeMyHealthFrame() {
+        if (!myHealthModal) {
+            return;
+        }
+
+        myHealthModal.hidden = true;
+        document.body.classList.remove("my-health-open");
+
+        if (myHealthFrame) {
+            myHealthFrame.removeAttribute("src");
+        }
+
+        if (previousMyHealthFocus && typeof previousMyHealthFocus.focus === "function") {
+            previousMyHealthFocus.focus();
+        }
+    }
+
+    function refreshDashboard(record) {
+        setDetailText("serial", record.serial);
+        setDetailText("examNumber", record.examNumber);
+        setDetailText("name", record.name);
+        setDetailText("idNumber", record.idNumber);
+        setDetailText("genderAge", record.gender + " / " + record.age + " 歲");
+        setDetailText("station", record.station);
+        setDetailText("checkInTime", getCheckInDateTime(record));
+        setStatus(record.status);
+        setProgress(getProgress(record));
+        updateProfile(record);
+        updateFlow(record);
+        updateMetricHighlight(record);
+        updateMyHealthAction(record);
+        renderAlerts(record);
+
+        pulsePanel(detailsPanel);
+        pulsePanel(progressPanel);
+        pulsePanel(flowPanel);
+        pulsePanel(alertPanel);
+    }
+
+    function selectRow(row) {
+        if (!row) {
+            return;
+        }
+
+        visibleRows.forEach(function (item) {
+            const selected = item === row;
+
+            item.classList.toggle("is-selected", selected);
+            item.setAttribute("aria-selected", String(selected));
+        });
+
+        refreshDashboard(rowRecords.get(row) || readRecord(row));
+    }
+
+    function createTextCell(value) {
+        const cell = document.createElement("td");
+
+        cell.textContent = value;
+
+        return cell;
+    }
+
+    function createCheckboxCell() {
+        const cell = document.createElement("td");
+        const checkbox = document.createElement("span");
+
+        checkbox.className = "checkbox";
+        checkbox.setAttribute("aria-hidden", "true");
+        cell.appendChild(checkbox);
+
+        return cell;
+    }
+
+    function createStatusCell(status) {
+        const cell = document.createElement("td");
+        const badge = document.createElement("span");
+
+        badge.className = "status " + status.className;
+        badge.textContent = status.text;
+        cell.appendChild(badge);
+
+        return cell;
+    }
+
+    function createActionCell(record) {
+        const cell = document.createElement("td");
+        const button = document.createElement("button");
+
+        button.className = "view-button";
+        button.type = "button";
+        button.setAttribute("aria-label", "查看" + record.name);
+        cell.appendChild(button);
+
+        return cell;
+    }
+
+    function renderRow(record) {
+        const row = document.createElement("tr");
+
+        row.setAttribute("tabindex", "0");
+        row.setAttribute("aria-selected", "false");
+        row.setAttribute("data-booking-time", record.bookingTime);
+        row.setAttribute("data-progress-completed", String(record.progress.completed));
+        row.setAttribute("data-progress-checking", String(record.progress.checking));
+        row.setAttribute("data-progress-pending", String(record.progress.pending));
+        row.setAttribute("data-progress-total", String(record.progress.total));
+
+        row.appendChild(createCheckboxCell());
+        row.appendChild(createTextCell(record.serial));
+        row.appendChild(createTextCell(record.examNumber));
+        row.appendChild(createTextCell(record.name));
+        row.appendChild(createTextCell(record.idNumber));
+        row.appendChild(createTextCell(record.gender));
+        row.appendChild(createTextCell(record.age));
+        row.appendChild(createStatusCell(record.status));
+        row.appendChild(createTextCell(record.station));
+        row.appendChild(createTextCell(record.checkInTime));
+        row.appendChild(createActionCell(record));
+
+        rowRecords.set(row, record);
+        row.addEventListener("click", function () {
+            selectRow(row);
+        });
+
+        row.addEventListener("keydown", function (event) {
+            if (event.key !== "Enter" && event.key !== " ") {
+                return;
+            }
+
+            event.preventDefault();
+            selectRow(row);
+        });
+
+        return row;
+    }
+
+    function getPageCount() {
+        return Math.max(1, Math.ceil(records.length / pageSize));
+    }
+
+    function clampPage(page) {
+        return Math.min(Math.max(page, 1), getPageCount());
+    }
+
+    function updatePageSummary(startIndex, itemCount) {
+        if (!pageSummary) {
+            return;
+        }
+
+        const firstItem = records.length ? startIndex + 1 : 0;
+        const lastItem = startIndex + itemCount;
+
+        pageSummary.textContent = "顯示 " + firstItem + "-" + lastItem + " 筆，共 " + records.length + " 筆";
+    }
+
+    function getVisiblePages() {
+        const pageCount = getPageCount();
+        const pages = [];
+
+        function addPage(page) {
+            if (!pages.includes(page)) {
+                pages.push(page);
+            }
+        }
+
+        if (pageCount <= 7) {
+            for (let page = 1; page <= pageCount; page += 1) {
+                addPage(page);
+            }
+
+            return pages;
+        }
+
+        addPage(1);
+
+        const start = Math.max(2, currentPage - 2);
+        const end = Math.min(pageCount - 1, currentPage + 2);
+
+        if (start > 2) {
+            pages.push("ellipsis-left");
+        }
+
+        for (let page = start; page <= end; page += 1) {
+            addPage(page);
+        }
+
+        if (end < pageCount - 1) {
+            pages.push("ellipsis-right");
+        }
+
+        addPage(pageCount);
+
+        return pages;
+    }
+
+    function createPageButton(label, page, options) {
+        const button = document.createElement("button");
+        const settings = options || {};
+
+        button.type = "button";
+        button.textContent = label;
+
+        if (settings.ariaLabel) {
+            button.setAttribute("aria-label", settings.ariaLabel);
+        }
+
+        if (settings.active) {
+            button.classList.add("active");
+            button.setAttribute("aria-current", "page");
+        }
+
+        if (settings.disabled) {
+            button.disabled = true;
+        } else {
+            button.addEventListener("click", function () {
+                renderPage(page);
+            });
+        }
+
+        return button;
+    }
+
+    function renderPagination() {
+        if (!pagination) {
+            return;
+        }
+
+        const pageCount = getPageCount();
+        const items = [
+            createPageButton("<", currentPage - 1, {
+                ariaLabel: "上一頁",
+                disabled: currentPage === 1
+            })
+        ];
+
+        getVisiblePages().forEach(function (page) {
+            if (typeof page !== "number") {
+                items.push(createPageButton("...", currentPage, {
+                    ariaLabel: "省略頁碼",
+                    disabled: true
+                }));
+                return;
+            }
+
+            items.push(createPageButton(String(page), page, {
+                active: page === currentPage,
+                ariaLabel: "第 " + page + " 頁"
+            }));
+        });
+
+        items.push(createPageButton(">", currentPage + 1, {
+            ariaLabel: "下一頁",
+            disabled: currentPage === pageCount
+        }));
+
+        pagination.replaceChildren.apply(pagination, items);
+    }
+
+    function renderPageSelect() {
+        if (!pageSelect) {
+            return;
+        }
+
+        const pageCount = getPageCount();
+
+        if (pageSelect.options.length !== pageCount) {
+            const options = [];
+
+            for (let page = 1; page <= pageCount; page += 1) {
+                const option = document.createElement("option");
+
+                option.value = String(page);
+                option.textContent = "第 " + page + " 頁";
+                options.push(option);
+            }
+
+            pageSelect.replaceChildren.apply(pageSelect, options);
+        }
+
+        pageSelect.value = String(currentPage);
+    }
+
+    function renderPage(page) {
+        const nextPage = clampPage(page);
+        const startIndex = (nextPage - 1) * pageSize;
+        const pageRecords = records.slice(startIndex, startIndex + pageSize);
+        const rows = pageRecords.map(renderRow);
+
+        currentPage = nextPage;
+        tableBody.replaceChildren.apply(tableBody, rows);
+        visibleRows = Array.from(tableBody.querySelectorAll("tr"));
+
+        renderPagination();
+        renderPageSelect();
+        updatePageSummary(startIndex, pageRecords.length);
+        selectRow(visibleRows[0]);
+    }
+
+    if (pageSelect) {
+        pageSelect.addEventListener("change", function () {
+            renderPage(readPositiveNumber(pageSelect.value, currentPage));
+        });
+    }
+
+    if (openMyHealthButton) {
+        openMyHealthButton.addEventListener("click", openMyHealthFrame);
+    }
+
+    closeMyHealthButtons.forEach(function (button) {
+        button.addEventListener("click", closeMyHealthFrame);
+    });
+
+    if (myHealthToggleSizeButton) {
+        myHealthToggleSizeButton.addEventListener("click", function () {
+            setMyHealthSize(myHealthModal && myHealthModal.getAttribute("data-my-health-size") === "large" ? "normal" : "large");
+        });
+    }
+
+    window.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && myHealthModal && !myHealthModal.hidden) {
+            closeMyHealthFrame();
+        }
+    });
+
+    setMyHealthSize(myHealthModal ? myHealthModal.getAttribute("data-my-health-size") : "normal");
+    updateMetricTotals();
+    renderPage(1);
+})();

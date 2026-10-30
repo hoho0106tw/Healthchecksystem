@@ -1,0 +1,274 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0/win-x86",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {},
+    ".NETCoreApp,Version=v10.0/win-x86": {
+      "HealthSys_20260428_v2/1.0.0": {
+        "dependencies": {
+          "Oracle.ManagedDataAccess.Core": "23.26.200",
+          "DBUser": "2024.1.29.1",
+          "FemhSecurityLibrary": "1.0.0.0",
+          "Interop.RDO": "2.0.0.0",
+          "Interop.RegForFEH": "1.20.0.0",
+          "System.Data.OracleClient": "4.0.0.0"
+        },
+        "runtime": {
+          "HealthSys_20260428_v2.dll": {}
+        }
+      },
+      "Oracle.ManagedDataAccess.Core/23.26.200": {
+        "dependencies": {
+          "System.Diagnostics.PerformanceCounter": "8.0.0",
+          "System.DirectoryServices.Protocols": "8.0.2"
+        },
+        "runtime": {
+          "lib/net8.0/Oracle.ManagedDataAccess.dll": {
+            "assemblyVersion": "23.1.0.0",
+            "fileVersion": "23.1.0.0"
+          }
+        }
+      },
+      "System.Configuration.ConfigurationManager/8.0.0": {
+        "dependencies": {
+          "System.Security.Cryptography.ProtectedData": "8.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/System.Configuration.ConfigurationManager.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "System.Diagnostics.PerformanceCounter/8.0.0": {
+        "dependencies": {
+          "System.Configuration.ConfigurationManager": "8.0.0"
+        },
+        "runtime": {
+          "runtimes/win/lib/net8.0/System.Diagnostics.PerformanceCounter.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "System.DirectoryServices.Protocols/8.0.2": {
+        "runtime": {
+          "runtimes/win/lib/net8.0/System.DirectoryServices.Protocols.dll": {
+            "assemblyVersion": "8.0.0.2",
+            "fileVersion": "8.0.1725.26602"
+          }
+        }
+      },
+      "System.Security.Cryptography.ProtectedData/8.0.0": {
+        "runtime": {
+          "lib/net8.0/System.Security.Cryptography.ProtectedData.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "DBUser/2024.1.29.1": {
+        "runtime": {
+          "DBUser.dll": {
+            "assemblyVersion": "2024.1.29.1",
+            "fileVersion": "2024.1.29.1"
+          }
+        }
+      },
+      "FemhSecurityLibrary/1.0.0.0": {
+        "runtime": {
+          "FemhSecurityLibrary.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Interop.RDO/2.0.0.0": {
+        "runtime": {
+          "Interop.RDO.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.0.0.0"
+          }
+        }
+      },
+      "Interop.RegForFEH/1.20.0.0": {
+        "runtime": {
+          "Interop.RegForFEH.dll": {
+            "assemblyVersion": "1.20.0.0",
+            "fileVersion": "1.20.0.0"
+          }
+        }
+      },
+      "System.Data.OracleClient/4.0.0.0": {
+        "runtime": {
+          "System.Data.OracleClient.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.8.9221.0"
+          }
+        },
+        "resources": {
+          "zh-Hans/System.Data.OracleClient.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "zh-Hant/System.Data.OracleClient.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.EnterpriseServices/4.0.0.0": {
+        "runtime": {
+          "System.EnterpriseServices.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.8.9221.0"
+          }
+        },
+        "resources": {
+          "zh-Hans/System.EnterpriseServices.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "zh-Hant/System.EnterpriseServices.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.DirectoryServices/4.0.0.0": {
+        "runtime": {
+          "System.DirectoryServices.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.8.9221.0"
+          }
+        },
+        "resources": {
+          "zh-Hans/System.DirectoryServices.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "zh-Hant/System.DirectoryServices.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.Runtime.Remoting/4.0.0.0": {
+        "runtime": {
+          "System.Runtime.Remoting.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.8.9221.0"
+          }
+        },
+        "resources": {
+          "zh-Hans/System.Runtime.Remoting.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "zh-Hant/System.Runtime.Remoting.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.Runtime.Serialization.Formatters.Soap/4.0.0.0": {
+        "runtime": {
+          "System.Runtime.Serialization.Formatters.Soap.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.8.9221.0"
+          }
+        },
+        "resources": {
+          "zh-Hans/System.Runtime.Serialization.Formatters.Soap.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "zh-Hant/System.Runtime.Serialization.Formatters.Soap.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "HealthSys_20260428_v2/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Oracle.ManagedDataAccess.Core/23.26.200": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-l+k3UOpWfv7g2F4/FnenQlwMMvVk8LLlVgAn1qdl3Seyna2kkyogSHS0ceBGMKNT7KjC79rpIyFmt8Q0QveB3A==",
+      "path": "oracle.manageddataaccess.core/23.26.200",
+      "hashPath": "oracle.manageddataaccess.core.23.26.200.nupkg.sha512"
+    },
+    "System.Configuration.ConfigurationManager/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-JlYi9XVvIREURRUlGMr1F6vOFLk7YSY4p1vHo4kX3tQ0AGrjqlRWHDi66ImHhy6qwXBG3BJ6Y1QlYQ+Qz6Xgww==",
+      "path": "system.configuration.configurationmanager/8.0.0",
+      "hashPath": "system.configuration.configurationmanager.8.0.0.nupkg.sha512"
+    },
+    "System.Diagnostics.PerformanceCounter/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-lX6DXxtJqVGWw7N/QmVoiCyVQ+Q/Xp+jVXPr3gLK1jJExSn1qmAjJQeb8gnOYeeBTG3E3PmG1nu92eYj/TEjpg==",
+      "path": "system.diagnostics.performancecounter/8.0.0",
+      "hashPath": "system.diagnostics.performancecounter.8.0.0.nupkg.sha512"
+    },
+    "System.DirectoryServices.Protocols/8.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7pSU+qkmdkwbikAvn4kpvClfyffaR7dYJw7ucBtO5d6m/7wgKZIULOZAGFLMIMOFFmg7xC67TYKptHxcbqQm+Q==",
+      "path": "system.directoryservices.protocols/8.0.2",
+      "hashPath": "system.directoryservices.protocols.8.0.2.nupkg.sha512"
+    },
+    "System.Security.Cryptography.ProtectedData/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-+TUFINV2q2ifyXauQXRwy4CiBhqvDEDZeVJU7qfxya4aRYOKzVBpN+4acx25VcPB9ywUN6C0n8drWl110PhZEg==",
+      "path": "system.security.cryptography.protecteddata/8.0.0",
+      "hashPath": "system.security.cryptography.protecteddata.8.0.0.nupkg.sha512"
+    },
+    "DBUser/2024.1.29.1": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "FemhSecurityLibrary/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Interop.RDO/2.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Interop.RegForFEH/1.20.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "System.Data.OracleClient/4.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "System.EnterpriseServices/4.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "System.DirectoryServices/4.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "System.Runtime.Remoting/4.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "System.Runtime.Serialization.Formatters.Soap/4.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

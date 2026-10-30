@@ -1,0 +1,264 @@
+﻿@using System.Text.Encodings.Web
+@using System.Text.Json
+@model HealthSys_20260428_v2.csproj.Models.PatientLookupFrameViewModel
+
+@{
+    Layout = null;
+    ViewData["Title"] = Model.Title;
+    var patientsJson = JsonSerializer.Serialize(
+        Model.Patients,
+        new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            Encoder = JavaScriptEncoder.Default
+        });
+}
+
+<!DOCTYPE html>
+<html lang="zh-TW" class="patient-lookup-frame-root">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Model.Title - Health Checkup System</title>
+    <link rel="stylesheet" href="~/css/ui.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/theme-controls.css" asp-append-version="true" />
+<script src="~/js/theme-frame.js" asp-append-version="true"></script>
+</head>
+<body class="hc patient-lookup-frame-body">
+    <main class="patient-lookup-frame" data-initial-keyword="@Model.InitialKeyword" data-initial-filter="@Model.SelectedFilter" aria-labelledby="patient-lookup-title">
+        <header class="patient-lookup-header">
+            <h1 id="patient-lookup-title">@Model.Title</h1>
+            <button class="lookup-close-button" type="button" data-lookup-close aria-label="關閉查詢視窗">
+                <span class="cancel-icon" aria-hidden="true"></span>
+            </button>
+        </header>
+
+        <div class="lookup-tabs" role="tablist" aria-label="查詢類別">
+            @foreach (var filter in Model.Filters)
+            {
+                <button class="@(filter.IsActive ? "is-active" : "")" type="button" data-lookup-filter="@filter.Key">@filter.Label</button>
+            }
+        </div>
+
+        <form class="lookup-search-form" method="get" action="@Url.Action("PatientLookupFrame", "Appointment")" data-lookup-search-form>
+            <input type="hidden" name="filter" value="@Model.SelectedFilter" data-lookup-filter-input />
+            <input type="search" name="keyword" value="@Model.InitialKeyword" placeholder="@Model.SearchPlaceholder" autocomplete="off" aria-label="請輸入病歷號、身分證、姓名或手機" />
+            <button class="primary-button" type="submit">
+                <span class="search-button-icon" aria-hidden="true"></span>
+                <span>搜尋</span>
+            </button>
+        </form>
+
+        <div class="lookup-table-wrap">
+            <table class="lookup-patient-table">
+                <thead>
+                    <tr>
+                        <th class="lookup-choice-column">選取</th>
+                        <th>病歷號</th>
+                        <th>姓名</th>
+                        <th>性別</th>
+                        <th>年齡</th>
+                        <th>身分證</th>
+                        <th>生日</th>
+                        <th>血型</th>
+                        <th>手機</th>
+                    </tr>
+                </thead>
+                <tbody data-patient-results></tbody>
+            </table>
+        </div>
+
+        <footer class="patient-lookup-footer">
+            <button class="ghost-button" type="button" data-lookup-cancel>取消</button>
+            <button class="primary-button" type="button" data-lookup-confirm>確認帶入</button>
+        </footer>
+    </main>
+
+    <script>
+        (function () {
+            const patients = @Html.Raw(patientsJson);
+
+            const root = document.querySelector(".patient-lookup-frame");
+            const searchForm = document.querySelector("[data-lookup-search-form]");
+            const keywordInput = searchForm.querySelector("input[name='keyword']");
+            const filterInput = document.querySelector("[data-lookup-filter-input]");
+            const resultsBody = document.querySelector("[data-patient-results]");
+            const confirmButton = document.querySelector("[data-lookup-confirm]");
+            const tabs = Array.from(document.querySelectorAll("[data-lookup-filter]"));
+            let currentFilter = root.dataset.initialFilter || "chartNo";
+            let visiblePatients = [];
+            let selectedChartNo = "";
+
+            function normalize(value) {
+                return String(value || "").trim().toUpperCase();
+            }
+
+            function shouldUppercaseKeyword() {
+                return currentFilter === "chartNo" || currentFilter === "idNo";
+            }
+
+            function syncKeywordCasing() {
+                if (!shouldUppercaseKeyword()) {
+                    return;
+                }
+
+                const upperKeyword = keywordInput.value.toUpperCase();
+
+                if (keywordInput.value !== upperKeyword) {
+                    keywordInput.value = upperKeyword;
+                }
+            }
+
+            function escapeHtml(value) {
+                return String(value || "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            function matchesKeyword(patient, keyword) {
+                if (!keyword) {
+                    return true;
+                }
+
+                const fields = currentFilter === "idNo"
+                    ? [patient.idNo, patient.maskedId]
+                    : [patient[currentFilter]];
+                const fallbackFields = [
+                    patient.chartNo,
+                    patient.idNo,
+                    patient.maskedId,
+                    patient.name,
+                    patient.mobile,
+                    patient.phone
+                ];
+
+                return fields.concat(fallbackFields).some(function (field) {
+                    return normalize(field).includes(keyword);
+                });
+            }
+
+            function renderResults() {
+                const keyword = normalize(keywordInput.value);
+                visiblePatients = patients.filter(function (patient) {
+                    return matchesKeyword(patient, keyword);
+                });
+
+                if (!visiblePatients.length) {
+                    selectedChartNo = "";
+                    resultsBody.innerHTML = '<tr class="lookup-empty-row"><td colspan="9">查無符合條件的受檢者</td></tr>';
+                    confirmButton.disabled = true;
+                    return;
+                }
+
+                if (!visiblePatients.some(function (patient) { return patient.chartNo === selectedChartNo; })) {
+                    selectedChartNo = visiblePatients[0].chartNo;
+                }
+
+                resultsBody.innerHTML = visiblePatients.map(function (patient) {
+                    const isSelected = patient.chartNo === selectedChartNo;
+                    return [
+                        '<tr class="' + (isSelected ? "is-selected" : "") + '" data-chart-no="' + escapeHtml(patient.chartNo) + '">',
+                        '<td class="lookup-choice-cell"><input type="radio" name="lookupPatient" value="' + escapeHtml(patient.chartNo) + '"' + (isSelected ? " checked" : "") + ' aria-label="選擇 ' + escapeHtml(patient.name) + '" /></td>',
+                        "<td>" + escapeHtml(patient.chartNo) + "</td>",
+                        "<td>" + escapeHtml(patient.name) + "</td>",
+                        "<td>" + escapeHtml(patient.sex) + "</td>",
+                        "<td>" + escapeHtml(patient.age) + "</td>",
+                        "<td>" + escapeHtml(patient.idNo) + "</td>",
+                        "<td>" + escapeHtml(patient.birthDate) + "</td>",
+                        "<td>" + escapeHtml(patient.bloodType) + "</td>",
+                        "<td>" + escapeHtml(patient.mobile) + "</td>",
+                        "</tr>"
+                    ].join("");
+                }).join("");
+
+                confirmButton.disabled = false;
+            }
+
+            function postToParent(message) {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(message, window.location.origin);
+                }
+            }
+
+            function closeLookup() {
+                postToParent({ type: "healthsys:patient-lookup-close" });
+            }
+
+            function syncFilterInput() {
+                if (filterInput) {
+                    filterInput.value = currentFilter;
+                }
+            }
+
+            tabs.forEach(function (tab) {
+                tab.addEventListener("click", function () {
+                    tabs.forEach(function (item) {
+                        item.classList.toggle("is-active", item === tab);
+                    });
+                    currentFilter = tab.dataset.lookupFilter || "chartNo";
+                    syncKeywordCasing();
+                    syncFilterInput();
+                    renderResults();
+                });
+            });
+
+            searchForm.addEventListener("submit", function () {
+                syncKeywordCasing();
+                syncFilterInput();
+            });
+
+            keywordInput.addEventListener("input", syncKeywordCasing);
+
+            resultsBody.addEventListener("click", function (event) {
+                const row = event.target.closest("tr[data-chart-no]");
+                if (!row) {
+                    return;
+                }
+
+                selectedChartNo = row.dataset.chartNo || "";
+                const radio = row.querySelector("input[type='radio']");
+                if (radio) {
+                    radio.checked = true;
+                }
+                renderResults();
+            });
+
+            resultsBody.addEventListener("change", function (event) {
+                if (!event.target.matches("input[name='lookupPatient']")) {
+                    return;
+                }
+
+                selectedChartNo = event.target.value;
+                renderResults();
+            });
+
+            confirmButton.addEventListener("click", function () {
+                const patient = patients.find(function (item) {
+                    return item.chartNo === selectedChartNo;
+                });
+
+                if (!patient) {
+                    return;
+                }
+
+                postToParent({
+                    type: "healthsys:patient-selected",
+                    patient: patient
+                });
+            });
+
+            document.querySelector("[data-lookup-close]").addEventListener("click", closeLookup);
+            document.querySelector("[data-lookup-cancel]").addEventListener("click", closeLookup);
+
+            keywordInput.value = root.dataset.initialKeyword || "";
+            syncKeywordCasing();
+            syncFilterInput();
+            renderResults();
+        })();
+    </script>
+</body>
+</html>
+

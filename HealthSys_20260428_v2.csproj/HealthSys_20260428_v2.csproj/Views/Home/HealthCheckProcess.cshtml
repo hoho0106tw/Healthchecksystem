@@ -1,0 +1,69 @@
+@{
+    ViewData["Title"] = "排程管理";
+    var categories = new[] {
+        new { Name = "鏡檢總數", Key = "scope", Icon = "stomach", Count = 28, Color = "blue" },
+        new { Name = "大腸鏡", Key = "colon", Icon = "colon", Count = 16, Color = "pink" },
+        new { Name = "胃鏡", Key = "stomach", Icon = "stomach", Count = 12, Color = "orange" },
+        new { Name = "CT影像", Key = "ct", Icon = "ct", Count = 32, Color = "teal" },
+        new { Name = "MR影像", Key = "mr", Icon = "mr", Count = 18, Color = "purple" },
+        new { Name = "一般X光影像", Key = "xray", Icon = "xray", Count = 45, Color = "blue" }
+    };
+    var quotas = new[] {
+        new { Name = "大腸鏡", Key = "colon", Used = 320, Limit = 400, Color = "pink" },
+        new { Name = "胃鏡", Key = "stomach", Used = 280, Limit = 400, Color = "orange" },
+        new { Name = "CT影像", Key = "ct", Used = 640, Limit = 800, Color = "teal" },
+        new { Name = "MR影像", Key = "mr", Used = 360, Limit = 600, Color = "purple" },
+        new { Name = "一般X光影像", Key = "xray", Used = 900, Limit = 1200, Color = "blue" }
+    };
+}
+
+<link rel="stylesheet" href="~/css/health-check-process.css" asp-append-version="true" />
+<section class="station-page" id="station-management" aria-label="排程管理">
+    <svg class="station-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+        <symbol id="sp-stomach" viewBox="0 0 48 48"><path d="M23 5v13c0 5-6 5-8 10-2 4 0 8 4 9 5 2 8-1 11-4 7-5 10-9 8-16-1-5-5-7-9-6V5M29 11c-3 6 1 11 6 11M15 29c-6-3-10 1-9 8l1 5h5l-1-5c-1-3 1-4 3-2" /></symbol>
+        <symbol id="sp-colon" viewBox="0 0 48 48"><path d="M12 9c-6-3-9 3-7 8-3 4-1 8 2 10-2 6 3 9 7 6V20h20v9c0 4-7 1-7 6v7h-6v-8c0-5 6-7 7-8M14 9c3-3 6-2 9 0 4-3 7-2 10 0 6-2 10 2 9 7 3 5 0 9-3 10 2 6-1 10-6 8M14 15h21v7" /></symbol>
+        <symbol id="sp-ct" viewBox="0 0 48 48"><circle cx="24" cy="22" r="17"/><circle cx="24" cy="22" r="12"/><circle cx="24" cy="22" r="7"/><path d="M22 18h4v8h-4zM13 35 8 42h32l-5-7M21 3h6" /></symbol>
+        <symbol id="sp-mr" viewBox="0 0 48 48"><path d="M16 36C0 28 7 5 24 5s24 23 8 31l-4-7c8-5 5-16-4-16S12 24 20 29l-4 7ZM19 42h10M22 24h4v18h-4zM8 42h7M33 42h7"/></symbol>
+        <symbol id="sp-xray" viewBox="0 0 48 48"><path d="M9 7h30v35H9zM19 7V3h10v4M24 12v24M20 14c-6 1-8 9-7 17 4 1 6-2 7-6V14ZM28 14c6 1 8 9 7 17-4 1-6-2-7-6V14ZM13 21h7M13 26h6M28 21h7M29 26h6" /></symbol>
+        <symbol id="sp-chart" viewBox="0 0 48 48"><path d="M8 29h7v13H8zM21 20h7v22h-7zM34 7h7v35h-7z" fill="currentColor" stroke="none"/></symbol>
+        <symbol id="sp-search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></symbol>
+        <symbol id="sp-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6M17 2v6M3 11h18M7 15h2M12 15h2M7 18h2"/></symbol>
+        <symbol id="sp-settings" viewBox="0 0 24 24"><path d="m9 3 1-1h4l1 4 4-1 2 4-3 3 3 3-2 4-4-1-1 4h-4l-1-4-4 1-2-4 3-3-3-3 2-4 4 1z"/><circle cx="12" cy="12" r="3"/></symbol>
+        <symbol id="sp-file" viewBox="0 0 24 24"><path d="M13 3H5v18h8M13 3v6h6l-6-6ZM8 12h4M8 16h3"/><circle cx="17" cy="16" r="4"/><path d="m20 19 3 3"/></symbol>
+        <symbol id="sp-reset" viewBox="0 0 24 24"><path d="M20 7a9 9 0 1 0 1 9M20 2v6h-6"/></symbol>
+        <symbol id="sp-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M3 16v5h18v-5"/></symbol>
+    </defs></svg>
+    <section class="sp-panel sp-filter-panel" aria-labelledby="filter-title"><header class="sp-panel-heading"><h2 id="filter-title"><svg><use href="#sp-search" /></svg>查詢條件</h2><button type="button" class="sp-settings-button" data-quota-settings hidden><svg><use href="#sp-settings" /></svg>總額管理設定</button></header>
+        <form id="sp-filter">
+            <label class="sp-date-field">檢查日期<span class="sp-date-range"><input type="date" name="start" value="2024-06-17" required aria-label="檢查開始日期" /><span>～</span><input type="date" name="end" value="2024-06-17" required aria-label="檢查結束日期" /></span></label>
+            <label>檢查類別<select name="category"><option value="">請選擇檢查類別</option><option value="scope">鏡檢</option><option value="colon">大腸鏡</option><option value="stomach">胃鏡</option><option value="ct">CT影像</option><option value="mr">MR影像</option><option value="xray">一般X光影像</option></select></label>
+            <label>檢查站 / 檢查室<select name="room"><option value="">請選擇檢查站</option><option>內視鏡室1</option><option>內視鏡室2</option><option>CT室1</option><option>CT室2</option><option>MR室1</option><option>X光室1</option></select></label>
+            <label>醫師<select name="doctor"><option value="">請選擇醫師</option><option>林醫師</option><option>張醫師</option><option>陳醫師</option><option>黃醫師</option><option>吳醫師</option></select></label>
+            <label class="sp-keyword">關鍵字查詢<span><svg><use href="#sp-search" /></svg><input type="search" name="keyword" placeholder="請輸入姓名、身分證號或病歷號" /></span></label>
+            <div class="sp-filter-actions"><button class="sp-primary" type="submit"><svg><use href="#sp-search" /></svg>查詢</button><button type="reset"><svg><use href="#sp-reset" /></svg>重設</button><button type="button" data-export><svg><use href="#sp-download" /></svg>匯出</button></div>
+        </form><p class="sp-feedback" id="sp-feedback" role="status" hidden></p>
+    </section>
+    <div class="sp-summary" aria-label="今日排程統計">
+        @foreach (var category in categories)
+        {
+            <button type="button" class="sp-summary-card sp-@category.Color" data-category="@category.Key"><span class="sp-icon-tile"><svg><use href="#sp-@category.Icon" /></svg></span><span><strong>@category.Name</strong><b>@category.Count</b><small>今日排程</small></span><span class="sp-chevron">›</span></button>
+        }
+    </div>
+    <div class="sp-workspace" id="examinee-process-tracking">
+        <section class="sp-panel sp-schedule" aria-labelledby="schedule-title"><header class="sp-panel-heading"><h2 id="schedule-title"><svg><use href="#sp-calendar" /></svg><span>今日檢查排程 <span id="sp-schedule-date">(2024/06/17)</span></span></h2><div class="sp-tabs" aria-label="排程類別"><button type="button" data-category="" aria-pressed="true">全部 <b>123</b></button><button type="button" data-category="scope" class="sp-pink">鏡檢 <b>28</b></button><button type="button" data-category="colon" class="sp-pink">大腸鏡 <b>16</b></button><button type="button" data-category="stomach" class="sp-orange">胃鏡 <b>12</b></button><button type="button" data-category="ct" class="sp-teal">CT影像 <b>32</b></button><button type="button" data-category="mr" class="sp-purple">MR影像 <b>18</b></button><button type="button" data-category="xray" class="sp-blue">一般X光影像 <b>45</b></button></div></header>
+            <div class="sp-table-scroll"><table class="sp-table"><thead><tr><th>序號</th><th>預約時間</th><th>檢查類別</th><th>檢查站 / 檢查室</th><th>受檢者姓名</th><th>身分證號</th><th>醫師</th><th>狀態</th><th>操作</th></tr></thead><tbody id="sp-schedule-rows"></tbody></table></div><p class="sp-demo-note">示範資料 · 統計依目前查詢結果計算；年度額度為示範數據。</p>
+        </section>
+        <aside class="sp-side-panels">
+            <section class="sp-panel" id="quota-usage" aria-labelledby="quota-title"><header class="sp-panel-heading"><h2 id="quota-title"><svg><use href="#sp-calendar" /></svg>總額使用情形</h2><span class="sp-year"><svg><use href="#sp-calendar" /></svg>2024 年度</span></header><div class="sp-quota-list">
+                @foreach (var quota in quotas)
+                {
+                    <div class="sp-quota-row sp-@quota.Color" data-quota="@quota.Key" data-used="@quota.Used" data-limit="@quota.Limit" data-name="@quota.Name"><span class="sp-quota-name"><svg><use href="#sp-@quota.Key" /></svg><strong>@quota.Name</strong></span><span class="sp-quota-value">@quota.Used.ToString("N0") / @quota.Limit.ToString("N0") 人次</span><progress value="@quota.Used" max="@quota.Limit" aria-label="@quota.Name 額度使用率"></progress><span class="sp-percent">@(quota.Used * 100 / quota.Limit)%</span></div>
+                }
+            </div></section>
+            <section class="sp-panel sp-status-panel" aria-labelledby="status-title"><h2 id="status-title"><svg><use href="#sp-calendar" /></svg>今日檢查狀態統計</h2><div class="sp-status-content"><div class="sp-donut" role="img" aria-label="共123人次：已完成32、檢查中18、等待中52、未報到21"><span><b>123</b><small>總人次</small></span></div><ul class="sp-status-legend"><li><i style="--status-color:#43b77c"></i><span>已完成</span><b>32</b><small>26%</small></li><li><i style="--status-color:#398cf5"></i><span>檢查中</span><b>18</b><small>15%</small></li><li><i style="--status-color:#ffbc50"></i><span>等待中</span><b>52</b><small>42%</small></li><li><i style="--status-color:#a9b5c7"></i><span>未報到</span><b>21</b><small>17%</small></li></ul></div></section>
+        </aside>
+    </div>
+    <dialog class="sp-dialog" id="sp-detail-dialog" aria-labelledby="sp-detail-title"><header><h2 id="sp-detail-title">檢查排程明細</h2><button type="button" data-close-dialog aria-label="關閉明細">×</button></header><dl id="sp-detail-content"></dl><button type="button" class="sp-primary" data-close-dialog>關閉</button></dialog>
+    <dialog class="sp-dialog" id="sp-quota-dialog" aria-labelledby="sp-quota-dialog-title"><form id="sp-quota-form"><header><h2 id="sp-quota-dialog-title">鏡檢總額管理設定</h2><button type="button" data-close-dialog aria-label="關閉設定">×</button></header><p>設定胃鏡與大腸鏡年度額度（僅套用於本頁示範）。</p><div id="sp-quota-fields"></div><button type="submit" class="sp-primary">套用設定</button></form></dialog>
+</section>
+<script src="~/js/health-check-process.js" asp-append-version="true" defer></script>

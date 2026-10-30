@@ -1,0 +1,538 @@
+﻿@{
+    var currentAction = Convert.ToString(ViewContext.RouteData.Values["action"]) ?? "";
+    var appointmentActions = new[] { "AppointmentManagement", "CreateAppointment", "GroupAppointmentManagement", "CreateGroupAppointment" };
+    var checkInActions = new[] { "CheckInManagement", "TodayCheckIn", "CheckInOperation" };
+    var reportActions = new[] { "ReportQuery", "AccountQuery" };
+    var projectWizardActions = new[] { "HealthCheckProjectManagement", "HealthCheckProjectDetail", "CreateHealthCheckProject", "CreateHealthCheckProjectOrders", "CreateHealthCheckProjectSpecialOperations", "ConfirmHealthCheckProject", "CompleteHealthCheckProject" };
+    var medicalOrderActions = new[] { "PackageMaintenance", "MedicalOrderMaintenance", "HospitalMedicalOrders" };
+    var systemSettingsActions = new[] { "SystemSettings", "ProjectPackageSettings", "BasicDataMaintenance", "ThemeSettings" };
+    Func<string, bool> isCurrentAction = action =>
+        string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase)
+        || (string.Equals(action, "AppointmentManagement", StringComparison.OrdinalIgnoreCase)
+            && appointmentActions.Any(appointmentAction => string.Equals(currentAction, appointmentAction, StringComparison.OrdinalIgnoreCase)))
+        || (string.Equals(action, "CheckInManagement", StringComparison.OrdinalIgnoreCase)
+            && checkInActions.Any(checkInAction => string.Equals(currentAction, checkInAction, StringComparison.OrdinalIgnoreCase)))
+        || (string.Equals(action, "ReportQuery", StringComparison.OrdinalIgnoreCase)
+            && reportActions.Any(reportAction => string.Equals(currentAction, reportAction, StringComparison.OrdinalIgnoreCase)))
+        || (string.Equals(action, "SystemSettings", StringComparison.OrdinalIgnoreCase)
+            && systemSettingsActions.Any(systemAction => string.Equals(currentAction, systemAction, StringComparison.OrdinalIgnoreCase)))
+        || (string.Equals(action, "SuiteMedicalOrders", StringComparison.OrdinalIgnoreCase)
+            && medicalOrderActions.Any(orderAction => string.Equals(currentAction, orderAction, StringComparison.OrdinalIgnoreCase)))
+        || (string.Equals(action, "CompanyProjects", StringComparison.OrdinalIgnoreCase)
+            && (string.Equals(currentAction, "CustomerMaintenance", StringComparison.OrdinalIgnoreCase)
+                || projectWizardActions.Any(projectAction => string.Equals(currentAction, projectAction, StringComparison.OrdinalIgnoreCase))));
+    Func<string, string> menuClass = action => isCurrentAction(action) ? "menu-item active" : "menu-item";
+    Func<string, string> menuGroupClass = action => isCurrentAction(action) ? "menu-group has-submenu is-open" : "menu-group has-submenu";
+    Func<string, string> menuExpanded = action => isCurrentAction(action) ? "true" : "false";
+    Func<string, string> appointmentSubmenuClass = item =>
+        (string.Equals(item, "TodayAppointment", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(currentAction, "AppointmentManagement", StringComparison.OrdinalIgnoreCase))
+        || (string.Equals(item, "IndividualAppointment", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(currentAction, "CreateAppointment", StringComparison.OrdinalIgnoreCase))
+        || (string.Equals(item, "GroupAppointment", StringComparison.OrdinalIgnoreCase)
+            && (string.Equals(currentAction, "GroupAppointmentManagement", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(currentAction, "CreateGroupAppointment", StringComparison.OrdinalIgnoreCase)))
+            ? "submenu-item active"
+            : "submenu-item";
+    Func<string, string> checkInSubmenuClass = item =>
+        (string.Equals(item, "TodayCheckIn", StringComparison.OrdinalIgnoreCase)
+            && (string.Equals(currentAction, "CheckInManagement", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(currentAction, "TodayCheckIn", StringComparison.OrdinalIgnoreCase)))
+        || (string.Equals(item, "CheckInOperation", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(currentAction, "CheckInOperation", StringComparison.OrdinalIgnoreCase))
+            ? "submenu-item active"
+            : "submenu-item";
+    Func<string, string> reportSubmenuClass = item =>
+        string.Equals(item, "AccountQuery", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(currentAction, "AccountQuery", StringComparison.OrdinalIgnoreCase)
+            ? "submenu-item active"
+            : "submenu-item";
+    Func<string, string> medicalOrderSubmenuClass = item =>
+        string.Equals(currentAction, item, StringComparison.OrdinalIgnoreCase) ? "submenu-item active" : "submenu-item";
+    Func<string, string> companyProjectSubmenuClass = item =>
+        (string.Equals(item, "CustomerMaintenance", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(currentAction, "CustomerMaintenance", StringComparison.OrdinalIgnoreCase))
+        || (string.Equals(item, "HealthCheckProjectManagement", StringComparison.OrdinalIgnoreCase)
+            && projectWizardActions.Any(projectAction => string.Equals(currentAction, projectAction, StringComparison.OrdinalIgnoreCase)))
+            ? "submenu-item active"
+            : "submenu-item";
+    Func<string, string> systemSettingsSubmenuClass = item =>
+        (string.Equals(item, "AccountPermissions", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(currentAction, "SystemSettings", StringComparison.OrdinalIgnoreCase))
+        || (string.Equals(item, "ProjectPackageSettings", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(currentAction, "ProjectPackageSettings", StringComparison.OrdinalIgnoreCase))
+        || (string.Equals(item, "BasicDataMaintenance", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(currentAction, "BasicDataMaintenance", StringComparison.OrdinalIgnoreCase))
+        || (string.Equals(item, "ThemeSettings", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(currentAction, "ThemeSettings", StringComparison.OrdinalIgnoreCase))
+            ? "submenu-item active"
+            : "submenu-item";
+    string firstRequestHeader(params string[] names)
+    {
+        foreach (var name in names)
+        {
+            var value = Context.Request.Headers[name].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+        }
+
+        return string.Empty;
+    }
+    var systemGuideLoginId = User?.Identity?.IsAuthenticated == true
+        ? User.Identity.Name ?? string.Empty
+        : firstRequestHeader("X-Authenticated-User", "X-Remote-User", "X-User-Id", "X-Employee-Id");
+    var systemGuideDeviceGuid = firstRequestHeader("X-Device-Guid", "X-Computer-Guid");
+    var systemGuideDeviceModel = firstRequestHeader("X-Device-Model", "X-Computer-Model");
+}
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Health Checkup System</title>
+    <script>
+        (function () {
+            var systemColorScheme = window.matchMedia("(prefers-color-scheme: dark)");
+            var activeThemeSettings = {};
+            var appliedThemeSignature = "";
+            function shadeHexColor(color, percent) {
+                var normalizedColor = /^#[0-9a-f]{6}$/i.test(color || "") ? color : "#1677e8";
+                var numericColor = parseInt(normalizedColor.slice(1), 16);
+                var amount = Math.round(2.55 * percent);
+                var red = Math.max(0, Math.min(255, (numericColor >> 16) + amount));
+                var green = Math.max(0, Math.min(255, ((numericColor >> 8) & 0x00ff) + amount));
+                var blue = Math.max(0, Math.min(255, (numericColor & 0x0000ff) + amount));
+
+                return "#" + (0x1000000 + red * 0x10000 + green * 0x100 + blue).toString(16).slice(1);
+            }
+
+            function getHexRgb(color) {
+                var normalizedColor = /^#[0-9a-f]{6}$/i.test(color || "") ? color : "#1677e8";
+                var numericColor = parseInt(normalizedColor.slice(1), 16);
+
+                return {
+                    red: numericColor >> 16,
+                    green: (numericColor >> 8) & 0x00ff,
+                    blue: numericColor & 0x0000ff
+                };
+            }
+
+            function rgbToHex(rgb) {
+                return "#" + (0x1000000 + rgb.red * 0x10000 + rgb.green * 0x100 + rgb.blue).toString(16).slice(1);
+            }
+
+            function mixHexColor(color, mixColor, mixAmount) {
+                var base = getHexRgb(color);
+                var mix = getHexRgb(mixColor);
+                var amount = Math.max(0, Math.min(1, mixAmount));
+
+                return rgbToHex({
+                    red: Math.round(base.red * (1 - amount) + mix.red * amount),
+                    green: Math.round(base.green * (1 - amount) + mix.green * amount),
+                    blue: Math.round(base.blue * (1 - amount) + mix.blue * amount)
+                });
+            }
+
+            function applyHealthSysTheme(theme) {
+                var settings = theme || {};
+                activeThemeSettings = settings;
+                var requestedMode = settings.mode || "light";
+                var themeMode = requestedMode === "simple" ? "light"
+                    : requestedMode === "system" ? (systemColorScheme.matches ? "dark" : "light") : requestedMode;
+                // Repeated preview/restore notifications must not invalidate the whole page.
+                var themeSignature = themeMode + ":" + JSON.stringify(settings);
+                if (themeSignature === appliedThemeSignature) return;
+                appliedThemeSignature = themeSignature;
+                var isDarkMode = themeMode === "dark";
+                var isGrayMode = themeMode === "gray";
+                var isSimpleMode = requestedMode === "simple";
+                var color = /^#[0-9a-f]{6}$/i.test(settings.color || "") ? settings.color : "#1677e8";
+                var root = document.documentElement;
+                var style = root.style;
+                var accentDark = shadeHexColor(color, isDarkMode ? 18 : (isGrayMode ? -10 : -16));
+                var rgb = getHexRgb(color);
+                var channels = [rgb.red, rgb.green, rgb.blue].map(value => value / 255);
+                var high = Math.max(...channels), low = Math.min(...channels), delta = high - low;
+                var hue = delta < .02 ? parseInt(color.slice(1), 16) % 360 :
+                    (high === channels[0] ? (channels[1] - channels[2]) / delta : high === channels[1] ? (channels[2] - channels[0]) / delta + 2 : (channels[0] - channels[1]) / delta + 4) * 60;
+                var states = ["reserved", "registered", "arrived", "checking", "slot", "cancelled"];
+                states.forEach((state, index) => {
+                    var stateHue = ((hue + (isSimpleMode ? 0 : index * 60)) % 360 + 360) % 360;
+                    var saturation = isSimpleMode ? .28 : .67;
+                    var lightness = isSimpleMode ? .30 + index * .08 : (isDarkMode ? .63 : .44);
+                    var chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+                    var x = chroma * (1 - Math.abs((stateHue / 60) % 2 - 1));
+                    var m = lightness - chroma / 2;
+                    var components = stateHue < 60 ? [chroma, x, 0] : stateHue < 120 ? [x, chroma, 0] : stateHue < 180 ? [0, chroma, x] : stateHue < 240 ? [0, x, chroma] : stateHue < 300 ? [x, 0, chroma] : [chroma, 0, x];
+                    var stateColor = "#" + components.map(value => Math.round((value + m) * 255).toString(16).padStart(2, "0")).join("");
+                    style.setProperty("--app-status-" + state, stateColor);
+                });
+                var rgbText = rgb.red + ", " + rgb.green + ", " + rgb.blue;
+                var lightbarColor = mixHexColor(color, "#ffffff", isDarkMode ? .32 : (isGrayMode ? .22 : .26));
+                var lightbarRgb = getHexRgb(lightbarColor);
+                var lightbarRgbText = lightbarRgb.red + ", " + lightbarRgb.green + ", " + lightbarRgb.blue;
+                var accentSoft = isDarkMode ? "rgba(" + rgbText + ", .18)" : (isGrayMode ? "rgba(" + rgbText + ", .10)" : "rgba(" + rgbText + ", .12)");
+                var lightbarSoft = isDarkMode ? "rgba(" + lightbarRgbText + ", .18)" : (isGrayMode ? "rgba(" + lightbarRgbText + ", .13)" : "rgba(" + lightbarRgbText + ", .15)");
+                var lightbarGlow = isDarkMode ? "rgba(" + lightbarRgbText + ", .30)" : (isGrayMode ? "rgba(" + lightbarRgbText + ", .16)" : "rgba(" + lightbarRgbText + ", .20)");
+                var selectedRowBg = isDarkMode
+                    ? "linear-gradient(90deg, rgba(" + lightbarRgbText + ", .26) 0%, rgba(" + lightbarRgbText + ", .14) 46%, var(--app-surface) 100%)"
+                    : (isGrayMode
+                        ? "linear-gradient(90deg, rgba(" + lightbarRgbText + ", .16) 0%, rgba(" + lightbarRgbText + ", .08) 48%, var(--app-surface) 100%)"
+                        : "linear-gradient(90deg, rgba(" + lightbarRgbText + ", .19) 0%, rgba(" + lightbarRgbText + ", .09) 48%, var(--app-surface) 100%)");
+                var selectedRowHoverBg = isDarkMode
+                    ? "linear-gradient(90deg, rgba(" + lightbarRgbText + ", .32) 0%, rgba(" + lightbarRgbText + ", .18) 46%, var(--app-surface) 100%)"
+                    : (isGrayMode
+                        ? "linear-gradient(90deg, rgba(" + lightbarRgbText + ", .20) 0%, rgba(" + lightbarRgbText + ", .10) 48%, var(--app-surface-soft) 100%)"
+                        : "linear-gradient(90deg, rgba(" + lightbarRgbText + ", .24) 0%, rgba(" + lightbarRgbText + ", .12) 48%, var(--app-surface) 100%)");
+                var selectedRowBorder = isDarkMode ? "rgba(" + lightbarRgbText + ", .36)" : (isGrayMode ? "rgba(" + lightbarRgbText + ", .24)" : "rgba(" + lightbarRgbText + ", .28)");
+
+                style.setProperty("--app-accent", color);
+                style.setProperty("--app-accent-dark", accentDark);
+                style.setProperty("--app-accent-rgb", rgbText);
+                style.setProperty("--app-accent-soft", accentSoft);
+                style.setProperty("--app-lightbar", lightbarColor);
+                style.setProperty("--app-lightbar-rgb", lightbarRgbText);
+                style.setProperty("--app-lightbar-soft", lightbarSoft);
+                style.setProperty("--app-lightbar-glow", lightbarGlow);
+                style.setProperty("--app-selected-row-bg", selectedRowBg);
+                style.setProperty("--app-selected-row-hover-bg", selectedRowHoverBg);
+                style.setProperty("--app-selected-row-border", selectedRowBorder);
+                style.setProperty("--blue", color);
+                style.setProperty("--blue-dark", accentDark);
+                style.setProperty("--blue-soft", accentSoft);
+                root.dataset.themeMode = themeMode;
+                root.dataset.themeDensity = settings.density || "standard";
+                root.dataset.themeFont = settings.font || "medium";
+                var textColor = /^#[0-9a-f]{6}$/i.test(settings.textColor || "") ? settings.textColor : "";
+                root.dataset.themeTextColor = textColor ? "custom" : "auto";
+                style.setProperty("--app-text-color", textColor || (isDarkMode ? "#dfebf8" : "#263850"));
+                var surface = mixHexColor(color, isDarkMode ? "#172033" : "#ffffff", isDarkMode ? .88 : .97);
+                var surfaceSoft = mixHexColor(color, isDarkMode ? "#101a2b" : "#ffffff", isDarkMode ? .90 : .92);
+                var surfaceStrong = mixHexColor(color, isDarkMode ? "#273449" : "#ffffff", isDarkMode ? .88 : .86);
+                var pageBackground = mixHexColor(color, isDarkMode ? "#0b1220" : "#ffffff", isDarkMode ? .94 : .95);
+                var text = textColor || (isDarkMode ? "#dfebf8" : "#263850");
+                var muted = mixHexColor(text, surface, .34);
+                var border = mixHexColor(color, surface, isDarkMode ? .70 : .79);
+                style.setProperty("--app-surface", surface);
+                style.setProperty("--app-surface-muted", surfaceSoft);
+                style.setProperty("--app-text", text);
+                style.setProperty("--app-text-muted", muted);
+                style.setProperty("--app-surface-soft", surfaceSoft);
+                style.setProperty("--app-surface-strong", surfaceStrong);
+                style.setProperty("--app-dark-surface", isDarkMode ? surfaceStrong : mixHexColor(color, "#152033", .88));
+                style.setProperty("--app-bg", pageBackground);
+                style.setProperty("--app-muted", muted);
+                style.setProperty("--app-border", border);
+                style.setProperty("--bg", pageBackground);
+                style.setProperty("--panel", surface);
+                style.setProperty("--panel-bg", surface);
+                style.setProperty("--text", text);
+                style.setProperty("--muted", muted);
+                style.setProperty("--line", border);
+                style.setProperty("--soft-line", border);
+                style.setProperty("--shadow", isDarkMode ? "0 8px 24px rgba(0, 0, 0, .22)" : "0 8px 24px rgba(31, 45, 61, .055)");
+                for (var surfaceKey of ["--tech-black-bg", "--tech-black-shell"]) style.setProperty(surfaceKey, pageBackground);
+                for (var panelKey of ["--tech-black-panel", "--tech-black-panel-strong", "--tech-black-panel-soft"]) style.setProperty(panelKey, surface);
+                style.setProperty("--tech-black-text", text);
+                style.setProperty("--tech-black-muted", muted);
+                style.setProperty("--tech-black-subtle", muted);
+                style.setProperty("--tech-black-border", border);
+                style.setProperty("--text-muted", muted);
+                style.setProperty("--gray-mode-bg", pageBackground);
+                style.setProperty("--gray-mode-shell", pageBackground);
+                style.setProperty("--gray-mode-panel", surface);
+                style.setProperty("--gray-mode-panel-soft", surfaceSoft);
+                style.setProperty("--gray-mode-panel-strong", surfaceStrong);
+                style.setProperty("--gray-mode-text", text);
+                style.setProperty("--gray-mode-muted", muted);
+                style.setProperty("--gray-mode-subtle", muted);
+                style.setProperty("--gray-mode-border", border);
+                root.dataset.themePreference = requestedMode;
+                root.dataset.themeFixedHeader = String(settings.fixedHeader !== false);
+                root.dataset.themeCardShadow = String(settings.cardShadow !== false);
+                root.dataset.themeMotion = String(settings.motion !== false);
+                root.dataset.themeRadius = "true";
+                root.dataset.themeRowHeight = "true";
+                function boundedNumber(value, fallback, min, max) {
+                    var number = Number(value);
+                    return Number.isFinite(number) && value != null ? Math.max(min, Math.min(max, number)) : fallback;
+                }
+                style.setProperty("--app-radius", boundedNumber(settings.radius, 8, 4, 18) + "px");
+                style.setProperty("--app-row-height", boundedNumber(settings.rowHeight, 40, 32, 52) + "px");
+                style.setProperty("--app-font-scale", settings.font === "small" ? "0.9" : (settings.font === "large" ? "1.15" : "1"));
+                var zoom = parseInt(settings.zoom, 10);
+                style.setProperty("--app-page-zoom", [90, 100, 110, 125].indexOf(zoom) >= 0 ? String(zoom / 100) : "1");
+                window.dispatchEvent?.(new CustomEvent("healthsys-theme-applied"));
+            }
+
+            systemColorScheme.addEventListener("change", function () {
+                if (activeThemeSettings.mode === "system") applyHealthSysTheme(activeThemeSettings);
+            });
+
+            try {
+                var savedTheme = JSON.parse(localStorage.getItem("healthsys:theme-settings") || "null");
+                var savedSidebar = localStorage.getItem("healthsys:sidebar");
+
+                window.healthSysApplyTheme = applyHealthSysTheme;
+
+                if (savedTheme) {
+                    if (Object.prototype.hasOwnProperty.call(savedTheme, "sidebar")) {
+                        if (savedTheme.sidebar === "collapsed" && savedSidebar === "collapsed") {
+                            savedSidebar = "expanded";
+                            localStorage.setItem("healthsys:sidebar", "expanded");
+                        }
+
+                        delete savedTheme.sidebar;
+                        localStorage.setItem("healthsys:theme-settings", JSON.stringify(savedTheme));
+                    }
+
+                }
+                applyHealthSysTheme(savedTheme || {});
+
+                if (savedSidebar === "collapsed") {
+                    document.documentElement.classList.add("sidebar-collapsed");
+                }
+            } catch (error) {
+                window.healthSysApplyTheme = applyHealthSysTheme;
+                applyHealthSysTheme({});
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="~/css/ui.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/system-guide.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/theme-controls.css" asp-append-version="true" />
+</head>
+<body class="hc">
+    <div class="app-shell">
+        <header class="topbar">
+            <a class="brand" asp-controller="Home" asp-action="Index" aria-label="健檢管理系統首頁">
+                <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                    <defs>
+                        <linearGradient id="brandHeartGradient" x1="18" y1="10" x2="48" y2="55" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="#fb7185" />
+                            <stop offset=".48" stop-color="#ef233c" />
+                            <stop offset="1" stop-color="#b91c1c" />
+                        </linearGradient>
+                        <filter id="brandHeartShadow" x="-20%" y="-20%" width="140%" height="150%" color-interpolation-filters="sRGB">
+                            <feDropShadow dx="0" dy="6" stdDeviation="4" flood-color="#b91c1c" flood-opacity=".24" />
+                        </filter>
+                    </defs>
+                    <circle cx="32" cy="32" r="28" fill="#fff1f2" />
+                    <g class="brand-heart">
+                        <path filter="url(#brandHeartShadow)" fill="url(#brandHeartGradient)" d="M32 52.5S12.5 40.5 12.5 25.5c0-7 5.1-12.2 11.9-12.2 3.9 0 6.7 1.7 7.6 4.2.9-2.5 3.8-4.2 7.6-4.2 6.8 0 11.9 5.2 11.9 12.2 0 15-19.5 27-19.5 27Z" />
+                        <path d="M18 33h8l3.4-8 6 16 4.1-8H46" fill="none" stroke="#fff" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M23.5 18.5c2.4-.8 5 .1 6.5 2" fill="none" stroke="#fecdd3" stroke-width="2.6" stroke-linecap="round" opacity=".85" />
+                    </g>
+                </svg>
+                <span class="brand-copy">
+                    <span class="brand-title">健檢管理系統</span>
+                    <span class="brand-subtitle">Health Checkup System</span>
+                </span>
+            </a>
+
+            <button class="icon-button menu-toggle" type="button" aria-label="展開主選單" aria-expanded="false" aria-controls="primary-menu" title="展開主選單">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <div class="topbar-actions">
+                <button class="system-guide-restart" type="button" data-system-guide-restart aria-label="開啟系統指導">
+                    <span aria-hidden="true">?</span>
+                    <span>系統指導</span>
+                </button>
+                <button class="icon-button notification-button" type="button" aria-label="通知">
+                    <span class="bell-icon"></span>
+                    <span class="notification-count">3</span>
+                </button>
+                <div class="admin-profile" aria-label="系統管理員">
+                    <span class="admin-avatar"></span>
+                    <span class="admin-name">管理員</span>
+                    <span class="chevron"></span>
+                </div>
+            </div>
+        </header>
+
+        <div class="app-body">
+            <aside class="sidebar" aria-label="主要導覽">
+                <button class="sidebar-toggle-button" type="button" aria-label="收合側邊選單" aria-expanded="true" aria-controls="primary-menu" title="收合側邊選單">
+                    <span class="sidebar-toggle-icon" aria-hidden="true"></span>
+                </button>
+
+                <nav class="menu" id="primary-menu">
+                    <a class='@menuClass("Index")' asp-controller="Home" asp-action="Index" aria-label="首頁儀表板">
+                        <span class="menu-icon home-icon" aria-hidden="true"></span>
+                        <span class="menu-label">首頁儀表板</span>
+                    </a>
+                    <div class='@menuGroupClass("AppointmentManagement")' data-submenu>
+                        <a class='@menuClass("AppointmentManagement")' asp-controller="Appointment" asp-action="AppointmentManagement" asp-fragment="today-appointment-list" aria-label="預約管理">
+                            <span class="menu-icon appointment-icon" aria-hidden="true"></span>
+                            <span class="menu-label">預約管理</span>
+                        </a>
+                        <button class="menu-submenu-toggle" type="button" aria-expanded='@menuExpanded("AppointmentManagement")' aria-controls="appointment-management-submenu" aria-label="開啟預約管理子選單" title="開啟預約管理子選單" data-label-open="開啟預約管理子選單" data-label-close="隱藏預約管理子選單">
+                            <span class="menu-arrow" aria-hidden="true"></span>
+                        </button>
+                        <div class="submenu" id="appointment-management-submenu">
+                            <a class='@appointmentSubmenuClass("TodayAppointment")' asp-controller="Appointment" asp-action="AppointmentManagement" asp-fragment="today-appointment-list">預約清單</a>
+                            <a class='@appointmentSubmenuClass("IndividualAppointment")' asp-controller="Appointment" asp-action="CreateAppointment">個人預約</a>
+                            <a class='@appointmentSubmenuClass("GroupAppointment")' asp-controller="Appointment" asp-action="GroupAppointmentManagement">團體預約</a>
+                        </div>
+                    </div>
+                    <div class='@menuGroupClass("CheckInManagement")' data-submenu>
+                        <a class='@menuClass("CheckInManagement")' asp-controller="Home" asp-action="CheckInManagement" aria-label="報到管理">
+                            <span class="menu-icon user-icon" aria-hidden="true"></span>
+                            <span class="menu-label">報到管理</span>
+                        </a>
+                        <button class="menu-submenu-toggle" type="button" aria-expanded='@menuExpanded("CheckInManagement")' aria-controls="checkin-management-submenu" aria-label="開啟報到管理子選單" title="開啟報到管理子選單" data-label-open="開啟報到管理子選單" data-label-close="隱藏報到管理子選單">
+                            <span class="menu-arrow" aria-hidden="true"></span>
+                        </button>
+                        <div class="submenu" id="checkin-management-submenu">
+                            <a class='@checkInSubmenuClass("TodayCheckIn")' asp-controller="Appointment" asp-action="TodayCheckIn">今日報到</a>
+                            <a class='@checkInSubmenuClass("CheckInOperation")' asp-controller="Appointment" asp-action="CheckInOperation">報到作業</a>
+                        </div>
+                    </div>
+                    <div class='@menuGroupClass("HealthCheckProcess")' data-submenu>
+                        <a class='@menuClass("HealthCheckProcess")' asp-controller="Home" asp-action="HealthCheckProcess" aria-label="排程管理">
+                            <span class="menu-icon flow-icon" aria-hidden="true"></span>
+                            <span class="menu-label">排程管理</span>
+                        </a>
+                        <button class="menu-submenu-toggle" type="button" aria-expanded='@menuExpanded("HealthCheckProcess")' aria-controls="health-process-submenu" aria-label="開啟排程管理子選單" title="開啟排程管理子選單" data-label-open="開啟排程管理子選單" data-label-close="隱藏排程管理子選單">
+                            <span class="menu-arrow" aria-hidden="true"></span>
+                        </button>
+                        <div class="submenu health-process-submenu" id="health-process-submenu">
+                            <a class="submenu-item health-process-group" asp-controller="Home" asp-action="HealthCheckProcess" asp-fragment="quota-management" data-process-nav="quota-management">總額查詢</a>
+                            <a class="submenu-item health-process-group" asp-controller="Home" asp-action="HealthCheckProcess" asp-fragment="scope-management" data-process-nav="scope-management">鏡檢管理</a>
+                            <a class="submenu-item health-process-group" asp-controller="Home" asp-action="HealthCheckProcess" asp-fragment="imaging-management" data-process-nav="imaging-management">影像排程</a>
+                        </div>
+                    </div>
+                    <div class="menu-group">
+                        <a class='@menuClass("Reports")' asp-controller="Reports" asp-action="Reports" aria-label="檢查報告">
+                            <span class="menu-icon task-icon" aria-hidden="true"></span>
+                            <span class="menu-label">檢查報告</span>
+                        </a>
+                    </div>
+                    <div class='@menuGroupClass("ReportQuery")' data-submenu>
+                        <a class='@menuClass("ReportQuery")' asp-controller="Statistics" asp-action="AccountQuery" aria-label="報表查詢">
+                            <span class="menu-icon report-icon" aria-hidden="true"></span>
+                            <span class="menu-label">報表查詢</span>
+                        </a>
+                        <button class="menu-submenu-toggle" type="button" aria-expanded='@menuExpanded("ReportQuery")' aria-controls="report-query-submenu" aria-label="開啟報表查詢子選單" title="開啟報表查詢子選單" data-label-open="開啟報表查詢子選單" data-label-close="隱藏報表查詢子選單">
+                            <span class="menu-arrow" aria-hidden="true"></span>
+                        </button>
+                        <div class="submenu" id="report-query-submenu">
+                            <a class='@reportSubmenuClass("AccountQuery")' asp-controller="Statistics" asp-action="AccountQuery">帳目查詢</a>
+                        </div>
+                    </div>
+                    <div class='@menuGroupClass("SuiteMedicalOrders")' data-submenu>
+                        <a class='@menuClass("SuiteMedicalOrders")' asp-controller="MedicalOrderMaintenance" asp-action="MedicalOrderMaintenance" aria-label="組套醫令">
+                            <span class="menu-icon task-icon" aria-hidden="true"></span>
+                            <span class="menu-label">組套醫令</span>
+                        </a>
+                        <button class="menu-submenu-toggle" type="button" aria-expanded='@menuExpanded("SuiteMedicalOrders")' aria-controls="medical-order-submenu" aria-label="開啟組套醫令子選單" title="開啟組套醫令子選單" data-label-open="開啟組套醫令子選單" data-label-close="隱藏組套醫令子選單">
+                            <span class="menu-arrow" aria-hidden="true"></span>
+                        </button>
+                        <div class="submenu" id="medical-order-submenu">
+                            <a class='@medicalOrderSubmenuClass("PackageMaintenance")' asp-controller="PackageMaintenance" asp-action="PackageMaintenance">組套維護</a>
+                            <a class='@medicalOrderSubmenuClass("MedicalOrderMaintenance")' asp-controller="MedicalOrderMaintenance" asp-action="MedicalOrderMaintenance">健檢醫令</a>
+                            <a class='@medicalOrderSubmenuClass("HospitalMedicalOrders")' asp-controller="MedicalOrderMaintenance" asp-action="HospitalMedicalOrders">院內醫令</a>
+                        </div>
+                    </div>
+                    <div class='@menuGroupClass("CompanyProjects")' data-submenu>
+                        <a class='@menuClass("CompanyProjects")' asp-controller="CustomerMaintenance" asp-action="CustomerMaintenance" aria-label="公司專案">
+                            <span class="menu-icon appointment-icon" aria-hidden="true"></span>
+                            <span class="menu-label">公司專案</span>
+                        </a>
+                        <button class="menu-submenu-toggle" type="button" aria-expanded='@menuExpanded("CompanyProjects")' aria-controls="company-project-submenu" aria-label="開啟公司專案子選單" title="開啟公司專案子選單" data-label-open="開啟公司專案子選單" data-label-close="隱藏公司專案子選單">
+                            <span class="menu-arrow" aria-hidden="true"></span>
+                        </button>
+                        <div class="submenu" id="company-project-submenu">
+                            <a class='@companyProjectSubmenuClass("CustomerMaintenance")' asp-controller="CustomerMaintenance" asp-action="CustomerMaintenance">公司維護</a>
+                            <a class='@companyProjectSubmenuClass("HealthCheckProjectManagement")' asp-controller="ProjectPackageSettings" asp-action="HealthCheckProjectManagement">專案維護</a>
+                        </div>
+                    </div>
+                    <div class='@menuGroupClass("SystemSettings")' data-submenu>
+                        <a class='@menuClass("SystemSettings")' asp-controller="UserRole" asp-action="SystemSettings" aria-label="系統設定">
+                            <span class="menu-icon gear-icon" aria-hidden="true"></span>
+                            <span class="menu-label">系統設定</span>
+                        </a>
+                        <button class="menu-submenu-toggle" type="button" aria-expanded='@menuExpanded("SystemSettings")' aria-controls="system-settings-submenu" aria-label="開啟系統設定子選單" title="開啟系統設定子選單" data-label-open="開啟系統設定子選單" data-label-close="隱藏系統設定子選單">
+                            <span class="menu-arrow" aria-hidden="true"></span>
+                        </button>
+                        <div class="submenu" id="system-settings-submenu">
+                            <a class='@systemSettingsSubmenuClass("AccountPermissions")' asp-controller="UserRole" asp-action="SystemSettings" asp-fragment="account-permissions">帳號權限</a>
+                            <a class='@systemSettingsSubmenuClass("ThemeSettings")' asp-controller="ThemeSettings" asp-action="ThemeSettings">佈景主題</a>
+                            <a class='@systemSettingsSubmenuClass("BasicDataMaintenance")' asp-controller="BasicDataMaintenance" asp-action="BasicDataMaintenance">資料維護</a>
+                            <span class="submenu-item is-disabled" aria-disabled="true">罐頭訊息</span>
+                        </div>
+                    </div>
+                </nav>
+
+                <div class="copyright">&copy; 2026 Femh Health Checkup System</div>
+            </aside>
+
+            <main class="page" role="main">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <div data-system-guide-config
+         data-customer-url="@Url.Action("CustomerMaintenance", "CustomerMaintenance")"
+         data-project-url="@Url.Action("HealthCheckProjectManagement", "ProjectPackageSettings")"
+         data-appointment-url="@Url.Action("AppointmentManagement", "Appointment")"
+         data-checkin-url="@Url.Action("CheckInOperation", "Appointment")"
+         data-login-id="@systemGuideLoginId"
+         data-device-guid="@systemGuideDeviceGuid"
+         data-device-model="@systemGuideDeviceModel"
+         hidden></div>
+
+    <div class="smart-assist-widget is-minimized" data-smart-assist>
+        <button class="smart-assist-launcher" type="button" data-smart-assist-open aria-expanded="false" aria-controls="smart-assist-window">
+            <span class="smart-assist-launcher-icon" aria-hidden="true"></span>
+            <span>聯絡客服</span>
+        </button>
+
+        <section class="smart-assist-window sidebar-support-card" id="smart-assist-window" aria-label="需要協助嗎？" aria-hidden="true">
+            <div class="smart-assist-card-actions" aria-label="智能客服視窗控制">
+                <button type="button" data-smart-assist-minimize aria-label="收合智能客服" title="收合智能客服">
+                    <span aria-hidden="true"></span>
+                </button>
+            </div>
+            <div class="sidebar-support-copy" data-smart-assist-drag title="拖曳移動客服視窗">
+                <strong>需要協助嗎？</strong>
+                <span>如有任何系統操作問題，我們很樂意協助您。</span>
+            </div>
+            <div class="sidebar-support-body">
+                <img class="sidebar-support-illustration"
+                     src="~/images/support-doctor-ai2.png"
+                     asp-append-version="true"
+                     alt="女醫師智能客服" />
+                <div class="smart-assist-action-row">
+                    <button class="sidebar-support-button" type="button" data-smart-service-button>
+                        <span class="sidebar-support-headset" aria-hidden="true"></span>
+                        <span>智能客服</span>
+                    </button>
+                    <button class="sidebar-support-button gen-ai-button" type="button" data-gen-ai-button>
+                        <span class="gen-ai-icon" aria-hidden="true"></span>
+                        <span>GEN AI</span>
+                    </button>
+                    <button class="sidebar-support-button system-guide-support-button" type="button" data-system-guide-support>
+                        <span class="system-guide-support-icon" aria-hidden="true">?</span>
+                        <span>教學</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+    <partial name="_CustomerServiceChat" />
+    <link rel="stylesheet" href="~/css/customer-service.css" asp-append-version="true" />
+    <script src="~/js/customer-service.js" asp-append-version="true"></script>
+    <script src="~/js/sidebar.js" asp-append-version="true"></script>
+    <script src="~/js/system-guide.js" asp-append-version="true"></script>
+</body>
+</html>
+
+

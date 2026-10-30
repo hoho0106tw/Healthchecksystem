@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "健檢系統智能客服 · my-ai-agent-extension",
+  "version": "1.1.0",
+  "description": "健檢系統智能客服，支援儀表板、預約、報到、健檢醫令、院內醫令、公司與專案查詢。",
+  "permissions": ["scripting", "activeTab"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "開啟健檢智能客服" },
+  "content_scripts": [{
+    "matches": ["http://emraptest/*", "http://localhost/*", "https://localhost/*", "http://127.0.0.1/*", "https://127.0.0.1/*", "https://*.femh.org.tw/*", "http://*.femh.org.tw/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }]
+}

@@ -1,0 +1,299 @@
+﻿@model HealthSys_20260428_v2.csproj.Models.UserRoleViewModels
+
+@{
+    Layout = null;
+    ViewData["Title"] = "新增人員";
+}
+
+<!DOCTYPE html>
+<html lang="zh-TW" class="employee-frame-root">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Health Checkup System</title>
+    <link rel="stylesheet" href="~/css/ui.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/theme-controls.css" asp-append-version="true" />
+<script src="~/js/theme-frame.js" asp-append-version="true"></script>
+</head>
+<body class="hc employee-frame-body">
+    <main class="employee-frame" aria-labelledby="add-employee-title">
+        <header class="employee-frame-header">
+            <h1 id="add-employee-title">新增人員</h1>
+            <button class="employee-frame-close-button" type="button" data-employee-frame-close aria-label="關閉新增人員視窗">
+                <span class="cancel-icon" aria-hidden="true"></span>
+            </button>
+        </header>
+
+        <form class="employee-frame-form" data-employee-frame-form>
+            <div class="employee-frame-content">
+                <section class="employee-frame-section" aria-labelledby="employee-lookup-title">
+                    <h2 id="employee-lookup-title"><span>1</span>查詢員工資料</h2>
+                    <div class="employee-lookup-grid">
+                        <label class="employee-field">
+                            <span>員工編號 <em>*</em></span>
+                            <input type="text" name="StaffNo" placeholder="請輸入員工編號" autocomplete="off" required data-employee-no />
+                        </label>
+                        <button class="ghost-button employee-search-button" type="button" data-employee-search>
+                            <span class="search-button-icon" aria-hidden="true"></span>
+                            <span>搜尋</span>
+                        </button>
+                        <p class="employee-info-note"><span aria-hidden="true">i</span>請輸入員工編號後按下「搜尋」系統將自動帶入員工基本資料</p>
+                    </div>
+                </section>
+
+                <section class="employee-frame-section" aria-labelledby="employee-basic-title">
+                    <h2 id="employee-basic-title"><span>2</span>基本資料（自動帶入）</h2>
+                    <div class="employee-basic-grid">
+                        <label class="employee-field">
+                            <span>姓名</span>
+                            <input type="text" name="Name" placeholder="-" readonly data-employee-field="name" />
+                        </label>
+                        <label class="employee-field">
+                            <span>部門</span>
+                            <select name="Department" disabled data-employee-field="department">
+                                <option>-</option>
+                                <option>管理部</option>
+                                <option>護理部</option>
+                                <option>檢驗部</option>
+                                <option>放射部</option>
+                                <option>資訊部</option>
+                                <option>客服部</option>
+                            </select>
+                        </label>
+                        <label class="employee-field">
+                            <span>職稱</span>
+                            <input type="text" name="Position" placeholder="-" readonly data-employee-field="position" />
+                        </label>
+                        <label class="employee-field">
+                            <span>身分證號</span>
+                            <input type="text" name="IdNo" placeholder="-" readonly data-employee-field="idNo" />
+                        </label>
+                        <label class="employee-field">
+                            <span>出生日期</span>
+                            <span class="employee-date-field">
+                                <input type="text" name="BirthDate" placeholder="-" readonly data-employee-field="birthDate" />
+                                <span class="calendar-mini-icon" aria-hidden="true"></span>
+                            </span>
+                        </label>
+                        <label class="employee-field">
+                            <span>聯絡電話</span>
+                            <input type="text" name="Phone" placeholder="-" readonly data-employee-field="phone" />
+                        </label>
+                        <label class="employee-field">
+                            <span>Email</span>
+                            <input type="email" name="Email" placeholder="-" readonly data-employee-field="email" />
+                        </label>
+                        <label class="employee-field">
+                            <span>到職日期</span>
+                            <span class="employee-date-field">
+                                <input type="text" name="JoinedAt" placeholder="-" readonly data-employee-field="joinedAt" />
+                                <span class="calendar-mini-icon" aria-hidden="true"></span>
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="employee-frame-section" aria-labelledby="employee-role-title">
+                    <h2 id="employee-role-title"><span>3</span>權限設定 <em>*</em></h2>
+                    <p class="employee-section-hint">至少需選擇一個角色</p>
+                    <div class="employee-role-options">
+                        @foreach (var role in Model.RoleItems)
+                        {
+                            <label><input type="checkbox" name="Roles" value="@role.Name" data-role-code="@role.Code" data-role-tone="@role.Tone" data-role-color="@role.Color" /> @role.Name</label>
+                        }
+                    </div>
+                </section>
+
+                <section class="employee-frame-section" aria-labelledby="employee-status-title">
+                    <h2 id="employee-status-title"><span>4</span>帳號狀態 <em>*</em></h2>
+                    <div class="employee-status-options">
+                        <label><input type="radio" name="Status" value="啟用" checked /> 啟用</label>
+                        <label><input type="radio" name="Status" value="停用" /> 停用</label>
+                    </div>
+                </section>
+            </div>
+
+            <footer class="employee-frame-footer">
+                <button class="ghost-button" type="button" data-employee-frame-cancel>取消</button>
+                <button class="primary-button" type="submit">儲存</button>
+            </footer>
+        </form>
+    </main>
+
+    <script>
+        (function () {
+            const employees = [
+                {
+                    staffNo: "EMP-025",
+                    name: "潘怡萱",
+                    department: "護理部",
+                    position: "護理師",
+                    idNo: "A223456789",
+                    birthDate: "1992/05/18",
+                    phone: "0912-556-801",
+                    email: "yixuan.pan@example.com",
+                    joinedAt: "2025-04-08"
+                },
+                {
+                    staffNo: "EMP-026",
+                    name: "杜承翰",
+                    department: "檢驗部",
+                    position: "檢驗師",
+                    idNo: "B134567890",
+                    birthDate: "1989/11/03",
+                    phone: "0921-334-706",
+                    email: "chenghan.du@example.com",
+                    joinedAt: "2025-04-15"
+                },
+                {
+                    staffNo: "EMP-027",
+                    name: "沈佳蓉",
+                    department: "客服部",
+                    position: "櫃台人員",
+                    idNo: "C245678901",
+                    birthDate: "1995/02/26",
+                    phone: "0933-812-640",
+                    email: "jiarong.shen@example.com",
+                    joinedAt: "2025-04-22"
+                }
+            ];
+
+            const form = document.querySelector("[data-employee-frame-form]");
+            const employeeNoInput = document.querySelector("[data-employee-no]");
+            const fieldInputs = Array.from(document.querySelectorAll("[data-employee-field]"));
+            const searchButton = document.querySelector("[data-employee-search]");
+            const closeButtons = Array.from(document.querySelectorAll("[data-employee-frame-close], [data-employee-frame-cancel]"));
+            let selectedEmployee = null;
+
+            function postToParent(message) {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(message, window.location.origin);
+                }
+            }
+
+            function closeFrame() {
+                postToParent({ type: "healthsys:employee-frame-close" });
+            }
+
+            function setField(name, value) {
+                const field = document.querySelector("[data-employee-field='" + name + "']");
+                if (!field) {
+                    return;
+                }
+
+                if (field.tagName === "SELECT") {
+                    field.disabled = false;
+                    field.value = value || "-";
+                    field.disabled = true;
+                    return;
+                }
+
+                field.value = value || "";
+            }
+
+            function clearFields() {
+                fieldInputs.forEach(function (field) {
+                    if (field.tagName === "SELECT") {
+                        field.disabled = false;
+                        field.value = "-";
+                        field.disabled = true;
+                        return;
+                    }
+
+                    field.value = "";
+                });
+            }
+
+            function searchEmployee() {
+                const staffNo = String(employeeNoInput.value || "").trim().toUpperCase();
+                selectedEmployee = employees.find(function (employee) {
+                    return employee.staffNo.toUpperCase() === staffNo;
+                }) || null;
+
+                if (!selectedEmployee) {
+                    clearFields();
+                    employeeNoInput.setCustomValidity("查無此員工編號");
+                    employeeNoInput.reportValidity();
+                    return;
+                }
+
+                employeeNoInput.setCustomValidity("");
+                setField("name", selectedEmployee.name);
+                setField("department", selectedEmployee.department);
+                setField("position", selectedEmployee.position);
+                setField("idNo", selectedEmployee.idNo);
+                setField("birthDate", selectedEmployee.birthDate);
+                setField("phone", selectedEmployee.phone);
+                setField("email", selectedEmployee.email);
+                setField("joinedAt", selectedEmployee.joinedAt);
+            }
+
+            function selectedRoles() {
+                return Array.from(form.querySelectorAll("input[name='Roles']:checked")).map(function (input) {
+                    return {
+                        name: input.value,
+                        code: input.dataset.roleCode || input.value,
+                        tone: input.dataset.roleTone || "gray",
+                        color: input.dataset.roleColor || ""
+                    };
+                });
+            }
+
+            closeButtons.forEach(function (button) {
+                button.addEventListener("click", closeFrame);
+            });
+
+            searchButton.addEventListener("click", searchEmployee);
+
+            employeeNoInput.addEventListener("input", function () {
+                employeeNoInput.setCustomValidity("");
+            });
+
+            employeeNoInput.addEventListener("keydown", function (event) {
+                if (event.key !== "Enter") {
+                    return;
+                }
+
+                event.preventDefault();
+                searchEmployee();
+            });
+
+            form.addEventListener("submit", function (event) {
+                event.preventDefault();
+
+                if (!selectedEmployee || selectedEmployee.staffNo.toUpperCase() !== String(employeeNoInput.value || "").trim().toUpperCase()) {
+                    searchEmployee();
+                }
+
+                const roles = selectedRoles();
+                if (!roles.length) {
+                    form.querySelector("input[name='Roles']").setCustomValidity("至少需選擇一個角色");
+                    form.querySelector("input[name='Roles']").reportValidity();
+                    return;
+                }
+
+                form.querySelector("input[name='Roles']").setCustomValidity("");
+
+                if (!selectedEmployee || !form.reportValidity()) {
+                    return;
+                }
+
+                const formData = new FormData(form);
+                postToParent({
+                    type: "healthsys:employee-created",
+                    employee: {
+                        staffNo: selectedEmployee.staffNo,
+                        name: selectedEmployee.name,
+                        department: selectedEmployee.department,
+                        position: selectedEmployee.position,
+                        joinedAt: selectedEmployee.joinedAt,
+                        status: String(formData.get("Status") || "啟用"),
+                        roles: roles
+                    }
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
+

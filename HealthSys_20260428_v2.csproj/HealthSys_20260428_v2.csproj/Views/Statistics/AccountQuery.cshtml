@@ -1,0 +1,76 @@
+@{
+    ViewData["Title"] = "帳目查詢";
+}
+
+<link rel="stylesheet" href="~/css/account-query.css" asp-append-version="true" />
+
+<section class="account-query" aria-label="帳目查詢" data-list-url="@Url.Action("AccountQueryList", "Statistics")" data-suites-url="@Url.Action("AccountQuerySuites", "Statistics")" data-orders-url="@Url.Action("AccountQueryOrders", "Statistics")">
+
+    <section class="account-card account-search" aria-labelledby="account-search-title">
+        <h2 id="account-search-title">查詢條件</h2>
+        <form id="account-query-form" class="account-fields">
+            <label>起始日期<input id="account-start" type="date" /></label>
+            <label>結束日期<input id="account-end" type="date" /></label>
+            <label>專案／姓名／公司／病歷號<input id="account-keyword" type="search" placeholder="輸入專案、姓名、公司或病歷號" /></label>
+            <div class="account-form-actions">
+                <button id="account-reset" type="button" class="account-button">清除</button>
+                <button type="submit" class="account-button account-primary">查詢</button>
+            </div>
+        </form>
+        <p id="account-query-error" class="account-error" role="alert" hidden></p>
+    </section>
+
+    <section class="account-card" aria-label="帳目列表">
+        <div class="account-card-head account-toolbar">
+            <div class="account-head-actions">
+                <span id="account-count" class="account-count" aria-live="polite"></span>
+                <button id="account-export" type="button" class="account-button account-excel">匯出 Excel</button>
+            </div>
+        </div>
+        <div id="account-loading" class="account-loading" role="status" aria-live="polite" hidden>
+            <span class="account-loading-track" aria-hidden="true"></span>
+            <span id="account-loading-text">正在查詢帳目資料…</span>
+        </div>
+        <div class="account-table-scroll">
+            <table class="account-table">
+                <thead>
+                    <tr>
+                        <th scope="col">專案資訊</th>
+                        <th scope="col" class="amount account-total-heading">總金額 <button type="button" class="account-heading-help" aria-label="總金額說明" aria-describedby="account-amount-tooltip" data-help="此金額尚未扣除優待金額、記帳金額及轉欠金額。">?</button></th>
+                        <th scope="col">組套／醫令名稱</th>
+                        <th scope="col" class="amount account-receivable-heading">應收金額 <button type="button" class="account-heading-help" aria-label="應收金額說明" aria-describedby="account-amount-tooltip" data-help="扣除優待金額、記帳金額及轉欠金額後，櫃台實際應收的金額。">?</button></th>
+                        <th scope="col" class="amount account-deduction-heading">優待金額</th>
+                        <th scope="col" class="amount account-deduction-heading">記帳金額</th>
+                        <th scope="col" class="amount account-deduction-heading">轉欠金額</th>
+                    </tr>
+                </thead>
+                <tbody id="account-rows"></tbody>
+                <tfoot>
+                    <tr class="account-grand-total-row">
+                        <th id="account-grand-total-label" scope="row">總計</th>
+                        <td id="account-grid-total" class="amount"></td>
+                        <td class="account-total-spacer"></td>
+                        <td id="account-grid-receivable" class="amount"></td>
+                        <td id="account-grid-discount" class="amount account-deduction-cell"></td>
+                        <td id="account-grid-booked" class="amount account-deduction-cell"></td>
+                        <td id="account-grid-arrears" class="amount account-deduction-cell"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="account-pagination" aria-label="帳目查詢分頁">
+            <label for="account-page-size">每頁專案數
+                <select id="account-page-size"><option value="10" selected>10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option></select>
+            </label>
+            <div class="account-page-controls">
+                <button id="account-prev-page" type="button" class="account-button">上一頁</button>
+                <span id="account-page-status" aria-live="polite"></span>
+                <button id="account-next-page" type="button" class="account-button">下一頁</button>
+            </div>
+        </div>
+    </section>
+    <div id="account-amount-tooltip" class="account-amount-tooltip" role="tooltip" hidden></div>
+</section>
+
+<script src="~/js/account-query-jszip.js" asp-append-version="true" defer></script>
+<script src="~/js/account-query.js" asp-append-version="true" defer></script>

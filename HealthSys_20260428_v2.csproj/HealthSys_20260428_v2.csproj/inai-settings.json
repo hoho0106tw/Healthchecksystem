@@ -1,0 +1,13 @@
+{
+  "Inai": {
+    "Endpoint": "",
+    "Model": "gpt-5.2-chat",
+    "ApiKey": "",
+    "ApiKeyEnvironmentVariable": "",
+    "AuthMode": "ApiKeyOnly",
+    "ApiKeyFormat": "Plain",
+    "RequestTimeoutSeconds": 90,
+    "ChatLogEnabled": false,
+    "ChatLogDbWriteEnabled": false
+  }
+}

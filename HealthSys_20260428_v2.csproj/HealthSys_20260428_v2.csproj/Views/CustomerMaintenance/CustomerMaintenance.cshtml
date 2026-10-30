@@ -1,0 +1,1513 @@
+﻿@model HealthSys_20260428_v2.csproj.Models.CustomerMaintenanceViewModel
+
+@{
+    ViewData["Title"] = "公司維護";
+    var selectedCustomer = Model.SelectedCustomer ?? Model.Customers.FirstOrDefault();
+    const int defaultPageSize = 20;
+    var initialPageSize = Model.PageSizeOptions.Contains(defaultPageSize)
+        ? defaultPageSize
+        : Model.PageSizeOptions.FirstOrDefault();
+    string ClientUnitText(string? customerNo, string? customerName)
+    {
+        var normalizedCustomerNo = customerNo?.Trim() ?? "";
+        var normalizedCustomerName = customerName?.Trim() ?? "";
+
+        return !string.IsNullOrWhiteSpace(normalizedCustomerNo) && !string.IsNullOrWhiteSpace(normalizedCustomerName)
+            ? $"[{normalizedCustomerNo}] {normalizedCustomerName}"
+            : normalizedCustomerName;
+    }
+}
+
+<section class="customer-maintenance-page" aria-label="公司維護" data-customer-page data-customer-total="@Model.TotalCustomerCount" data-customer-delete-url="@Url.Action("DeleteCustomers", "CustomerMaintenance")" data-customer-edit-frame-url="@Url.Action("EditCustomerFrame", "CustomerMaintenance")" data-customer-detail-frame-url="@Url.Action("CustomerDetailFrame", "CustomerMaintenance")">
+    @Html.AntiForgeryToken()
+    <div data-ai-page="companies" data-ai-result-count="@Model.Customers.Count" data-ai-revision="0" hidden></div>
+    <header class="customer-command-bar" aria-label="公司維護操作">
+        <div class="customer-command-actions">
+            <button class="primary-button customer-command-button" type="button" data-open-customer-create-frame data-customer-create-frame-url="@Url.Action("AddCustomerFrame", "CustomerMaintenance")">
+                <span class="customer-action-icon add" aria-hidden="true"></span>
+                <span>新增公司</span>
+            </button>
+            <button class="ghost-button customer-command-button danger" type="button" data-customer-batch-delete>
+                <span class="customer-action-icon trash" aria-hidden="true"></span>
+                <span>批次刪除</span>
+            </button>
+            <button class="ghost-button customer-command-button" type="button">
+                <span class="customer-action-icon import" aria-hidden="true"></span>
+                <span>匯入</span>
+            </button>
+            <button class="ghost-button customer-command-button success" type="button">
+                <span class="customer-action-icon export" aria-hidden="true"></span>
+                <span>匯出 Excel</span>
+            </button>
+            <button class="ghost-button customer-command-button" type="button" data-customer-refresh>
+                <span class="customer-action-icon refresh" aria-hidden="true"></span>
+                <span>重整</span>
+            </button>
+        </div>
+        <p class="customer-total-count">
+            <span class="customer-action-icon users" aria-hidden="true"></span>
+            <span>共 <strong data-customer-total-count>@Model.TotalCustomerCount</strong> 筆公司資料</span>
+        </p>
+    </header>
+
+    <section class="customer-filter-panel" aria-label="公司查詢條件">
+        <div class="customer-filter-grid">
+            <label class="customer-field search">
+                <span>關鍵字</span>
+                <span class="customer-input-shell">
+                    <input type="search" placeholder="搜尋公司編號、公司名稱、聯絡人姓名、地址、電話..." aria-label="搜尋公司資料" data-customer-search />
+                    <span class="customer-action-icon search" aria-hidden="true"></span>
+                </span>
+            </label>
+            <div class="customer-filter-actions">
+                <button class="primary-button" type="button" data-customer-filter-apply>
+                    <span class="customer-action-icon search" aria-hidden="true"></span>
+                    <span>查詢</span>
+                </button>
+                <button class="ghost-button" type="button" data-customer-filter-clear>
+                    <span class="customer-action-icon layers" aria-hidden="true"></span>
+                    <span>清除條件</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <div class="customer-workspace">
+        <section class="customer-list-panel" aria-label="公司列表">
+            <header class="customer-list-header">
+                <h1>公司列表</h1>
+                <div class="customer-list-tools" aria-label="列表工具">
+                    <button class="ghost-button customer-column-button" type="button">
+                        <span class="customer-action-icon gear" aria-hidden="true"></span>
+                        <span>欄位設定</span>
+                    </button>
+                    <button class="customer-view-mode" type="button" aria-label="卡片檢視" title="卡片檢視">
+                        <span class="customer-action-icon grid" aria-hidden="true"></span>
+                    </button>
+                    <button class="customer-view-mode is-active" type="button" aria-label="列表檢視" title="列表檢視">
+                        <span class="customer-action-icon list" aria-hidden="true"></span>
+                    </button>
+                    <button class="customer-view-mode" type="button" aria-label="密度設定" title="密度設定">
+                        <span class="customer-action-icon sliders" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="customer-table-wrap">
+                <table class="customer-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="checkbox" aria-label="選取目前頁公司" data-customer-check-all />
+                            </th>
+                            <th>公司編號 <span class="customer-sort" aria-hidden="true"></span></th>
+                            <th>公司名稱 <span class="customer-sort" aria-hidden="true"></span></th>
+                            <th>電話</th>
+                            <th>傳真</th>
+                            <th>電子郵件</th>
+                            <th>聯絡人</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var customer in Model.Customers)
+                        {
+                            var customerKeywords = $"{customer.CustomerNo} {customer.CustomerName} {customer.EnglishName} {customer.UniformNo} {customer.ContactPerson} {customer.Address} {customer.Tel} {customer.Fax} {customer.Email} {customer.BusinessRegAddress} {customer.TaxOfficeCode} {customer.BusinessUnion} {customer.IndustryCategory} {customer.BusinessUnitName} {customer.BusinessUnitAddress} {customer.MedicalManageCode} {customer.AccountingUnit} {customer.CustomerNote}";
+                            <tr class="@(customer.Selected ? "is-selected" : "")"
+                                data-customer-row
+                                data-customer-no="@customer.CustomerNo"
+                                data-customer-name="@customer.CustomerName"
+                                data-customer-english-name="@customer.EnglishName"
+                                data-customer-uniform-no="@customer.UniformNo"
+                                data-customer-address="@customer.Address"
+                                data-customer-tel="@customer.Tel"
+                                data-customer-fax="@customer.Fax"
+                                data-customer-email="@customer.Email"
+                                data-customer-contact-person="@customer.ContactPerson"
+                                data-customer-business-reg-address="@customer.BusinessRegAddress"
+                                data-customer-tax-office-code="@customer.TaxOfficeCode"
+                                data-customer-business-union="@customer.BusinessUnion"
+                                data-customer-industry-category="@customer.IndustryCategory"
+                                data-customer-business-unit-name="@customer.BusinessUnitName"
+                                data-customer-business-unit-address="@customer.BusinessUnitAddress"
+                                data-customer-medical-manage-code="@customer.MedicalManageCode"
+                                data-customer-accounting-unit="@customer.AccountingUnit"
+                                data-customer-note="@customer.CustomerNote"
+                                data-customer-project-count="@customer.Projects.Count"
+                                data-customer-keywords="@customerKeywords">
+                                <td>
+                                    <input type="checkbox" aria-label="選取 @customer.CustomerName" data-customer-checkbox />
+                                </td>
+                                <td><button class="customer-code customer-code-button" type="button" data-customer-detail-open aria-label="查看 @customer.CustomerName 公司資料詳情">@customer.CustomerNo</button></td>
+                                <td><span class="customer-name">@customer.CustomerName</span></td>
+                                <td>
+                                    <span class="customer-inline-icon phone">
+                                        <span class="customer-action-icon phone" aria-hidden="true"></span>
+                                        @customer.Tel
+                                    </span>
+                                </td>
+                                <td>@customer.Fax</td>
+                                <td>
+                                    <span class="customer-inline-icon email">
+                                        <span class="customer-action-icon mail" aria-hidden="true"></span>
+                                        @customer.Email
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="customer-inline-icon user">
+                                        <span class="customer-action-icon user" aria-hidden="true"></span>
+                                        @customer.ContactPerson
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                        <tr class="customer-empty-row" data-customer-empty hidden>
+                            <td colspan="7">查無符合條件的公司資料</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <footer class="customer-table-footer">
+                <span data-customer-selected-summary>已選取 0 筆</span>
+                <label class="customer-page-size">
+                    <span>每頁顯示</span>
+                    <select aria-label="每頁筆數" data-customer-page-size>
+                        @foreach (var pageSize in Model.PageSizeOptions)
+                        {
+                            <option value="@pageSize" selected="@(pageSize == initialPageSize ? "selected" : null)">@pageSize 筆/頁</option>
+                        }
+                    </select>
+                </label>
+                <nav class="customer-pagination" aria-label="公司列表分頁" data-customer-pagination></nav>
+            </footer>
+        </section>
+
+        <aside class="customer-detail-panel" aria-label="公司資料詳情" data-customer-detail-panel>
+            <header class="customer-detail-header">
+                <button class="customer-detail-back" type="button" aria-label="返回列表" data-customer-detail-close>
+                    <span class="customer-action-icon back" aria-hidden="true"></span>
+                </button>
+                <h2>公司資料詳情</h2>
+                <button class="customer-detail-close" type="button" aria-label="關閉詳情" data-customer-detail-close>
+                    <span class="customer-action-icon close" aria-hidden="true"></span>
+                </button>
+            </header>
+
+            <section class="customer-detail-profile" aria-label="公司摘要">
+                <div class="customer-detail-avatar" data-customer-detail-avatar>
+                    <span class="customer-action-icon building" aria-hidden="true"></span>
+                </div>
+                <div>
+                    <h3 data-customer-detail="name">@(selectedCustomer?.CustomerName ?? "")</h3>
+                    <p>
+                        <span data-customer-detail="no">@(selectedCustomer?.CustomerNo ?? "")</span>
+                    </p>
+                </div>
+            </section>
+
+            <nav class="customer-detail-tabs" aria-label="公司詳情分頁">
+                <button class="is-active" type="button" data-customer-tab="basic">基本資料</button>
+                <button type="button" data-customer-tab="contact">聯絡資訊</button>
+                <button type="button" data-customer-tab="business">事業單位</button>
+                <button type="button" data-customer-tab="projects">專案清單</button>
+                <button type="button" data-customer-tab="notes">備註</button>
+            </nav>
+
+            <div class="customer-detail-content">
+                <section class="customer-detail-section" data-customer-panel="basic">
+                    <dl class="customer-detail-list">
+                        <div>
+                            <dt><span class="customer-action-icon building" aria-hidden="true"></span>公司編號</dt>
+                            <dd data-customer-detail="no">@(selectedCustomer?.CustomerNo ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon building" aria-hidden="true"></span>公司名稱</dt>
+                            <dd data-customer-detail="name">@(selectedCustomer?.CustomerName ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon building" aria-hidden="true"></span>英文名稱</dt>
+                            <dd data-customer-detail="englishName">@(selectedCustomer?.EnglishName ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon hash" aria-hidden="true"></span>統一編號</dt>
+                            <dd data-customer-detail="uniformNo">@(selectedCustomer?.UniformNo ?? "")</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="customer-detail-section" data-customer-panel="contact" hidden>
+                    <dl class="customer-detail-list">
+                        <div>
+                            <dt><span class="customer-action-icon user" aria-hidden="true"></span>聯絡人</dt>
+                            <dd data-customer-detail="contactPerson">@(selectedCustomer?.ContactPerson ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon phone" aria-hidden="true"></span>電話</dt>
+                            <dd data-customer-detail="tel">@(selectedCustomer?.Tel ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon phone" aria-hidden="true"></span>傳真</dt>
+                            <dd data-customer-detail="fax">@(selectedCustomer?.Fax ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon mail" aria-hidden="true"></span>電子郵件</dt>
+                            <dd data-customer-detail="email">@(selectedCustomer?.Email ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon location" aria-hidden="true"></span>地址</dt>
+                            <dd data-customer-detail="address">@(selectedCustomer?.Address ?? "")</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="customer-detail-section" data-customer-panel="business" hidden>
+                    <dl class="customer-detail-list">
+                        <div>
+                            <dt><span class="customer-action-icon location" aria-hidden="true"></span>事業登記所在地</dt>
+                            <dd data-customer-detail="businessRegAddress">@(selectedCustomer?.BusinessRegAddress ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon hash" aria-hidden="true"></span>事業單位（稅所）代碼</dt>
+                            <dd data-customer-detail="taxOfficeCode">@(selectedCustomer?.TaxOfficeCode ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon building" aria-hidden="true"></span>事業聯營</dt>
+                            <dd data-customer-detail="businessUnion">@(selectedCustomer?.BusinessUnion ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon list" aria-hidden="true"></span>行業標準分類</dt>
+                            <dd data-customer-detail="industryCategory">@(selectedCustomer?.IndustryCategory ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon building" aria-hidden="true"></span>事業單位名稱</dt>
+                            <dd data-customer-detail="businessUnitName">@(selectedCustomer?.BusinessUnitName ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon location" aria-hidden="true"></span>事業單位地址</dt>
+                            <dd data-customer-detail="businessUnitAddress">@(selectedCustomer?.BusinessUnitAddress ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon hash" aria-hidden="true"></span>醫護管理代碼</dt>
+                            <dd data-customer-detail="medicalManageCode">@(selectedCustomer?.MedicalManageCode ?? "")</dd>
+                        </div>
+                        <div>
+                            <dt><span class="customer-action-icon building" aria-hidden="true"></span>記帳單位</dt>
+                            <dd data-customer-detail="accountingUnit">@(selectedCustomer?.AccountingUnit ?? "")</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="customer-project-section" aria-labelledby="customer-project-title" data-customer-panel="projects" hidden>
+                    <header class="customer-project-header">
+                        <div>
+                            <h3 id="customer-project-title">專案清單</h3>
+                            <span><strong data-customer-project-total>@(selectedCustomer?.Projects.Count ?? 0)</strong> 筆</span>
+                        </div>
+                        <a class="ghost-button customer-project-add"
+                           href="@Url.Action("CreateHealthCheckProject", "ProjectPackageSettings", new { customerNo = selectedCustomer?.CustomerNo, customerName = selectedCustomer?.CustomerName, clientUnit = selectedCustomer is null ? "" : ClientUnitText(selectedCustomer.CustomerNo, selectedCustomer.CustomerName) })"
+                           data-customer-project-add
+                           data-project-create-url="@Url.Action("CreateHealthCheckProject", "ProjectPackageSettings")">
+                            <span class="customer-action-icon add" aria-hidden="true"></span>
+                            <span>新增專案</span>
+                        </a>
+                    </header>
+                    <div class="customer-project-table-wrap">
+                        <table class="customer-project-table">
+                            <thead>
+                                <tr>
+                                    <th><span class="sr-only">專案資料</span></th>
+                                </tr>
+                            </thead>
+                            <tbody data-customer-project-body>
+                                @if (selectedCustomer is not null && selectedCustomer.Projects.Count > 0)
+                                {
+                                    foreach (var project in selectedCustomer.Projects)
+                                    {
+                                        var projectStatus = string.IsNullOrWhiteSpace(project.Status) ? "-" : project.Status;
+
+                                        <tr class="customer-project-row" data-customer-project-row>
+                                            <td class="customer-project-summary-cell">
+                                                <div class="customer-project-summary-grid">
+                                                    <div class="customer-project-summary-line customer-project-summary-top">
+                                                        <span class="customer-project-meta">
+                                                            <span class="customer-project-label">專案編號</span>
+                                                            <span class="customer-project-value customer-project-code">@(string.IsNullOrWhiteSpace(project.ProjectNo) ? "-" : project.ProjectNo)</span>
+                                                        </span>
+                                                        <span class="customer-project-meta">
+                                                            <span class="customer-project-label">年度</span>
+                                                            <span class="customer-project-value">@(string.IsNullOrWhiteSpace(project.CheckYear) ? "-" : project.CheckYear)</span>
+                                                        </span>
+                                                        <span class="customer-project-meta">
+                                                            <span class="customer-project-label">預約筆數</span>
+                                                            <span class="customer-project-value">@(string.IsNullOrWhiteSpace(project.ReserveCount) ? "0" : project.ReserveCount)</span>
+                                                        </span>
+                                                    </div>
+                                                    <div class="customer-project-name-line">
+                                                        <span class="customer-project-label">專案名稱</span>
+                                                        <span class="customer-project-name-value">@(string.IsNullOrWhiteSpace(project.ProjectName) ? "-" : project.ProjectName)</span>
+                                                    </div>
+                                                    <div class="customer-project-summary-line customer-project-summary-bottom">
+                                                        <span class="customer-project-meta customer-project-date">
+                                                            <span class="customer-project-label">起訖日期</span>
+                                                            @if (string.IsNullOrWhiteSpace(project.StartDate) && string.IsNullOrWhiteSpace(project.EndDate))
+                                                            {
+                                                                <span class="customer-project-value">-</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="customer-project-value customer-project-date-value">
+                                                                    <span>@project.StartDate</span>
+                                                                    <span>~</span>
+                                                                    <span>@project.EndDate</span>
+                                                                </span>
+                                                            }
+                                                        </span>
+                                                        <span class="customer-project-meta customer-project-state">
+                                                            <span class="customer-project-label">狀態</span>
+                                                            <span class="customer-project-status">@projectStatus</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr class="customer-project-empty">
+                                        <td>尚無專案資料</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <button class="customer-project-more" type="button">
+                        <span>查看全部專案</span>
+                        <span aria-hidden="true">›</span>
+                    </button>
+                </section>
+
+                <section class="customer-note-section" data-customer-panel="notes" hidden>
+                    <article class="customer-note-card">
+                        <h3>
+                            <span class="customer-action-icon note" aria-hidden="true"></span>
+                            備註
+                        </h3>
+                        <p data-customer-detail="note">@(string.IsNullOrWhiteSpace(selectedCustomer?.CustomerNote) ? "尚無備註資料" : selectedCustomer.CustomerNote)</p>
+                    </article>
+                </section>
+            </div>
+
+            <footer class="customer-detail-actions">
+                <button class="ghost-button" type="button" data-customer-edit-active>
+                    <span class="customer-action-icon edit" aria-hidden="true"></span>
+                    <span>編輯資料</span>
+                </button>
+                <button class="ghost-button danger" type="button" data-customer-delete-active>
+                    <span class="customer-action-icon trash" aria-hidden="true"></span>
+                    <span>刪除</span>
+                </button>
+            </footer>
+        </aside>
+
+    </div>
+
+    <div hidden data-customer-project-templates>
+        @foreach (var customer in Model.Customers)
+        {
+            <template data-customer-project-template="@customer.CustomerNo">
+                @if (customer.Projects.Count > 0)
+                {
+                    foreach (var project in customer.Projects)
+                    {
+                        var projectStatus = string.IsNullOrWhiteSpace(project.Status) ? "-" : project.Status;
+
+                        <tr class="customer-project-row" data-customer-project-row>
+                            <td class="customer-project-summary-cell">
+                                <div class="customer-project-summary-grid">
+                                    <div class="customer-project-summary-line customer-project-summary-top">
+                                        <span class="customer-project-meta">
+                                            <span class="customer-project-label">專案編號</span>
+                                            <span class="customer-project-value customer-project-code">@(string.IsNullOrWhiteSpace(project.ProjectNo) ? "-" : project.ProjectNo)</span>
+                                        </span>
+                                        <span class="customer-project-meta">
+                                            <span class="customer-project-label">年度</span>
+                                            <span class="customer-project-value">@(string.IsNullOrWhiteSpace(project.CheckYear) ? "-" : project.CheckYear)</span>
+                                        </span>
+                                        <span class="customer-project-meta">
+                                            <span class="customer-project-label">預約筆數</span>
+                                            <span class="customer-project-value">@(string.IsNullOrWhiteSpace(project.ReserveCount) ? "0" : project.ReserveCount)</span>
+                                        </span>
+                                    </div>
+                                    <div class="customer-project-name-line">
+                                        <span class="customer-project-label">專案名稱</span>
+                                        <span class="customer-project-name-value">@(string.IsNullOrWhiteSpace(project.ProjectName) ? "-" : project.ProjectName)</span>
+                                    </div>
+                                    <div class="customer-project-summary-line customer-project-summary-bottom">
+                                        <span class="customer-project-meta customer-project-date">
+                                            <span class="customer-project-label">起訖日期</span>
+                                            @if (string.IsNullOrWhiteSpace(project.StartDate) && string.IsNullOrWhiteSpace(project.EndDate))
+                                            {
+                                                <span class="customer-project-value">-</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="customer-project-value customer-project-date-value">
+                                                    <span>@project.StartDate</span>
+                                                    <span>~</span>
+                                                    <span>@project.EndDate</span>
+                                                </span>
+                                            }
+                                        </span>
+                                        <span class="customer-project-meta customer-project-state">
+                                            <span class="customer-project-label">狀態</span>
+                                            <span class="customer-project-status">@projectStatus</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr class="customer-project-empty">
+                        <td>尚無專案資料</td>
+                    </tr>
+                }
+            </template>
+        }
+    </div>
+</section>
+
+<div class="customer-create-frame-modal" data-customer-create-frame-modal hidden>
+    <button class="customer-create-frame-backdrop" type="button" data-close-customer-create-frame aria-label="關閉新增公司視窗"></button>
+    <div class="customer-create-frame-shell" role="dialog" aria-modal="true" aria-labelledby="customer-create-frame-dialog-title">
+        <span id="customer-create-frame-dialog-title" class="sr-only">新增公司</span>
+        <div data-customer-create-frame-host></div>
+    </div>
+</div>
+
+<div class="customer-detail-frame-modal" data-customer-detail-frame-modal hidden>
+    <button class="customer-detail-frame-backdrop" type="button" data-customer-detail-frame-close aria-label="關閉公司資料詳情"></button>
+    <div class="customer-detail-frame-shell" role="dialog" aria-modal="true" aria-labelledby="customer-detail-frame-dialog-title">
+        <span id="customer-detail-frame-dialog-title" class="sr-only">公司資料詳情</span>
+        <div data-customer-detail-frame-host></div>
+    </div>
+</div>
+
+<div class="appointment-confirm-modal danger customer-delete-modal" data-customer-delete-confirm-modal hidden>
+    <button class="appointment-confirm-backdrop" type="button" data-customer-delete-confirm-close aria-label="關閉刪除確認視窗"></button>
+    <div class="appointment-confirm-dialog customer-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="customer-delete-confirm-title" aria-describedby="customer-delete-confirm-message">
+        <h2 id="customer-delete-confirm-title" data-customer-delete-confirm-title>刪除公司</h2>
+        <p id="customer-delete-confirm-message" data-customer-delete-confirm-message></p>
+        <ul class="customer-delete-summary" data-customer-delete-confirm-summary></ul>
+        <p class="appointment-confirm-warning">刪除後，公司資料將從清單中移除。</p>
+        <div class="appointment-confirm-actions">
+            <button class="ghost-button" type="button" data-customer-delete-confirm-close>取消</button>
+            <button class="primary-button" type="button" data-customer-delete-confirm-submit>確認刪除</button>
+        </div>
+    </div>
+</div>
+
+<div class="appointment-confirm-modal customer-delete-result-modal" data-customer-delete-result-modal data-state="success" hidden>
+    <button class="appointment-confirm-backdrop" type="button" data-customer-delete-result-close aria-label="關閉刪除結果視窗"></button>
+    <div class="appointment-confirm-dialog customer-delete-result-dialog" role="dialog" aria-modal="true" aria-labelledby="customer-delete-result-title" aria-describedby="customer-delete-result-message">
+        <span class="customer-delete-result-icon" aria-hidden="true"></span>
+        <h2 id="customer-delete-result-title" data-customer-delete-result-title>刪除完成</h2>
+        <p id="customer-delete-result-message" data-customer-delete-result-message></p>
+        <p class="customer-delete-result-detail" data-customer-delete-result-detail hidden></p>
+        <div class="appointment-confirm-actions">
+            <button class="primary-button" type="button" data-customer-delete-result-close>知道了</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const page = document.querySelector("[data-customer-page]");
+
+        if (!page) {
+            return;
+        }
+
+        let rows = Array.from(page.querySelectorAll("[data-customer-row]"));
+        const searchInput = page.querySelector("[data-customer-search]");
+        const applyFilterButton = page.querySelector("[data-customer-filter-apply]");
+        const clearFilterButton = page.querySelector("[data-customer-filter-clear]");
+        const refreshButton = page.querySelector("[data-customer-refresh]");
+        const batchDeleteButton = page.querySelector("[data-customer-batch-delete]");
+        const activeEditButton = page.querySelector("[data-customer-edit-active]");
+        const activeDeleteButton = page.querySelector("[data-customer-delete-active]");
+        const openCreateFrameButton = page.querySelector("[data-open-customer-create-frame]");
+        const createFrameModal = document.querySelector("[data-customer-create-frame-modal]");
+        const createFrameHost = document.querySelector("[data-customer-create-frame-host]");
+        const closeCreateFrameButtons = Array.from(document.querySelectorAll("[data-close-customer-create-frame]"));
+        const detailFrameUrl = page.dataset.customerDetailFrameUrl || "";
+        const detailFrameModal = document.querySelector("[data-customer-detail-frame-modal]");
+        const detailFrameHost = document.querySelector("[data-customer-detail-frame-host]");
+        const detailFrameCloseButtons = Array.from(document.querySelectorAll("[data-customer-detail-frame-close]"));
+        const detailFrameMediaQuery = window.matchMedia ? window.matchMedia("(max-width: 1280px)") : null;
+        const deleteConfirmModal = document.querySelector("[data-customer-delete-confirm-modal]");
+        const deleteConfirmTitle = document.querySelector("[data-customer-delete-confirm-title]");
+        const deleteConfirmMessage = document.querySelector("[data-customer-delete-confirm-message]");
+        const deleteConfirmSummary = document.querySelector("[data-customer-delete-confirm-summary]");
+        const deleteConfirmSubmit = document.querySelector("[data-customer-delete-confirm-submit]");
+        const deleteConfirmCloseButtons = Array.from(document.querySelectorAll("[data-customer-delete-confirm-close]"));
+        const deleteResultModal = document.querySelector("[data-customer-delete-result-modal]");
+        const deleteResultTitle = document.querySelector("[data-customer-delete-result-title]");
+        const deleteResultMessage = document.querySelector("[data-customer-delete-result-message]");
+        const deleteResultDetail = document.querySelector("[data-customer-delete-result-detail]");
+        const deleteResultCloseButtons = Array.from(document.querySelectorAll("[data-customer-delete-result-close]"));
+        const emptyRow = page.querySelector("[data-customer-empty]");
+        const customerTableBody = emptyRow?.parentElement || page.querySelector(".customer-table tbody");
+        const selectedSummary = page.querySelector("[data-customer-selected-summary]");
+        const totalCountTarget = page.querySelector("[data-customer-total-count]");
+        const pageSizeSelect = page.querySelector("[data-customer-page-size]");
+        const pagination = page.querySelector("[data-customer-pagination]");
+        const checkAll = page.querySelector("[data-customer-check-all]");
+        const detailPanel = page.querySelector("[data-customer-detail-panel]");
+        const detailCloseButtons = Array.from(page.querySelectorAll("[data-customer-detail-close]"));
+        const detailTabs = Array.from(page.querySelectorAll("[data-customer-tab]"));
+        const detailPanels = Array.from(page.querySelectorAll("[data-customer-panel]"));
+        const projectAddLink = page.querySelector("[data-customer-project-add]");
+        const projectCount = page.querySelector("[data-customer-project-total]");
+        const projectBody = page.querySelector("[data-customer-project-body]");
+        const projectTemplates = Array.from(page.querySelectorAll("[data-customer-project-template]"));
+        const deleteUrl = page.dataset.customerDeleteUrl || "";
+        const editFrameUrl = page.dataset.customerEditFrameUrl || "";
+        const antiForgeryToken = page.querySelector("input[name='__RequestVerificationToken']")?.value || "";
+        let serverTotal = Number.parseInt(page.dataset.customerTotal || String(rows.length), 10);
+        let activeRow = page.querySelector("[data-customer-row].is-selected") || rows[0] || null;
+        let currentPage = 1;
+        let visibleRows = rows.slice();
+        let previousFocus = null;
+        let customerDetailRequested = false;
+        let pendingDeleteConfirmResolve = null;
+
+        function normalize(value) {
+            return (value || "").trim().toUpperCase();
+        }
+
+        function rowMatchesFilters(row) {
+            const keyword = normalize(searchInput?.value);
+            const rowKeywords = normalize(row.dataset.customerKeywords);
+
+            return !keyword || rowKeywords.includes(keyword);
+        }
+
+        function getSelectedCount() {
+            return rows.filter((row) => row.querySelector("[data-customer-checkbox]")?.checked).length;
+        }
+
+        function syncSelectedSummary() {
+            const selectedCount = getSelectedCount();
+
+            if (selectedSummary) {
+                selectedSummary.textContent = `已選取 ${selectedCount} 筆`;
+            }
+
+            if (checkAll) {
+                const visibleCheckboxes = visibleRows.map((row) => row.querySelector("[data-customer-checkbox]")).filter(Boolean);
+                const checkedCount = visibleCheckboxes.filter((checkbox) => checkbox.checked).length;
+                checkAll.checked = visibleCheckboxes.length > 0 && checkedCount === visibleCheckboxes.length;
+                checkAll.indeterminate = checkedCount > 0 && checkedCount < visibleCheckboxes.length;
+            }
+
+            if (batchDeleteButton) {
+                batchDeleteButton.disabled = selectedCount === 0;
+            }
+
+            if (activeEditButton) {
+                activeEditButton.disabled = !activeRow;
+            }
+
+            if (activeDeleteButton) {
+                activeDeleteButton.disabled = !activeRow;
+            }
+        }
+
+        function pageSize() {
+            const value = Number.parseInt(pageSizeSelect?.value || "10", 10);
+
+            return Number.isFinite(value) && value > 0 ? value : 10;
+        }
+
+        function totalPages() {
+            if (visibleRows.length !== rows.length) {
+                return Math.max(1, Math.ceil(visibleRows.length / pageSize()));
+            }
+
+            return Math.max(1, Math.ceil(serverTotal / pageSize()));
+        }
+
+        function makePageButton(label, targetPage, active, disabled) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+            button.disabled = disabled;
+
+            if (active) {
+                button.classList.add("active");
+                button.setAttribute("aria-current", "page");
+            }
+
+            button.addEventListener("click", function () {
+                currentPage = targetPage;
+                renderRows(false);
+            });
+
+            return button;
+        }
+
+        function renderPagination() {
+            if (!pagination) {
+                return;
+            }
+
+            const pages = totalPages();
+            pagination.innerHTML = "";
+            pagination.append(makePageButton("‹‹", 1, false, currentPage === 1));
+            pagination.append(makePageButton("‹", Math.max(1, currentPage - 1), false, currentPage === 1));
+
+            const pageButtons = new Set([1, currentPage, currentPage + 1, currentPage + 2, currentPage + 3, pages]);
+            let previousPage = 0;
+
+            Array.from(pageButtons)
+                .filter((pageNumber) => pageNumber >= 1 && pageNumber <= pages)
+                .sort((a, b) => a - b)
+                .forEach((pageNumber) => {
+                    if (previousPage && pageNumber - previousPage > 1) {
+                        const ellipsis = document.createElement("span");
+                        ellipsis.textContent = "...";
+                        pagination.append(ellipsis);
+                    }
+
+                    pagination.append(makePageButton(String(pageNumber), pageNumber, pageNumber === currentPage, false));
+                    previousPage = pageNumber;
+                });
+
+            pagination.append(makePageButton("››", pages, false, currentPage === pages));
+        }
+
+        function renderRows(resetPage) {
+            if (resetPage) {
+                currentPage = 1;
+            }
+
+            visibleRows = rows.filter(rowMatchesFilters);
+            const aiResult = document.querySelector('[data-ai-page="companies"]');
+            if (aiResult) {
+                aiResult.dataset.aiResultCount = String(visibleRows.length);
+                aiResult.dataset.aiRevision = String(Number(aiResult.dataset.aiRevision || 0) + 1);
+            }
+
+            const pages = totalPages();
+
+            if (currentPage > pages) {
+                currentPage = pages;
+            }
+
+            const start = (currentPage - 1) * pageSize();
+            const end = start + pageSize();
+            const rowsToShow = visibleRows.slice(start, end);
+
+            rows.forEach((row) => {
+                row.hidden = !rowsToShow.includes(row);
+            });
+
+            if (emptyRow) {
+                emptyRow.hidden = visibleRows.length > 0;
+            }
+
+            renderPagination();
+            syncSelectedSummary();
+        }
+
+        function setText(field, value) {
+            page.querySelectorAll(`[data-customer-detail="${field}"]`).forEach((target) => {
+                target.textContent = value || "";
+            });
+        }
+
+        function renderCustomerProjects(customerNo) {
+            if (!projectBody) {
+                return;
+            }
+
+            const template = projectTemplates.find((candidate) => candidate.dataset.customerProjectTemplate === customerNo);
+            projectBody.innerHTML = template
+                ? template.innerHTML
+                : '<tr class="customer-project-empty"><td>尚無專案資料</td></tr>';
+        }
+
+        function updateProjectAddLink(row) {
+            if (!projectAddLink || !row) {
+                return;
+            }
+
+            const baseUrl = projectAddLink.dataset.projectCreateUrl || projectAddLink.href;
+            const customerNo = String(row.dataset.customerNo || "").trim();
+            const customerName = String(row.dataset.customerName || "").trim();
+            const clientUnit = customerNo && customerName
+                ? `[${customerNo}] ${customerName}`
+                : customerName;
+            const url = new URL(baseUrl, window.location.href);
+
+            url.searchParams.set("customerNo", customerNo);
+            url.searchParams.set("customerName", customerName);
+            url.searchParams.set("clientUnit", clientUnit);
+            projectAddLink.href = url.toString();
+        }
+
+        function selectRow(row, options) {
+            if (!row) {
+                return;
+            }
+
+            const shouldShowDetail = Boolean(options?.showDetail);
+            rows.forEach((candidate) => candidate.classList.remove("is-selected"));
+            row.classList.add("is-selected");
+            activeRow = row;
+            customerDetailRequested = shouldShowDetail;
+
+            setText("no", row.dataset.customerNo);
+            setText("name", row.dataset.customerName);
+            setText("englishName", row.dataset.customerEnglishName);
+            setText("uniformNo", row.dataset.customerUniformNo);
+            setText("contactPerson", row.dataset.customerContactPerson);
+            setText("address", row.dataset.customerAddress);
+            setText("tel", row.dataset.customerTel);
+            setText("fax", row.dataset.customerFax);
+            setText("email", row.dataset.customerEmail);
+            setText("businessRegAddress", row.dataset.customerBusinessRegAddress);
+            setText("taxOfficeCode", row.dataset.customerTaxOfficeCode);
+            setText("businessUnion", row.dataset.customerBusinessUnion);
+            setText("industryCategory", row.dataset.customerIndustryCategory);
+            setText("businessUnitName", row.dataset.customerBusinessUnitName);
+            setText("businessUnitAddress", row.dataset.customerBusinessUnitAddress);
+            setText("medicalManageCode", row.dataset.customerMedicalManageCode);
+            setText("accountingUnit", row.dataset.customerAccountingUnit);
+            setText("note", row.dataset.customerNote || "尚無備註資料");
+
+            if (projectCount) {
+                projectCount.textContent = row.dataset.customerProjectCount || "0";
+            }
+
+            renderCustomerProjects(row.dataset.customerNo || "");
+            updateProjectAddLink(row);
+            syncInlineDetailPresentation();
+            syncSelectedSummary();
+        }
+
+        function usesDetailFrame() {
+            return Boolean(detailFrameMediaQuery?.matches);
+        }
+
+        function syncInlineDetailPresentation() {
+            if (!customerDetailRequested || !activeRow) {
+                detailPanel?.setAttribute("hidden", "");
+                page.classList.remove("is-detail-open");
+                closeCustomerDetailFrame({ preserveRequest: true });
+                return;
+            }
+
+            if (usesDetailFrame()) {
+                detailPanel?.setAttribute("hidden", "");
+                page.classList.remove("is-detail-open");
+                openCustomerDetailFrame(activeRow);
+                return;
+            }
+
+            closeCustomerDetailFrame({ preserveRequest: true });
+            detailPanel?.removeAttribute("hidden");
+            page.classList.add("is-detail-open");
+        }
+
+        function openCustomerFrame(frameUrl, title) {
+            if (!createFrameModal || !createFrameHost || !frameUrl) {
+                return;
+            }
+
+            previousFocus = document.activeElement;
+            createFrameHost.innerHTML = "";
+
+            const iframe = document.createElement("iframe");
+            iframe.title = title;
+            iframe.src = new URL(frameUrl, window.location.href).toString();
+            iframe.loading = "eager";
+            iframe.setAttribute("data-customer-create-frame", "");
+            createFrameHost.appendChild(iframe);
+
+            createFrameModal.hidden = false;
+            document.body.classList.add("customer-create-frame-open");
+        }
+
+        function openCreateFrame() {
+            openCustomerFrame(openCreateFrameButton?.dataset.customerCreateFrameUrl, "新增公司");
+        }
+
+        function openEditFrame() {
+            if (!activeRow || !editFrameUrl) {
+                return;
+            }
+
+            const url = new URL(editFrameUrl, window.location.href);
+            url.searchParams.set("customerNo", activeRow.dataset.customerNo || "");
+            openCustomerFrame(url.toString(), "編輯公司");
+        }
+
+        function openCustomerDetailFrame(row) {
+            if (!detailFrameModal || !detailFrameHost || !detailFrameUrl || !row) {
+                return;
+            }
+
+            previousFocus = document.activeElement;
+            detailFrameHost.innerHTML = "";
+
+            const url = new URL(detailFrameUrl, window.location.href);
+            url.searchParams.set("customerNo", row.dataset.customerNo || "");
+
+            const iframe = document.createElement("iframe");
+            iframe.title = `公司資料詳情 - ${row.dataset.customerName || row.dataset.customerNo || ""}`.trim();
+            iframe.src = url.toString();
+            iframe.loading = "eager";
+            iframe.setAttribute("data-customer-detail-frame", "");
+            detailFrameHost.appendChild(iframe);
+
+            detailFrameModal.hidden = false;
+            document.body.classList.add("customer-detail-frame-open");
+        }
+
+        function closeCustomerDetailFrame(options) {
+            if (!options?.preserveRequest) {
+                customerDetailRequested = false;
+            }
+
+            if (!detailFrameModal || !detailFrameHost) {
+                return;
+            }
+
+            const wasOpen = !detailFrameModal.hidden;
+            detailFrameModal.hidden = true;
+            detailFrameHost.innerHTML = "";
+            document.body.classList.remove("customer-detail-frame-open");
+
+            if (wasOpen && previousFocus && typeof previousFocus.focus === "function") {
+                previousFocus.focus();
+            }
+        }
+
+        function editActiveCustomerFromDetailFrame() {
+            closeCustomerDetailFrame();
+            openEditFrame();
+        }
+
+        function deleteActiveCustomerFromDetailFrame() {
+            const row = activeRow;
+            closeCustomerDetailFrame();
+            deleteCustomerRows(row ? [row] : [], "single");
+        }
+
+        function closeCreateFrame() {
+            if (!createFrameModal || !createFrameHost) {
+                return;
+            }
+
+            createFrameModal.hidden = true;
+            createFrameHost.innerHTML = "";
+            document.body.classList.remove("customer-create-frame-open");
+
+            if (previousFocus && typeof previousFocus.focus === "function") {
+                previousFocus.focus();
+            }
+        }
+
+        function customerValue(customer, field) {
+            return String(customer?.[field] || "").trim();
+        }
+
+        function createActionIcon(icon) {
+            const iconElement = document.createElement("span");
+            iconElement.className = `customer-action-icon ${icon}`;
+            iconElement.setAttribute("aria-hidden", "true");
+
+            return iconElement;
+        }
+
+        function createTextCell(text) {
+            const cell = document.createElement("td");
+            cell.textContent = text || "";
+
+            return cell;
+        }
+
+        function createCustomerCodeCell(text, customerName) {
+            const cell = document.createElement("td");
+            const button = document.createElement("button");
+            const label = customerName || text || "未命名公司";
+
+            button.type = "button";
+            button.className = "customer-code customer-code-button";
+            button.textContent = text || "";
+            button.setAttribute("data-customer-detail-open", "");
+            button.setAttribute("aria-label", `查看 ${label} 公司資料詳情`);
+            cell.append(button);
+
+            return cell;
+        }
+
+        function createCustomerNameCell(text, className) {
+            const cell = document.createElement("td");
+            const value = document.createElement("span");
+            value.className = className;
+            value.textContent = text || "";
+            cell.append(value);
+
+            return cell;
+        }
+
+        function createInlineIconCell(text, wrapperClass, icon) {
+            const cell = document.createElement("td");
+            const wrapper = document.createElement("span");
+            wrapper.className = `customer-inline-icon ${wrapperClass}`;
+            wrapper.append(createActionIcon(icon), document.createTextNode(text || ""));
+            cell.append(wrapper);
+
+            return cell;
+        }
+
+        function createCustomerRow(customer) {
+            const customerNo = customerValue(customer, "customerNo");
+            const customerName = customerValue(customer, "customerName");
+            const englishName = customerValue(customer, "englishName");
+            const uniformNo = customerValue(customer, "uniformNo");
+            const address = customerValue(customer, "address");
+            const tel = customerValue(customer, "tel");
+            const fax = customerValue(customer, "fax");
+            const email = customerValue(customer, "email");
+            const contactPerson = customerValue(customer, "contactPerson");
+            const businessRegAddress = customerValue(customer, "businessRegAddress");
+            const taxOfficeCode = customerValue(customer, "taxOfficeCode");
+            const businessUnion = customerValue(customer, "businessUnion");
+            const industryCategory = customerValue(customer, "industryCategory");
+            const businessUnitName = customerValue(customer, "businessUnitName");
+            const businessUnitAddress = customerValue(customer, "businessUnitAddress");
+            const medicalManageCode = customerValue(customer, "medicalManageCode");
+            const accountingUnit = customerValue(customer, "accountingUnit");
+            const customerNote = customerValue(customer, "customerNote");
+            const projectCount = customerValue(customer, "projectCount") || "0";
+            const row = document.createElement("tr");
+
+            row.className = "is-selected";
+            row.setAttribute("data-customer-row", "");
+            row.dataset.customerNo = customerNo;
+            row.dataset.customerName = customerName;
+            row.dataset.customerEnglishName = englishName;
+            row.dataset.customerUniformNo = uniformNo;
+            row.dataset.customerAddress = address;
+            row.dataset.customerTel = tel;
+            row.dataset.customerFax = fax;
+            row.dataset.customerEmail = email;
+            row.dataset.customerContactPerson = contactPerson;
+            row.dataset.customerBusinessRegAddress = businessRegAddress;
+            row.dataset.customerTaxOfficeCode = taxOfficeCode;
+            row.dataset.customerBusinessUnion = businessUnion;
+            row.dataset.customerIndustryCategory = industryCategory;
+            row.dataset.customerBusinessUnitName = businessUnitName;
+            row.dataset.customerBusinessUnitAddress = businessUnitAddress;
+            row.dataset.customerMedicalManageCode = medicalManageCode;
+            row.dataset.customerAccountingUnit = accountingUnit;
+            row.dataset.customerNote = customerNote;
+            row.dataset.customerProjectCount = projectCount;
+            row.dataset.customerKeywords = `${customerNo} ${customerName} ${englishName} ${uniformNo} ${contactPerson} ${address} ${tel} ${fax} ${email} ${businessRegAddress} ${taxOfficeCode} ${businessUnion} ${industryCategory} ${businessUnitName} ${businessUnitAddress} ${medicalManageCode} ${accountingUnit} ${customerNote}`;
+
+            const checkboxCell = document.createElement("td");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.setAttribute("aria-label", `選取 ${customerName || customerNo}`);
+            checkbox.setAttribute("data-customer-checkbox", "");
+            checkboxCell.append(checkbox);
+
+            row.append(
+                checkboxCell,
+                createCustomerCodeCell(customerNo, customerName),
+                createCustomerNameCell(customerName, "customer-name"),
+                createInlineIconCell(tel, "phone", "phone"),
+                createTextCell(fax),
+                createInlineIconCell(email, "email", "mail"),
+                createInlineIconCell(contactPerson, "user", "user"));
+
+            return row;
+        }
+
+        function bindCustomerRow(row) {
+            row.addEventListener("click", function (event) {
+                if (!(event.target instanceof Element)) {
+                    selectRow(row);
+                    return;
+                }
+
+                const detailTrigger = event.target.closest("[data-customer-detail-open]");
+
+                if (detailTrigger && row.contains(detailTrigger)) {
+                    event.preventDefault();
+                    selectRow(row, { showDetail: true });
+                    return;
+                }
+
+                if (event.target.closest("input, button, a")) {
+                    return;
+                }
+
+                selectRow(row);
+            });
+
+            row.querySelector("[data-customer-checkbox]")?.addEventListener("change", syncSelectedSummary);
+        }
+
+        function addCustomerToList(customer) {
+            if (!customerTableBody || !customer) {
+                return;
+            }
+
+            const customerNo = customerValue(customer, "customerNo");
+            const existingRow = rows.find((row) => row.dataset.customerNo === customerNo);
+
+            if (existingRow) {
+                selectRow(existingRow);
+                renderRows(true);
+                return;
+            }
+
+            const row = createCustomerRow(customer);
+            const firstDataRow = customerTableBody.querySelector("[data-customer-row]");
+            customerTableBody.insertBefore(row, firstDataRow || emptyRow);
+            rows = [row, ...rows];
+            serverTotal += 1;
+
+            if (totalCountTarget) {
+                totalCountTarget.textContent = String(serverTotal);
+            }
+
+            if (searchInput && !rowMatchesFilters(row)) {
+                searchInput.value = "";
+            }
+
+            bindCustomerRow(row);
+            renderRows(true);
+            selectRow(row);
+        }
+
+        function updateCustomerInList(customer) {
+            if (!customerTableBody || !customer) {
+                return;
+            }
+
+            const customerNo = customerValue(customer, "customerNo");
+            const existingRow = rows.find((row) => row.dataset.customerNo === customerNo);
+
+            if (!existingRow) {
+                addCustomerToList(customer);
+                return;
+            }
+
+            const wasChecked = Boolean(existingRow.querySelector("[data-customer-checkbox]")?.checked);
+            const projectCountValue = customerValue(customer, "projectCount") || existingRow.dataset.customerProjectCount || "0";
+            const replacementRow = createCustomerRow(Object.assign({}, customer, { projectCount: projectCountValue }));
+            const replacementCheckbox = replacementRow.querySelector("[data-customer-checkbox]");
+
+            if (replacementCheckbox) {
+                replacementCheckbox.checked = wasChecked;
+            }
+
+            existingRow.replaceWith(replacementRow);
+            rows = rows.map((row) => row === existingRow ? replacementRow : row);
+            visibleRows = visibleRows.map((row) => row === existingRow ? replacementRow : row);
+
+            if (searchInput && !rowMatchesFilters(replacementRow)) {
+                searchInput.value = "";
+            }
+
+            bindCustomerRow(replacementRow);
+            renderRows(false);
+            selectRow(replacementRow);
+        }
+
+        function getCheckedRows() {
+            return rows.filter((row) => row.querySelector("[data-customer-checkbox]")?.checked);
+        }
+
+        function setDeleteButtonsDisabled(disabled) {
+            [batchDeleteButton, activeDeleteButton].forEach((button) => {
+                if (button) {
+                    button.disabled = disabled;
+                }
+            });
+        }
+
+        function customerRowLabel(row) {
+            return `${row?.dataset.customerNo || ""} ${row?.dataset.customerName || ""}`.trim() || "未命名公司";
+        }
+
+        function closeCustomerDeleteConfirm(confirmed) {
+            if (deleteConfirmModal) {
+                deleteConfirmModal.hidden = true;
+            }
+
+            const resolve = pendingDeleteConfirmResolve;
+            pendingDeleteConfirmResolve = null;
+
+            if (resolve) {
+                resolve(Boolean(confirmed));
+            }
+        }
+
+        function openCustomerDeleteConfirm(targetRows, mode) {
+            if (!deleteConfirmModal || !deleteConfirmMessage || !deleteConfirmSummary || !deleteConfirmSubmit) {
+                return Promise.resolve(window.confirm(mode === "single" ? "確定要刪除此公司資料嗎？" : "確定要刪除已選取的公司資料嗎？"));
+            }
+
+            const count = targetRows.length;
+            const labels = targetRows.map(customerRowLabel);
+            const visibleLabels = labels.slice(0, 5);
+
+            if (deleteConfirmTitle) {
+                deleteConfirmTitle.textContent = mode === "single" ? "刪除公司" : "批次刪除公司";
+            }
+
+            deleteConfirmMessage.textContent = mode === "single"
+                ? `確定要刪除「${labels[0]}」嗎？`
+                : `確定要刪除已選取的 ${count} 筆公司資料嗎？`;
+            deleteConfirmSubmit.textContent = count > 1 ? `確認刪除 ${count} 筆` : "確認刪除";
+            deleteConfirmSummary.innerHTML = "";
+
+            visibleLabels.forEach((label) => {
+                const item = document.createElement("li");
+                item.textContent = label;
+                deleteConfirmSummary.append(item);
+            });
+
+            if (labels.length > visibleLabels.length) {
+                const item = document.createElement("li");
+                item.className = "is-more";
+                item.textContent = `另 ${labels.length - visibleLabels.length} 筆公司資料`;
+                deleteConfirmSummary.append(item);
+            }
+
+            deleteConfirmModal.hidden = false;
+            deleteConfirmSubmit.focus();
+
+            return new Promise((resolve) => {
+                pendingDeleteConfirmResolve = resolve;
+            });
+        }
+
+        function closeCustomerDeleteResult() {
+            if (deleteResultModal) {
+                deleteResultModal.hidden = true;
+            }
+        }
+
+        function showCustomerDeleteResult(state, title, message, detail) {
+            if (!deleteResultModal || !deleteResultTitle || !deleteResultMessage) {
+                window.alert(message || title || "刪除作業完成。");
+                return;
+            }
+
+            deleteResultModal.dataset.state = state;
+            deleteResultTitle.textContent = title;
+            deleteResultMessage.textContent = message;
+
+            if (deleteResultDetail) {
+                deleteResultDetail.hidden = !detail;
+                deleteResultDetail.textContent = detail || "";
+            }
+
+            deleteResultModal.hidden = false;
+            deleteResultModal.querySelector("[data-customer-delete-result-close]")?.focus();
+        }
+
+        function clearCustomerDetail() {
+            ["no", "name", "address", "tel", "fax", "email"].forEach((field) => setText(field, ""));
+            setText("note", "尚無備註資料");
+
+            if (projectCount) {
+                projectCount.textContent = "0";
+            }
+
+            renderCustomerProjects("");
+            detailPanel?.setAttribute("hidden", "");
+            page.classList.remove("is-detail-open");
+        }
+
+        function removeCustomerRows(customerNos) {
+            const customerNoSet = new Set(customerNos.map((customerNo) => String(customerNo || "").trim()).filter(Boolean));
+            const removedRows = rows.filter((row) => customerNoSet.has(row.dataset.customerNo || ""));
+
+            if (removedRows.length === 0) {
+                return;
+            }
+
+            removedRows.forEach((row) => row.remove());
+            rows = rows.filter((row) => !removedRows.includes(row));
+            visibleRows = visibleRows.filter((row) => !removedRows.includes(row));
+            serverTotal = Math.max(0, serverTotal - removedRows.length);
+            page.dataset.customerTotal = String(serverTotal);
+
+            if (totalCountTarget) {
+                totalCountTarget.textContent = String(serverTotal);
+            }
+
+            activeRow = rows.includes(activeRow) ? activeRow : rows[0] || null;
+            renderRows(true);
+
+            if (activeRow) {
+                selectRow(activeRow);
+            } else {
+                clearCustomerDetail();
+                syncSelectedSummary();
+            }
+        }
+
+        async function deleteCustomerRows(targetRows, mode) {
+            const uniqueRows = Array.from(new Set(targetRows)).filter(Boolean);
+            const customerNos = uniqueRows
+                .map((row) => String(row.dataset.customerNo || "").trim())
+                .filter(Boolean);
+
+            if (customerNos.length === 0) {
+                showCustomerDeleteResult("error", "尚未選擇公司", "請先勾選要刪除的公司資料。", "");
+                return;
+            }
+
+            if (!deleteUrl) {
+                showCustomerDeleteResult("error", "刪除設定錯誤", "找不到公司刪除 API。", "");
+                return;
+            }
+
+            const confirmed = await openCustomerDeleteConfirm(uniqueRows, mode);
+
+            if (!confirmed) {
+                return;
+            }
+
+            const formData = new FormData();
+
+            if (antiForgeryToken) {
+                formData.append("__RequestVerificationToken", antiForgeryToken);
+            }
+
+            customerNos.forEach((customerNo, index) => {
+                formData.append(`CustomerNos[${index}]`, customerNo);
+            });
+
+            setDeleteButtonsDisabled(true);
+
+            try {
+                const response = await fetch(deleteUrl, {
+                    method: "POST",
+                    body: formData
+                });
+                const result = await response.json().catch(() => ({}));
+
+                if (!response.ok || !result.deleted) {
+                    showCustomerDeleteResult("error", "刪除失敗", result.message || "公司刪除失敗。", "");
+                    return;
+                }
+
+                const deletedCustomerNos = Array.isArray(result.customerNos) && result.customerNos.length > 0
+                    ? result.customerNos
+                    : customerNos;
+                const failedCustomerNos = Array.isArray(result.failedCustomerNos)
+                    ? result.failedCustomerNos
+                    : [];
+                const deletedCount = deletedCustomerNos.length;
+                const requestedCount = Number.parseInt(result.requestedCount || String(customerNos.length), 10) || customerNos.length;
+
+                removeCustomerRows(deletedCustomerNos);
+                showCustomerDeleteResult(
+                    failedCustomerNos.length > 0 ? "warning" : "success",
+                    failedCustomerNos.length > 0 ? "部分刪除完成" : "刪除完成",
+                    result.message || `已刪除 ${deletedCount} 筆公司資料。`,
+                    failedCustomerNos.length > 0
+                        ? `尚有 ${requestedCount - deletedCount} 筆未刪除：${failedCustomerNos.join("、")}`
+                        : "");
+            } catch {
+                showCustomerDeleteResult("error", "刪除失敗", "公司刪除失敗，請稍後再試。", "");
+            } finally {
+                setDeleteButtonsDisabled(false);
+                syncSelectedSummary();
+            }
+        }
+
+        rows.forEach(bindCustomerRow);
+
+        deleteConfirmSubmit?.addEventListener("click", function () {
+            closeCustomerDeleteConfirm(true);
+        });
+
+        deleteConfirmCloseButtons.forEach((button) => {
+            button.addEventListener("click", function () {
+                closeCustomerDeleteConfirm(false);
+            });
+        });
+
+        deleteResultCloseButtons.forEach((button) => {
+            button.addEventListener("click", closeCustomerDeleteResult);
+        });
+
+        checkAll?.addEventListener("change", function () {
+            visibleRows.forEach((row) => {
+                const checkbox = row.querySelector("[data-customer-checkbox]");
+
+                if (checkbox) {
+                    checkbox.checked = checkAll.checked;
+                }
+            });
+
+            syncSelectedSummary();
+        });
+
+        applyFilterButton?.addEventListener("click", function () {
+            renderRows(true);
+        });
+
+        clearFilterButton?.addEventListener("click", function () {
+            if (searchInput) {
+                searchInput.value = "";
+            }
+
+            renderRows(true);
+        });
+
+        refreshButton?.addEventListener("click", function () {
+            renderRows(true);
+
+            if (activeRow) {
+                selectRow(activeRow);
+            }
+        });
+
+        searchInput?.addEventListener("keydown", function (event) {
+            if (event.key !== "Enter") {
+                return;
+            }
+
+            event.preventDefault();
+            renderRows(true);
+        });
+
+        pageSizeSelect?.addEventListener("change", function () {
+            renderRows(true);
+        });
+
+        batchDeleteButton?.addEventListener("click", function () {
+            deleteCustomerRows(getCheckedRows(), "batch");
+        });
+
+        activeEditButton?.addEventListener("click", openEditFrame);
+
+        activeDeleteButton?.addEventListener("click", function () {
+            deleteCustomerRows(activeRow ? [activeRow] : [], "single");
+        });
+
+        openCreateFrameButton?.addEventListener("click", openCreateFrame);
+        closeCreateFrameButtons.forEach((button) => {
+            button.addEventListener("click", closeCreateFrame);
+        });
+
+        detailFrameCloseButtons.forEach((button) => {
+            button.addEventListener("click", closeCustomerDetailFrame);
+        });
+
+        detailCloseButtons.forEach((button) => {
+            button.addEventListener("click", function () {
+                customerDetailRequested = false;
+                detailPanel?.setAttribute("hidden", "");
+                page.classList.remove("is-detail-open");
+            });
+        });
+
+        detailTabs.forEach((tab) => {
+            tab.addEventListener("click", function () {
+                detailTabs.forEach((candidate) => candidate.classList.toggle("is-active", candidate === tab));
+                detailPanels.forEach((panel) => {
+                    panel.hidden = panel.dataset.customerPanel !== tab.dataset.customerTab;
+                });
+            });
+        });
+
+        window.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && createFrameModal && !createFrameModal.hidden) {
+                closeCreateFrame();
+            }
+
+            if (event.key === "Escape" && detailFrameModal && !detailFrameModal.hidden) {
+                closeCustomerDetailFrame();
+            }
+
+            if (event.key === "Escape" && deleteConfirmModal && !deleteConfirmModal.hidden) {
+                closeCustomerDeleteConfirm(false);
+            }
+
+            if (event.key === "Escape" && deleteResultModal && !deleteResultModal.hidden) {
+                closeCustomerDeleteResult();
+            }
+        });
+
+        window.addEventListener("message", function (event) {
+            if (event.origin !== window.location.origin || !event.data) {
+                return;
+            }
+
+            if (event.data.type === "healthsys:customer-create-frame-close") {
+                closeCreateFrame();
+            }
+
+            if (event.data.type === "healthsys:customer-detail-frame-close") {
+                closeCustomerDetailFrame();
+            }
+
+            if (event.data.type === "healthsys:customer-detail-frame-edit") {
+                editActiveCustomerFromDetailFrame();
+            }
+
+            if (event.data.type === "healthsys:customer-detail-frame-delete") {
+                deleteActiveCustomerFromDetailFrame();
+            }
+
+            if (event.data.type === "healthsys:customer-created") {
+                addCustomerToList(event.data.customer);
+
+                if (!event.data.addAnother) {
+                    closeCreateFrame();
+                }
+            }
+
+            if (event.data.type === "healthsys:customer-updated") {
+                updateCustomerInList(event.data.customer);
+                closeCreateFrame();
+            }
+        });
+
+        if (detailFrameMediaQuery) {
+            const handleDetailFrameMediaChange = function () {
+                syncInlineDetailPresentation();
+
+                if (!usesDetailFrame()) {
+                    closeCustomerDetailFrame();
+                }
+            };
+
+            if (typeof detailFrameMediaQuery.addEventListener === "function") {
+                detailFrameMediaQuery.addEventListener("change", handleDetailFrameMediaChange);
+            } else if (typeof detailFrameMediaQuery.addListener === "function") {
+                detailFrameMediaQuery.addListener(handleDetailFrameMediaChange);
+            }
+        }
+
+        selectRow(activeRow);
+        renderRows(true);
+    })();
+</script>

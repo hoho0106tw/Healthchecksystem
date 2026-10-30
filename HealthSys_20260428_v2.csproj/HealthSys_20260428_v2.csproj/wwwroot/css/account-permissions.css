@@ -1,0 +1,46 @@
+/* Keep account selections in sync with the theme's lightbar colors. */
+html[data-theme-mode] body.hc .permission-page .permission-role-card.is-active {
+    border-color: var(--app-selected-row-border, #bad8fa) !important;
+    background: var(--app-selected-row-bg, #eaf5ff) !important;
+    box-shadow: inset 4px 0 0 var(--app-lightbar, #1677e8), inset 14px 0 18px var(--app-lightbar-glow, #1677e826) !important;
+}
+
+html[data-theme-mode] body.hc .permission-page .permission-role-card.is-active:hover {
+    background: var(--app-selected-row-hover-bg, #deeeff) !important;
+}
+
+.permission-page .permission-role-card,
+.permission-page .staff-table [data-staff-row] {
+    cursor: pointer;
+}
+
+html[data-theme-mode] body.hc .permission-page .staff-table [data-staff-row]:hover {
+    background: var(--app-lightbar-soft, #edf5ff) !important;
+}
+
+html[data-theme-mode] body.hc .permission-page .staff-table [data-staff-row].is-selected {
+    background: var(--app-selected-row-bg, #eaf5ff) !important;
+}
+
+html[data-theme-mode] body.hc .permission-page .staff-table [data-staff-row].is-selected:hover {
+    background: var(--app-selected-row-hover-bg, #deeeff) !important;
+}
+
+html[data-theme-mode] body.hc .permission-page .staff-table [data-staff-row]:hover > td,
+html[data-theme-mode] body.hc .permission-page .staff-table [data-staff-row].is-selected > td {
+    background: transparent !important;
+}
+
+html[data-theme-mode] body.hc .permission-page .staff-table [data-staff-row].is-selected > td {
+    border-color: var(--app-selected-row-border, #bad8fa) !important;
+    box-shadow: inset 0 1px 0 var(--app-selected-row-border, #bad8fa), inset 0 -1px 0 var(--app-selected-row-border, #bad8fa);
+}
+
+html[data-theme-mode] body.hc .permission-page .staff-table [data-staff-row].is-selected > td:first-child {
+    box-shadow: inset 4px 0 0 var(--app-lightbar, #1677e8), inset 14px 0 18px var(--app-lightbar-glow, #1677e826), inset 0 1px 0 var(--app-selected-row-border, #bad8fa), inset 0 -1px 0 var(--app-selected-row-border, #bad8fa) !important;
+}
+
+.permission-page .staff-table [data-staff-row]:focus-visible {
+    outline: 2px solid var(--app-lightbar, #1677e8);
+    outline-offset: -2px;
+}

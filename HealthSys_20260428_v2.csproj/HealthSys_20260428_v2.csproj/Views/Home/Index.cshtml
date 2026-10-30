@@ -1,0 +1,381 @@
+﻿@model HealthSys_20260428_v2.csproj.Models.DashboardViewModel
+@{
+    ViewData["Title"] = "首頁儀表板";
+}
+
+<link rel="stylesheet" href="~/css/dashboard-list.css" asp-append-version="true" />
+<div class="dashboard-page home-dashboard" data-ai-page="dashboard" data-ai-dashboard data-ai-result-count="@Model.Examinees.Count" data-ai-query-error="@Model.QueryError">
+    <section class="process-dashboard" aria-label="流程總覽">
+        <section class="metric-grid top-metrics dashboard-today-metrics" aria-label="查詢範圍狀態人數">
+            <section class="panel progress-panel" aria-label="檢查進度" title="檢查進度">
+                @{
+                    var distribution = Model.Examinees.GroupBy(person => string.IsNullOrWhiteSpace(person.Status) ? "未知狀態" : person.Status)
+                        .OrderBy(group => group.First().StatusCode switch { "1" => 0, "4" => 1, "5" => 2, "6" => 3, "2" => 4, "0" => 5, _ => 6 }).ToList();
+                    var colors = distribution.Select(group => group.First().StatusCode switch
+                    {
+                        "1" => "var(--dashboard-reserved-color)",
+                        "2" => "var(--dashboard-slot-color)",
+                        "4" => "var(--dashboard-registered-color)",
+                        "5" => "var(--green)",
+                        "6" => "var(--orange)",
+                        _ => "var(--red)"
+                    }).ToArray();
+                    var segments = new List<string>();
+                    decimal cumulative = 0;
+                    for (var i = 0; i < distribution.Count; i++)
+                    {
+                        var start = cumulative;
+                        cumulative += 100m * distribution[i].Count() / Model.Examinees.Count;
+                        segments.Add($"{colors[i % colors.Length]} {start.ToString(System.Globalization.CultureInfo.InvariantCulture)}% {cumulative.ToString(System.Globalization.CultureInfo.InvariantCulture)}%");
+                    }
+                    var chartBackground = Model.QueryTotal > 0
+                        ? $"conic-gradient({string.Join(", ", segments)})" : "#dce2e7";
+                    var chartLabel = Model.QueryTotal > 0
+                        ? string.Join("，", distribution.Select(group => $"{group.Key} {group.Count()} 人"))
+                        : string.IsNullOrEmpty(Model.QueryError) ? "查詢範圍內無資料" : "查詢失敗，無法統計";
+                }
+                <div class="progress-content">
+                    <button type="button" class="chart-summary-button" data-chart-details-toggle aria-label="查看查詢結果的各狀態人數與比例" aria-expanded="false" aria-controls="dashboard-chart-details">
+                        <span class="donut chart-labeled-pie" style="background: @chartBackground" aria-hidden="true">
+                            @{
+                                decimal labelStart = 0;
+                            }
+                            @foreach (var group in distribution)
+                            {
+                                var share = 100m * group.Count() / Model.Examinees.Count;
+                                var angle = (double)(labelStart + share / 2m) * Math.PI / 50d - Math.PI / 2d;
+                                var radius = distribution.Count == 1 ? 0d : 30d;
+                                var x = (50d + radius * Math.Cos(angle)).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                                var y = (50d + radius * Math.Sin(angle)).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                                if (Model.QueryTotal > 0 && share >= 15m)
+                                {
+                                    <span class="pie-percentage" style="left: @x%; top: @y%;">@(share.ToString("0.#"))%</span>
+                                }
+                                labelStart += share;
+                            }
+                        </span>
+                        @{
+                            var chartKeys = new[] {
+                                new { Name = "已預約", Count = Model.QueryReserved, Color = "var(--dashboard-reserved-color)" },
+                                new { Name = "已掛號", Count = Model.QueryRegistered, Color = "var(--dashboard-registered-color)" },
+                                new { Name = "已報到", Count = Model.QueryCheckedIn, Color = "var(--green)" },
+                                new { Name = "檢查中", Count = Model.QueryChecking, Color = "var(--orange)" },
+                                new { Name = "佔名額", Count = Model.QuerySlots, Color = "var(--dashboard-slot-color)" },
+                                new { Name = "已取消", Count = Model.QueryCancelled, Color = "var(--red)" }
+                            };
+                        }
+                        @for (var i = 0; i < chartKeys.Length; i++)
+                        {
+                            var item = chartKeys[i];
+                            var percent = !Model.QueryTotal.HasValue || !item.Count.HasValue ? "—"
+                                : (Model.QueryTotal > 0 ? 100m * item.Count.Value / Model.QueryTotal.Value : 0m).ToString("0.#") + "%";
+                            <span class="chart-corner chart-corner-@i">
+                                <span class="chart-corner-item" title="@item.Name：@percent" aria-label="@item.Name：@percent">
+                                    <span>@item.Name</span><i style="background: @item.Color" aria-hidden="true"></i><span>：@percent</span>
+                                </span>
+                            </span>
+                        }
+                    </button>
+                    <div id="dashboard-chart-details" class="chart-details-tooltip" data-chart-details role="region" aria-label="狀態分布詳細資訊" hidden>
+                        <button type="button" class="chart-details-close" data-chart-details-close aria-label="關閉詳細資訊">×</button>
+                        <strong class="chart-details-heading">總人數：@(Model.QueryTotal?.ToString() ?? "—")</strong>
+                        <p class="chart-details-description">目前查詢範圍內，各狀態占總人數的比例</p>
+                        @if (Model.QueryTotal > 0)
+                        {
+                            <table class="chart-details-table">
+                                <thead><tr><th scope="col">狀態</th><th scope="col">人數</th><th scope="col">比例</th></tr></thead>
+                                <tbody>
+                                @for (var i = 0; i < distribution.Count; i++)
+                                {
+                                    var group = distribution[i];
+                                    var percent = (100m * group.Count() / Model.Examinees.Count).ToString("0.#");
+                                    <tr>
+                                        <th scope="row"><span class="chart-status-dot" style="background: @colors[i]" aria-hidden="true"></span>@group.Key</th>
+                                        <td>@group.Count() 人</td><td>@percent%</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <p>@chartLabel</p>
+                        }
+
+                    </div>
+                </div>
+            </section>
+            @foreach (var metric in new[]
+            {
+                new { Key = "total", Label = "總人數", Count = Model.QueryTotal, Icon = "people", Pending = false },
+                new { Key = "reserved", Label = "已預約", Count = Model.QueryReserved, Icon = "people", Pending = false },
+                new { Key = "registered", Label = "已掛號", Count = Model.QueryRegistered, Icon = "success", Pending = false },
+                new { Key = "arrived", Label = "已報到", Count = Model.QueryCheckedIn, Icon = "success", Pending = false },
+                new { Key = "checking", Label = "檢查中", Count = Model.QueryChecking, Icon = "pending", Pending = false },
+                new { Key = "slot", Label = "佔名額", Count = Model.QuerySlots, Icon = "pending", Pending = false },
+                new { Key = "cancelled", Label = "已取消", Count = Model.QueryCancelled, Icon = "danger", Pending = false }
+            })
+            {
+                <article class="metric-card" data-metric-card="@metric.Key"
+                         title="@(metric.Pending ? "待確認資料庫狀態判定條件" : Model.StatisticsError)">
+                    <span class="metric-icon @metric.Icon" aria-hidden="true"></span>
+                    <p>@metric.Label</p>
+                    <div class="metric-count-line">
+                        <strong data-metric-value="@metric.Key">@(metric.Count?.ToString() ?? "—")</strong>
+                        <small class="metric-percentage">@(Model.QueryTotal.HasValue && metric.Count.HasValue ? $"({(Model.QueryTotal > 0 ? 100m * metric.Count.Value / Model.QueryTotal.Value : 0m):0.#}%)" : "—")</small>
+                    </div>
+                    @if (metric.Pending)
+                    {
+                        <small>待確認狀態</small>
+                    }
+                </article>
+            }
+            @if (!string.IsNullOrEmpty(Model.StatisticsError))
+            {
+                <p class="dashboard-statistics-error" role="alert">@Model.StatisticsError</p>
+            }
+
+        </section>
+
+
+
+    </section>
+
+    <div class="dashboard-grid">
+        <div class="left-column">
+            <section class="panel examinee-panel" aria-label="受檢者清單">
+                <form class="table-toolbar dashboard-list-filters" method="post" asp-controller="Home" asp-action="Index" asp-antiforgery="true">
+                    <div class="dashboard-reservation-range" role="group" aria-label="預約日期區間">
+                        <span>預約日期</span>
+                        <input type="date" name="reservationDateStart" value="@Model.ReservationDateStart.ToString("yyyy-MM-dd")" aria-label="預約開始日期" max="9999-12-30" required />
+                        <span>至</span>
+                        <input type="date" name="reservationDateEnd" value="@Model.ReservationDateEnd.ToString("yyyy-MM-dd")" aria-label="預約結束日期" max="9999-12-30" required />
+                    </div>
+                    <select name="reserveStatus" aria-label="篩選狀態">
+                        <option value="">全部狀態</option>
+                        @foreach (var status in new[] { ("0", "已取消"), ("1", "已預約"), ("2", "佔名額"), ("4", "已掛號"), ("5", "已報到"), ("6", "檢查中") })
+                        {
+                            <option value="@status.Item1" selected="@(Model.ReserveStatus == status.Item1)">@status.Item2</option>
+                        }
+                    </select>
+                    <select name="workArea" aria-label="工作區域">
+                        <option value="">全部工作區域</option>
+                        @if (!string.IsNullOrEmpty(Model.WorkArea) && !Model.WorkAreaOptions.Any(area => area.Value == Model.WorkArea))
+                        {
+                            <option value="@Model.WorkArea" selected>@Model.WorkArea（目前不可選用）</option>
+                        }
+                        @foreach (var area in Model.WorkAreaOptions)
+                        {
+                            <option value="@area.Value" selected="@(Model.WorkArea == area.Value)">@area.Text</option>
+                        }
+                    </select>
+                    <label class="search-box">
+                        <span class="sr-only">搜尋姓名或身分證號</span>
+                        <input type="text" name="keyword" value="@Model.Keyword" placeholder="搜尋姓名 / 身分證號" />
+                    </label>
+                    <div class="dashboard-query-actions" role="group" aria-label="查詢與匯出">
+                        <button class="primary-button" type="submit">查詢</button>
+                        <button class="ghost-button" type="button">
+                            <span>匯出</span>
+                            <span class="down-caret" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.WorkAreaError))
+                    {
+                        <span role="alert">@Model.WorkAreaError</span>
+                    }
+                </form>
+
+                <div class="table-wrap">
+                    <table class="examinee-table" role="grid" aria-label="受檢者清單">
+                        <thead>
+                            <tr>
+                                <th><span class="checkbox" aria-hidden="true"></span></th>
+                                <th>序號</th>
+                                <th>受檢編號</th>
+                                <th>病歷號</th>
+                                <th>姓名</th>
+                                <th>身分證號</th>
+                                <th>性別</th>
+                                <th aria-sort="none"><button type="button" class="dashboard-sort-button" data-sort-key="age" aria-label="年齡：點擊遞增排序">年齡<span class="dashboard-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                <th aria-sort="none"><button type="button" class="dashboard-sort-button" data-sort-key="status" aria-label="狀態：點擊遞增排序">狀態<span class="dashboard-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                <th aria-sort="none"><button type="button" class="dashboard-sort-button" data-sort-key="station" aria-label="工作區域：點擊遞增排序">工作區域<span class="dashboard-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                <th aria-sort="none"><button type="button" class="dashboard-sort-button" data-sort-key="reservationDate" aria-label="預約日期：點擊遞增排序">預約日期<span class="dashboard-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                <th aria-sort="none"><button type="button" class="dashboard-sort-button" data-sort-key="reservationTime" aria-label="預約時間：點擊遞增排序">預約時間<span class="dashboard-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                <th aria-sort="none"><button type="button" class="dashboard-sort-button" data-sort-key="checkInDate" aria-label="報到日期：點擊遞增排序">報到日期<span class="dashboard-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                <th aria-sort="none"><button type="button" class="dashboard-sort-button" data-sort-key="checkInTime" aria-label="報到時間：點擊遞增排序">報到時間<span class="dashboard-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var index = 0; index < Model.Examinees.Count; index++)
+                            {
+                                var person = Model.Examinees[index];
+                                <tr data-booking-time="@person.BookingTime" data-progress-completed="0" data-progress-checking="0" data-progress-pending="0" data-progress-total="0">
+                                    <td><span class="checkbox" aria-hidden="true"></span></td>
+                                    <td>@(index + 1)</td>
+                                    <td>@person.Barcode</td>
+                                    <td>@person.PatientNumber</td>
+                                    <td>@person.Name</td>
+                                    <td>@person.IdNumber</td>
+                                    <td>@person.Gender</td>
+                                    <td>@person.Age</td>
+                                    <td><span class="status @(person.StatusCode switch { "0" => "cancelled", "2" => "slot", "1" => "reserved", "4" => "registered", "5" => "arrived", "6" => "checking", _ => "unfinished" })">@person.Status</span></td>
+                                    <td>@person.Station</td>
+                                    <td>@person.ReservationDate</td>
+                                    <td>@person.ReservationTime</td>
+                                    <td>@person.CheckInDate</td>
+                                    <td>@person.CheckInTime</td>
+                                </tr>
+                            }
+                            @if (Model.Examinees.Count == 0)
+                            {
+                                <tr><td colspan="14" class="dashboard-list-message">@(string.IsNullOrEmpty(Model.QueryError) ? $"{Model.ReservationDateStart:yyyy/MM/dd} 至 {Model.ReservationDateEnd:yyyy/MM/dd} 沒有預約資料，請調整日期區間。" : Model.QueryError)</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-footer">
+                    <div class="panel-actions">
+                        <label class="today-auto-refresh-toggle" title="開啟後每 1 分鐘重新載入儀錶板，保留目前查詢日期區間">
+                            <input type="checkbox" data-dashboard-auto-refresh />
+                            <span class="today-auto-refresh-track" aria-hidden="true"></span>
+                            <span>每 1 分鐘自動刷新</span>
+                        </label>
+                    </div>
+                    <span data-page-summary>共 @Model.Examinees.Count 筆</span>
+                    <div class="pagination-controls">
+                        <select class="page-select" aria-label="每頁筆數" data-dashboard-page-size>
+                            @foreach (var size in new[] { 10, 20, 30, 40, 50 })
+                            {
+                                <option value="@size" selected="@(size == 20)">@size 筆/頁</option>
+                            }
+                        </select>
+                        <div class="pagination" aria-label="分頁" data-page-size="20" data-total-items="@Model.Examinees.Count"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <aside class="right-column" aria-label="受檢者詳細資訊">
+            <section class="panel details-panel" aria-labelledby="details-title">
+                <h2 id="details-title">受檢者資訊</h2>
+                <div class="person-card">
+                    <span class="person-avatar" aria-hidden="true"></span>
+                    <div class="person-main">
+                        <div class="person-title">
+                            <strong data-detail="name">—</strong>
+                            <span class="status compact" data-detail="status">—</span>
+                        </div>
+                        <dl>
+                            <div>
+                                <dt>序號</dt>
+                                <dd data-detail="serial">—</dd>
+                            </div>
+                            <div>
+                                <dt>受檢編號</dt>
+                                <dd data-detail="examNumber">—</dd>
+                            </div>
+                            <div>
+                                <dt>病歷號</dt>
+                                <dd data-detail="patientNumber">—</dd>
+                            </div>
+                            <div>
+                                <dt>身分證號</dt>
+                                <dd data-detail="idNumber">—</dd>
+                            </div>
+                            <div>
+                                <dt>性別 / 年齡</dt>
+                                <dd data-detail="genderAge">—</dd>
+                            </div>
+                            <div>
+                                <dt>工作區域</dt>
+                                <dd data-detail="station">—</dd>
+                            </div>
+                            <div>
+                                <dt>報到時間</dt>
+                                <dd data-detail="checkInTime">—</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+            </section>
+
+
+
+
+        </aside>
+    </div>
+        <section class="panel flow-panel" aria-labelledby="flow-title">
+            <div class="flow-head">
+                <h1 id="flow-title">
+                    <strong data-flow="name">@(Model.Examinees.Count == 0 ? "尚無資料" : "請選取資料列")</strong>
+                </h1>
+                <button class="MyHealthButton my-health-button" type="button" data-open-my-health disabled data-my-health-url="@Url.Action("MyHealthPlusWebLink", "Home")" aria-label="開啟所選受檢者的 My Health+">
+                    <span class="my-health-button-text">My Health+</span>
+                    <svg class="my-health-button-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                        <path d="M7.25 5.5H5.75A2.25 2.25 0 0 0 3.5 7.75v6.5a2.25 2.25 0 0 0 2.25 2.25h6.5a2.25 2.25 0 0 0 2.25-2.25v-1.5" />
+                        <path d="M10.25 4.25h5.5v5.5" />
+                        <path d="m9.25 10.75 6.25-6.25" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="flow-content">
+                <ol class="process-flow" aria-label="受檢流程" data-flow-steps>
+                    <li class="flow-node" data-flow-step="booking">
+                        <span class="flow-badge" aria-hidden="true"></span>
+                        <span class="flow-step-caption"><strong>已預約</strong><time data-flow-step-time="booking">—</time></span>
+                    </li>
+                    <li class="flow-node" data-flow-step="registration">
+                        <span class="flow-badge" aria-hidden="true"></span>
+                        <span class="flow-step-caption"><strong>已掛號</strong><time data-flow-step-time="registration">—</time></span>
+                    </li>
+                    <li class="flow-node" data-flow-step="checkin">
+                        <span class="flow-badge" aria-hidden="true"></span>
+                        <span class="flow-step-caption"><strong>已報到</strong><time data-flow-step-time="checkin">—</time></span>
+                    </li>
+                    <li class="flow-node" data-flow-step="inspection">
+                        <span class="flow-badge" aria-hidden="true"></span>
+                        <span class="flow-step-caption"><strong>檢查中</strong><time data-flow-step-time="inspection">—</time></span>
+                    </li>
+                    <li class="flow-node" data-flow-step="finish">
+                        <span class="flow-badge" aria-hidden="true"></span>
+                        <span class="flow-step-caption"><strong>完成報告</strong><time data-flow-step-time="finish">—</time></span>
+                    </li>
+                </ol>
+
+
+            </div>
+
+        </section>
+</div>
+
+<div class="my-health-modal" data-my-health-modal data-my-health-size="normal" hidden>
+    <button class="my-health-backdrop" type="button" data-close-my-health aria-label="關閉 My Health+ 視窗"></button>
+    <section class="my-health-frame-shell" role="dialog" aria-modal="true" aria-labelledby="my-health-dialog-title">
+        <header class="my-health-frame-header">
+            <h2 id="my-health-dialog-title">My Health+</h2>
+            <div class="my-health-frame-actions" aria-label="My Health+ 視窗控制">
+                <button class="my-health-window-button" type="button" data-my-health-toggle-size aria-label="放大 My Health+ 視窗" title="放大">□</button>
+                <button class="my-health-window-button my-health-close" type="button" data-close-my-health aria-label="關閉 My Health+ 視窗" title="關閉">×</button>
+            </div>
+        </header>
+        <iframe class="my-health-frame" title="My Health+" data-my-health-frame loading="eager" scrolling="yes"></iframe>
+    </section>
+</div>
+
+<script src="~/js/examinee-dashboard.js" asp-append-version="true"></script>
+<script src="~/js/dashboard-auto-refresh.js" asp-append-version="true"></script>
+
+<div class="dashboard-query-loading" data-dashboard-query-loading hidden>
+    <div class="dashboard-query-dialog" role="status" aria-live="polite" aria-label="查詢進度">
+        <span class="dashboard-query-spinner" aria-hidden="true"></span>
+        <strong>正在查詢受檢者資料</strong>
+        <p>正在讀取清單與統計人數，請稍候…</p>
+        <div class="dashboard-query-track" role="progressbar" aria-label="資料查詢中"><span></span></div>
+    </div>
+</div>
+<script src="~/js/dashboard-query-loading.js" asp-append-version="true"></script>
+
+<script src="~/js/dashboard-chart-details.js" asp-append-version="true"></script>

@@ -1,0 +1,293 @@
+﻿@model HealthSys_20260428_v2.csproj.Models.CustomerListItemViewModel
+
+@{
+    Layout = null;
+    ViewData["Title"] = "公司資料詳情";
+    string Display(string value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+    var customerNo = Display(Model.CustomerNo);
+    var customerName = Display(Model.CustomerName);
+    var clientUnit = !string.IsNullOrWhiteSpace(Model.CustomerNo) && !string.IsNullOrWhiteSpace(Model.CustomerName)
+        ? $"[{Model.CustomerNo}] {Model.CustomerName}"
+        : Model.CustomerName;
+    var projectCreateUrl = Url.Action("CreateHealthCheckProject", "ProjectPackageSettings", new { customerNo = Model.CustomerNo, customerName = Model.CustomerName, clientUnit }) ?? "#";
+}
+
+<!DOCTYPE html>
+<html lang="zh-TW" class="customer-detail-frame-root">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Health Checkup System</title>
+    <link rel="stylesheet" href="~/css/ui.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/theme-controls.css" asp-append-version="true" />
+<script src="~/js/theme-frame.js" asp-append-version="true"></script>
+</head>
+<body class="hc customer-detail-frame-body">
+    <main class="customer-detail-frame" aria-labelledby="customer-detail-frame-title" data-customer-detail-frame>
+        <header class="customer-detail-header">
+            <button class="customer-detail-back" type="button" aria-label="收合詳情" data-customer-detail-frame-close>
+                <span class="customer-action-icon back" aria-hidden="true"></span>
+            </button>
+            <h2 id="customer-detail-frame-title">公司資料詳情</h2>
+            <button class="customer-detail-close" type="button" aria-label="關閉詳情" data-customer-detail-frame-close>
+                <span class="customer-action-icon close" aria-hidden="true"></span>
+            </button>
+        </header>
+
+        <section class="customer-detail-profile" aria-label="公司摘要">
+            <div class="customer-detail-avatar">
+                <span class="customer-action-icon building" aria-hidden="true"></span>
+            </div>
+            <div>
+                <h3>@customerName</h3>
+                <p>@customerNo</p>
+            </div>
+        </section>
+
+        <nav class="customer-detail-tabs" aria-label="公司詳情分頁">
+            <button class="is-active" type="button" data-customer-detail-frame-tab="basic">基本資料</button>
+            <button type="button" data-customer-detail-frame-tab="contact">聯絡資訊</button>
+            <button type="button" data-customer-detail-frame-tab="business">事業單位</button>
+            <button type="button" data-customer-detail-frame-tab="projects">專案清單</button>
+            <button type="button" data-customer-detail-frame-tab="notes">備註</button>
+        </nav>
+
+        <div class="customer-detail-content">
+            <section class="customer-detail-section" data-customer-detail-frame-panel="basic">
+                <dl class="customer-detail-list">
+                    <div>
+                        <dt><span class="customer-action-icon building" aria-hidden="true"></span>公司編號</dt>
+                        <dd>@customerNo</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon building" aria-hidden="true"></span>公司名稱</dt>
+                        <dd>@customerName</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon building" aria-hidden="true"></span>英文名稱</dt>
+                        <dd>@Display(Model.EnglishName)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon hash" aria-hidden="true"></span>統一編號</dt>
+                        <dd>@Display(Model.UniformNo)</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="customer-detail-section" data-customer-detail-frame-panel="contact" hidden>
+                <dl class="customer-detail-list">
+                    <div>
+                        <dt><span class="customer-action-icon user" aria-hidden="true"></span>聯絡人</dt>
+                        <dd>@Display(Model.ContactPerson)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon phone" aria-hidden="true"></span>電話</dt>
+                        <dd>@Display(Model.Tel)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon phone" aria-hidden="true"></span>傳真</dt>
+                        <dd>@Display(Model.Fax)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon mail" aria-hidden="true"></span>電子郵件</dt>
+                        <dd>@Display(Model.Email)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon location" aria-hidden="true"></span>地址</dt>
+                        <dd>@Display(Model.Address)</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="customer-detail-section" data-customer-detail-frame-panel="business" hidden>
+                <dl class="customer-detail-list">
+                    <div>
+                        <dt><span class="customer-action-icon location" aria-hidden="true"></span>事業登記所在地</dt>
+                        <dd>@Display(Model.BusinessRegAddress)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon hash" aria-hidden="true"></span>事業單位（稅所）代碼</dt>
+                        <dd>@Display(Model.TaxOfficeCode)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon building" aria-hidden="true"></span>事業聯營</dt>
+                        <dd>@Display(Model.BusinessUnion)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon list" aria-hidden="true"></span>行業標準分類</dt>
+                        <dd>@Display(Model.IndustryCategory)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon building" aria-hidden="true"></span>事業單位名稱</dt>
+                        <dd>@Display(Model.BusinessUnitName)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon location" aria-hidden="true"></span>事業單位地址</dt>
+                        <dd>@Display(Model.BusinessUnitAddress)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon hash" aria-hidden="true"></span>醫護管理代碼</dt>
+                        <dd>@Display(Model.MedicalManageCode)</dd>
+                    </div>
+                    <div>
+                        <dt><span class="customer-action-icon building" aria-hidden="true"></span>記帳單位</dt>
+                        <dd>@Display(Model.AccountingUnit)</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="customer-project-section" aria-labelledby="customer-detail-frame-project-title" data-customer-detail-frame-panel="projects" hidden>
+                <header class="customer-project-header">
+                    <div>
+                        <h3 id="customer-detail-frame-project-title">專案清單</h3>
+                        <span><strong>@Model.Projects.Count</strong> 筆</span>
+                    </div>
+                    <a class="ghost-button customer-project-add" href="@projectCreateUrl" target="_parent">
+                        <span class="customer-action-icon add" aria-hidden="true"></span>
+                        <span>新增專案</span>
+                    </a>
+                </header>
+                <div class="customer-project-table-wrap">
+                    <table class="customer-project-table">
+                        <thead>
+                            <tr>
+                                <th><span class="sr-only">專案資料</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Projects.Count > 0)
+                            {
+                                foreach (var project in Model.Projects)
+                                {
+                                    var projectStatus = string.IsNullOrWhiteSpace(project.Status) ? "-" : project.Status;
+
+                                    <tr class="customer-project-row">
+                                        <td class="customer-project-summary-cell">
+                                            <div class="customer-project-summary-grid">
+                                                <div class="customer-project-summary-line customer-project-summary-top">
+                                                    <span class="customer-project-meta">
+                                                        <span class="customer-project-label">專案編號</span>
+                                                        <span class="customer-project-value customer-project-code">@Display(project.ProjectNo)</span>
+                                                    </span>
+                                                    <span class="customer-project-meta">
+                                                        <span class="customer-project-label">年度</span>
+                                                        <span class="customer-project-value">@Display(project.CheckYear)</span>
+                                                    </span>
+                                                    <span class="customer-project-meta">
+                                                        <span class="customer-project-label">預約筆數</span>
+                                                        <span class="customer-project-value">@(string.IsNullOrWhiteSpace(project.ReserveCount) ? "0" : project.ReserveCount)</span>
+                                                    </span>
+                                                </div>
+                                                <div class="customer-project-name-line">
+                                                    <span class="customer-project-label">專案名稱</span>
+                                                    <span class="customer-project-name-value">@Display(project.ProjectName)</span>
+                                                </div>
+                                                <div class="customer-project-summary-line customer-project-summary-bottom">
+                                                    <span class="customer-project-meta customer-project-date">
+                                                        <span class="customer-project-label">起訖日期</span>
+                                                        @if (string.IsNullOrWhiteSpace(project.StartDate) && string.IsNullOrWhiteSpace(project.EndDate))
+                                                        {
+                                                            <span class="customer-project-value">-</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="customer-project-value customer-project-date-value">
+                                                                <span>@project.StartDate</span>
+                                                                <span>~</span>
+                                                                <span>@project.EndDate</span>
+                                                            </span>
+                                                        }
+                                                    </span>
+                                                    <span class="customer-project-meta customer-project-state">
+                                                        <span class="customer-project-label">狀態</span>
+                                                        <span class="customer-project-status">@projectStatus</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr class="customer-project-empty">
+                                    <td>尚無專案資料</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="customer-note-section" data-customer-detail-frame-panel="notes" hidden>
+                <article class="customer-note-card">
+                    <h3>
+                        <span class="customer-action-icon note" aria-hidden="true"></span>
+                        備註
+                    </h3>
+                    <p>@(string.IsNullOrWhiteSpace(Model.CustomerNote) ? "尚無備註資料" : Model.CustomerNote)</p>
+                </article>
+            </section>
+        </div>
+
+        <footer class="customer-detail-actions">
+            <button class="ghost-button" type="button" data-customer-detail-frame-edit>
+                <span class="customer-action-icon edit" aria-hidden="true"></span>
+                <span>編輯資料</span>
+            </button>
+            <button class="ghost-button danger" type="button" data-customer-detail-frame-delete>
+                <span class="customer-action-icon trash" aria-hidden="true"></span>
+                <span>刪除</span>
+            </button>
+        </footer>
+    </main>
+
+    <script>
+        (function () {
+            const frame = document.querySelector("[data-customer-detail-frame]");
+
+            if (!frame) {
+                return;
+            }
+
+            const tabs = Array.from(frame.querySelectorAll("[data-customer-detail-frame-tab]"));
+            const panels = Array.from(frame.querySelectorAll("[data-customer-detail-frame-panel]"));
+
+            function postToParent(type) {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ type }, window.location.origin);
+                }
+            }
+
+            tabs.forEach((tab) => {
+                tab.addEventListener("click", function () {
+                    tabs.forEach((candidate) => candidate.classList.toggle("is-active", candidate === tab));
+                    panels.forEach((panel) => {
+                        panel.hidden = panel.dataset.customerDetailFramePanel !== tab.dataset.customerDetailFrameTab;
+                    });
+                });
+            });
+
+            frame.querySelectorAll("[data-customer-detail-frame-close]").forEach((button) => {
+                button.addEventListener("click", function () {
+                    postToParent("healthsys:customer-detail-frame-close");
+                });
+            });
+
+            frame.querySelector("[data-customer-detail-frame-edit]")?.addEventListener("click", function () {
+                postToParent("healthsys:customer-detail-frame-edit");
+            });
+
+            frame.querySelector("[data-customer-detail-frame-delete]")?.addEventListener("click", function () {
+                postToParent("healthsys:customer-detail-frame-delete");
+            });
+
+            window.addEventListener("keydown", function (event) {
+                if (event.key === "Escape") {
+                    postToParent("healthsys:customer-detail-frame-close");
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,2523 @@
+@model HealthSys_20260428_v2.csproj.Models.HealthProjectWizardViewModel
+
+@{
+    ViewData["Title"] = "加入組套醫令";
+    var routeMode = Model.IsEditMode ? "edit" : null;
+    var routeCode = Model.IsEditMode ? Model.Project.Code : null;
+    var routeProjectNo = Model.IsEditMode ? null : Model.Project.Code;
+    var routeIsPastHistory = Model.Project.IsPastHistoryEnabled ? "Y" : "N";
+    var routeIsOralCheck = Model.Project.IsOralCheckEnabled ? "Y" : "N";
+    var routeIsOnlineQuestion = Model.Project.IsOnlineQuestionEnabled ? "Y" : "N";
+    string DisplayText(string? value) => string.IsNullOrWhiteSpace(value) ? "尚未填寫" : value;
+    var availableOrders = Model.AvailableItems.Select(item => new
+    {
+        code = item.Code,
+        name = item.Name,
+        category = item.CategoryKey,
+        categoryName = item.Category,
+        itemCategory = item.ItemCategory,
+        reportName = item.ReportName,
+        description = string.IsNullOrWhiteSpace(item.ReportName) ? item.ItemCategory : item.ReportName,
+        required = item.Required,
+        icon = item.Icon
+    });
+    var availableOrdersJson = System.Text.Json.JsonSerializer.Serialize(availableOrders);
+    var initialSelectedSuites = Model.SelectedSuites.Select(suite => new
+    {
+        id = suite.Id,
+        schemeNo = suite.SchemeNo,
+        name = suite.Name,
+        note = suite.Note,
+        category = suite.FeeType == "公費" ? "public" : "self",
+        categoryName = string.IsNullOrWhiteSpace(suite.FeeType) ? "自費" : suite.FeeType,
+        feeType = string.IsNullOrWhiteSpace(suite.FeeType) ? "自費" : suite.FeeType,
+        selfPayAccountingUnit = suite.SelfPayAccountingUnit,
+        selfPayAccountingUnitName = suite.SelfPayAccountingUnitName,
+        price = suite.PublicExpense,
+        source = string.IsNullOrWhiteSpace(suite.Source) ? "manual" : suite.Source,
+        orders = suite.Orders.Select(order => new
+        {
+            code = order.Code,
+            checkNo = order.CheckNo,
+            name = order.Name,
+            source = order.Source,
+            locked = order.Locked,
+            category = order.Category,
+            categoryName = order.CategoryName,
+            itemCategory = order.ItemCategory
+        }),
+        checkNos = suite.CheckNos
+    });
+    var initialSelectedSuitesJson = System.Text.Json.JsonSerializer.Serialize(initialSelectedSuites);
+    var defaultInternalStartDate = DateTime.Today.AddYears(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+    var defaultInternalEndDate = DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+
+}
+
+<section class="project-wizard-page order-step suite-step" aria-label="加入組套醫令" data-suite-page data-suite-items-url="@Url.Action("HealthCheckProjectCheckItems", "ProjectPackageSettings")" data-suite-internal-url="@Url.Action("InternalMedicalOrderSuites", "ProjectPackageSettings")" data-suite-internal-detail-url="@Url.Action("InternalMedicalOrderSuiteOrders", "ProjectPackageSettings")">
+    <header class="project-wizard-heading">
+        <nav class="project-wizard-breadcrumb" aria-label="目前位置">
+            <span>首頁</span>
+            <span>系統設定</span>
+            <span>@(Model.IsEditMode ? "健檢專案編輯" : "健檢專案建立")</span>
+        </nav>
+    </header>
+
+    <nav class="project-wizard-stepper line" aria-label="@(Model.IsEditMode ? "編輯專案步驟" : "建立專案步驟")">
+        @foreach (var step in Model.Steps)
+        {
+            <div class="project-wizard-step @step.State">
+                <span class="project-wizard-step-number">@step.Number</span>
+                <span>
+                    <strong>@step.Title</strong>
+                    <small>@step.Subtitle</small>
+                </span>
+            </div>
+        }
+    </nav>
+
+    <section class="project-wizard-project-strip" aria-label="專案資訊">
+        <article>
+            <span>專案名稱</span>
+            <strong>@DisplayText(Model.Project.Name)</strong>
+        </article>
+        <article>
+            <span>對外顯示名稱</span>
+            <strong>@DisplayText(Model.Project.Target)</strong>
+        </article>
+        <article>
+            <span>專案編號</span>
+            <strong>@Model.Project.Code</strong>
+        </article>
+
+    </section>
+
+    <div class="suite-order-layout">
+        <section class="project-wizard-card suite-panel suite-picker" aria-labelledby="suite-picker-title">
+            <h2 id="suite-picker-title">可加入檢驗項</h2>
+
+            <div class="suite-category-tabs" aria-label="檢驗項分類">
+                <button class="active blue" type="button" data-suite-category="" aria-pressed="true">
+                    <span class="package-category-icon stethoscope" aria-hidden="true"></span>
+                    <span>全部</span>
+                </button>
+                @foreach (var category in Model.Categories)
+                {
+                    <button class="@category.Tone" type="button" data-suite-category="@category.Key" aria-pressed="false">
+                        <span class="package-category-icon @category.Icon" aria-hidden="true"></span>
+                        <span>@category.Name</span>
+                    </button>
+                }
+            </div>
+
+            <div class="suite-toolbar">
+                <div class="suite-category-control" data-suite-category-control>
+                    <label>
+                        <span class="customer-action-icon sliders" aria-hidden="true"></span>
+                        <input type="search" placeholder="輸入分類，例如：影像檢查" aria-label="搜尋分類" data-suite-category-search />
+                    </label>
+                    <button class="ghost-button suite-category-picker-button" type="button" data-suite-category-picker aria-expanded="false" aria-controls="suite-category-menu">
+                        <span class="package-category-icon stethoscope" aria-hidden="true"></span>
+                        <span>選項</span>
+                    </button>
+                    <div class="suite-category-menu" id="suite-category-menu" data-suite-category-menu hidden>
+                        <button class="active blue" type="button" data-suite-category-option="" aria-pressed="true">
+                            <span class="package-category-icon stethoscope" aria-hidden="true"></span>
+                            <span>全部</span>
+                        </button>
+                        @foreach (var category in Model.Categories)
+                        {
+                            <button class="@category.Tone" type="button" data-suite-category-option="@category.Key" aria-pressed="false">
+                                <span class="package-category-icon @category.Icon" aria-hidden="true"></span>
+                                <span>@category.Name</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+                <label>
+                    <span class="customer-action-icon search" aria-hidden="true"></span>
+                    <input type="search" placeholder="輸入醫令代碼、名稱或報告名稱" aria-label="搜尋醫令" data-suite-search />
+                </label>
+            </div>
+
+            <div class="suite-table-wrap">
+                <table class="suite-table suite-available-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" aria-label="全選可加入檢驗項" data-suite-select-all /></th>
+                            <th>醫令代碼</th>
+                            <th>醫令名稱</th>
+                            <th>細項類別</th>
+                            <th>報告名稱</th>
+                        </tr>
+                    </thead>
+                    <tbody data-suite-available-body></tbody>
+                </table>
+            </div>
+
+            <footer class="suite-panel-footer">
+                <span data-suite-available-summary>顯示 0 筆，共 0 筆</span>
+                <div class="pagination-controls suite-pagination-controls">
+                    <select class="page-select" aria-label="每頁顯示醫令筆數" data-suite-page-size>
+                        <option value="10" selected>10項/頁</option>
+                        <option value="20">20項/頁</option>
+                        <option value="30">30項/頁</option>
+                        <option value="40">40項/頁</option>
+                        <option value="50">50項/頁</option>
+                    </select>
+                    <nav class="basic-pagination suite-pagination" aria-label="可加入檢驗項分頁" data-suite-pagination></nav>
+                </div>
+            </footer>
+        </section>
+
+        <div class="suite-transfer" aria-label="檢驗項操作">
+            <button class="primary-button" type="button" data-suite-add>
+                <span class="suite-transfer-icon arrow-right" aria-hidden="true"></span>
+                <span>加入檢驗項</span>
+            </button>
+            <button class="ghost-button" type="button" data-suite-remove>
+                <span class="suite-transfer-icon arrow-left" aria-hidden="true"></span>
+                <span>移除</span>
+            </button>
+            <button class="ghost-button" type="button" data-suite-move-up>
+                <span class="suite-transfer-icon arrow-up" aria-hidden="true"></span>
+                <span>上移</span>
+            </button>
+            <button class="ghost-button" type="button" data-suite-move-down>
+                <span class="suite-transfer-icon arrow-down" aria-hidden="true"></span>
+                <span>下移</span>
+            </button>
+        </div>
+
+        <section class="project-wizard-card suite-panel suite-selected" aria-labelledby="suite-selected-title">
+            <header class="suite-panel-header">
+                <div class="suite-panel-heading-group">
+                    <h2 id="suite-selected-title">已加入組套</h2>
+                    <div class="suite-accounting-bulk-editor" aria-label="全部組套優待身分">
+                        <span>優待身分</span>
+                        <strong data-suite-accounting-all-value>尚無組套</strong>
+                        <span class="suite-accounting-actions">
+                            <button type="button" class="ghost-button" data-suite-accounting-all-clear disabled>重設</button>
+                            <button type="button" class="primary-button" data-suite-accounting-all-query disabled>套用全部</button>
+                        </span>
+                    </div>
+                </div>
+                <div class="suite-header-actions">
+                    <button class="ghost-button" type="button" data-suite-import-internal>
+                        <svg class="suite-header-svg-icon suite-header-svg-icon-import" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path class="suite-icon-soft-fill" d="M4.4 19.4V7.2a2.2 2.2 0 0 1 2.2-2.2h6.25a2.2 2.2 0 0 1 2.2 2.2v12.2" />
+                            <path d="M4.4 19.4V7.2a2.2 2.2 0 0 1 2.2-2.2h6.25a2.2 2.2 0 0 1 2.2 2.2v12.2" />
+                            <path class="suite-icon-fine-line" d="M7.1 8.25h1.05" />
+                            <path class="suite-icon-fine-line" d="M11.05 8.25h1.05" />
+                            <path class="suite-icon-fine-line" d="M7.1 11.4h1.05" />
+                            <path class="suite-icon-fine-line" d="M11.05 11.4h1.05" />
+                            <path class="suite-icon-fine-line" d="M8.55 19.4v-3.15h2.35v3.15" />
+                            <path class="suite-icon-accent" d="M17.65 4.25v8.35" />
+                            <path class="suite-icon-accent" d="m14.95 9.9 2.7 2.7 2.7-2.7" />
+                            <path class="suite-icon-accent" d="M14.05 16.3h7.2" />
+                            <path d="M3.15 19.4h17.7" />
+                        </svg>
+                        <span>匯入院內組套</span>
+                    </button>
+
+                    <button class="ghost-button" type="button" data-suite-toggle-all aria-expanded="false">
+                        <span class="suite-header-toggle-icon" aria-hidden="true"></span>
+                        <span data-suite-toggle-all-text>展開全部</span>
+                    </button>
+                    <button class="ghost-button" type="button" data-suite-create>
+                        <svg class="suite-header-svg-icon suite-header-svg-icon-create" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <rect class="suite-icon-soft-fill" x="4" y="3.75" width="11.2" height="15.9" rx="2.4" />
+                            <path d="M6.55 3.75h7.1a2.4 2.4 0 0 1 2.4 2.4v10.95a2.4 2.4 0 0 1-2.4 2.4h-7.1a2.4 2.4 0 0 1-2.4-2.4V6.15a2.4 2.4 0 0 1 2.4-2.4Z" />
+                            <path class="suite-icon-fine-line" d="M7.25 8.05h5.55" />
+                            <path class="suite-icon-fine-line" d="M7.25 11.15h4.35" />
+                            <circle class="suite-icon-soft-fill" cx="16.85" cy="16.45" r="4.55" />
+                            <circle cx="16.85" cy="16.45" r="4.55" />
+                            <path d="M16.85 14.05v4.8" />
+                            <path d="M14.45 16.45h4.8" />
+                        </svg>
+                        <span>新增組套</span>
+                    </button>
+                    <button class="ghost-button danger" type="button" data-suite-clear>
+                        <span class="customer-action-icon trash" aria-hidden="true"></span>
+                        <span>清空全部</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="suite-table-wrap selected">
+                <table class="suite-table suite-selected-table">
+                    <thead>
+                        <tr>
+                            <th>操作</th>
+                            <th>組套名稱</th>
+                            <th>金額</th>
+                            <th>醫令數</th>
+                            <th>計費類別</th>
+                            <th>優待身分</th>
+                        </tr>
+                    </thead>
+                    <tbody data-suite-selected-body></tbody>
+                </table>
+            </div>
+
+            <footer class="suite-total-panel" aria-label="組套摘要">
+                <article>
+                    <span class="suite-total-icon blue" aria-hidden="true"></span>
+                    <span>組套數量</span>
+                    <strong><span data-suite-count>0</span></strong>
+                </article>
+                <article>
+                    <span class="suite-total-icon green" aria-hidden="true"></span>
+                    <span>細項總數</span>
+                    <strong><span data-suite-order-count>0</span></strong>
+                </article>
+                <article>
+                    <span class="suite-total-icon purple" aria-hidden="true"></span>
+                    <span>折扣設定</span>
+                    <strong>- NT$ <span data-suite-discount>0</span></strong>
+                </article>
+                <article class="price">
+                    <span class="suite-total-icon amber" aria-hidden="true"></span>
+                    <span>專案售價</span>
+                    <strong>NT$ <span data-suite-final-price>0</span></strong>
+                </article>
+            </footer>
+        </section>
+    </div>
+
+    <footer class="project-wizard-footer">
+        <a class="ghost-button" asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProject" asp-route-mode="@routeMode" asp-route-code="@routeCode" asp-route-projectNo="@routeProjectNo" asp-route-isPastHistory="@routeIsPastHistory" asp-route-isOralCheck="@routeIsOralCheck" asp-route-isOnlineQuestion="@routeIsOnlineQuestion" data-wizard-carry-link>上一步</a>
+        <button class="ghost-button" type="button">
+            <span class="project-save-icon" aria-hidden="true"></span>
+            <span>@(Model.IsEditMode ? "儲存修改" : "儲存草稿")</span>
+        </button>
+        <a class="primary-button" asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProjectSpecialOperations" asp-route-mode="@routeMode" asp-route-code="@routeCode" asp-route-projectNo="@routeProjectNo" asp-route-isPastHistory="@routeIsPastHistory" asp-route-isOralCheck="@routeIsOralCheck" asp-route-isOnlineQuestion="@routeIsOnlineQuestion" data-wizard-carry-link data-suite-next-link>下一步：問卷項目</a>
+    </footer>
+
+    <div class="project-lookup-modal project-self-pay-accounting-modal" data-step-self-pay-accounting-modal hidden>
+        <button class="patient-lookup-backdrop" type="button" data-step-close-self-pay-accounting aria-label="關閉優待身分查詢視窗"></button>
+        <div class="project-lookup-shell" role="dialog" aria-modal="true" aria-labelledby="step-self-pay-accounting-title">
+            <header class="project-lookup-header project-self-pay-accounting-header">
+                <div class="project-self-pay-accounting-heading">
+                    <span class="project-self-pay-accounting-heading-icon" aria-hidden="true">帳</span>
+                    <div>
+                        <h2 id="step-self-pay-accounting-title">優待身分查詢</h2>
+                        <p>可依代碼或名稱搜尋；可套用全部組套，也可逐一調整子組套。</p>
+                    </div>
+                </div>
+                <button class="project-lookup-close" type="button" data-step-close-self-pay-accounting aria-label="關閉優待身分查詢視窗">×</button>
+            </header>
+            <div class="project-lookup-body project-step-accounting-lookup-body">
+                <div class="project-lookup-filters project-self-pay-accounting-filters" aria-label="優待身分搜尋條件">
+                    <label>
+                        <span>代碼</span>
+                        <input type="search" placeholder="輸入 CHDCTTYPE" autocomplete="off" data-step-accounting-filter="code" />
+                    </label>
+                    <label>
+                        <span>優待身分</span>
+                        <input type="search" placeholder="輸入 CHDCTTYPENAME 關鍵字" autocomplete="off" data-step-accounting-filter="name" />
+                    </label>
+                    <button class="ghost-button project-self-pay-accounting-clear" type="button" data-step-clear-accounting-filters>清除條件</button>
+                </div>
+                <div class="project-lookup-results">
+                    <table class="project-lookup-table project-self-pay-accounting-table">
+                        <thead><tr><th>代碼</th><th>優待身分</th><th>操作</th></tr></thead>
+                        <tbody>
+                            @foreach (var accountingUnit in Model.SelfPayAccountingUnits)
+                            {
+                                <tr data-step-accounting-row data-accounting-code="@accountingUnit.Code" data-accounting-name="@accountingUnit.Name">
+                                    <td>@accountingUnit.Code</td>
+                                    <td>@accountingUnit.Name</td>
+                                    <td><button type="button" data-step-accounting-select>選擇</button></td>
+                                </tr>
+                            }
+                            <tr class="project-lookup-empty" data-step-accounting-empty hidden="@(Model.SelfPayAccountingUnits.Count > 0)">
+                                <td colspan="3">查無符合條件的優待身分</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="suite-create-modal" hidden data-suite-create-modal>
+        <div class="suite-create-backdrop" data-suite-create-close></div>
+        <form class="suite-create-dialog" role="dialog" aria-modal="true" aria-labelledby="suite-create-title" data-suite-create-form>
+            <header class="suite-create-header">
+                <h2 id="suite-create-title" data-suite-create-title>新增組套</h2>
+                <button class="suite-create-close" type="button" aria-label="關閉新增組套" data-suite-create-close>
+                    <span class="suite-modal-x-icon" aria-hidden="true"></span>
+                </button>
+            </header>
+
+            <div class="suite-create-body">
+                <fieldset class="suite-create-fieldset">
+                    <legend>計費類別 <span class="suite-info-outline" aria-hidden="true">i</span></legend>
+                    <div class="suite-fee-grid">
+                        <label class="suite-fee-option">
+                            <input type="radio" name="suiteFeeType" value="公費" data-suite-fee-type />
+                            <span>公費</span>
+                        </label>
+                        <label class="suite-fee-option">
+                            <input type="radio" name="suiteFeeType" value="自費" checked data-suite-fee-type />
+                            <span>自費</span>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <label class="suite-create-field">
+                    <span>名稱</span>
+                    <input type="text" placeholder="請輸入名稱" maxlength="60" data-suite-new-name />
+                </label>
+
+                <label class="suite-create-field">
+                    <span>備註</span>
+                    <textarea placeholder="請輸入備註" maxlength="200" rows="3" data-suite-new-note></textarea>
+                </label>
+
+                <label class="suite-create-field">
+                    <span>金額</span>
+                    <span class="suite-money-input">
+                        <span>NT$</span>
+                        <input type="text" inputmode="numeric" placeholder="請輸入金額" data-suite-new-price />
+                    </span>
+                </label>
+
+                <p class="suite-create-error" hidden data-suite-create-error></p>
+            </div>
+
+            <footer class="suite-create-footer">
+                <button class="ghost-button" type="button" data-suite-create-close>
+                    <span class="suite-modal-x-icon" aria-hidden="true"></span>
+                    <span>取消</span>
+                </button>
+                <button class="primary-button" type="submit">
+                    <span class="suite-modal-check-icon" aria-hidden="true"></span>
+                    <span data-suite-create-submit-text>確定</span>
+                </button>
+            </footer>
+        </form>
+    </div>
+
+    <div class="suite-create-modal suite-internal-import-modal" hidden data-suite-internal-import-modal>
+        <div class="suite-create-backdrop" data-suite-internal-import-close></div>
+        <section class="suite-create-dialog suite-internal-import-dialog" role="dialog" aria-modal="true" aria-labelledby="suite-internal-import-title">
+            <header class="suite-create-header suite-internal-import-header">
+                <h2 id="suite-internal-import-title">匯入院內組套</h2>
+                <button class="suite-create-close" type="button" aria-label="關閉匯入院內組套" data-suite-internal-import-close>
+                    <span class="suite-modal-x-icon" aria-hidden="true"></span>
+                </button>
+            </header>
+
+            <div class="suite-internal-import-body">
+                <strong class="suite-internal-import-section-title">搜尋條件</strong>
+                <div class="suite-internal-import-filters" aria-label="院內組套搜尋條件">
+                    <label>
+                        <span>醫令碼</span>
+                        <input type="search" placeholder="請輸入醫令碼，例如：294-5352" data-suite-internal-filter="code" />
+                    </label>
+                    <label>
+                        <span>醫令名稱</span>
+                        <input type="search" placeholder="請輸入醫令名稱關鍵字" data-suite-internal-filter="name" />
+                    </label>
+                    <label class="suite-internal-date-filter">
+                        <span>建立日期區間</span>
+                        <span class="suite-internal-date-range">
+                            <input type="date" value="@defaultInternalStartDate" aria-label="建立日期起日" data-suite-internal-filter="startDate" />
+                            <i aria-hidden="true">~</i>
+                            <input type="date" value="@defaultInternalEndDate" aria-label="建立日期迄日" data-suite-internal-filter="endDate" />
+                        </span>
+                    </label>
+                    <div class="suite-internal-import-filter-actions">
+                        <button class="primary-button" type="button" data-suite-internal-search>
+                            <span class="customer-action-icon search" aria-hidden="true"></span>
+                            <span>搜尋</span>
+                        </button>
+                        <button class="ghost-button" type="button" data-suite-internal-clear>
+                            <span class="suite-modal-x-icon" aria-hidden="true"></span>
+                            <span>清除條件</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="suite-internal-import-table-wrap">
+                    <table class="suite-internal-import-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" aria-label="全選院內組套" data-suite-internal-select-all /></th>
+                                <th>組套編號</th>
+                                <th>組套名稱</th>
+                                <th>建立日期</th>
+                                <th>醫令數</th>
+                                <th>金額</th>
+                            </tr>
+                        </thead>
+                        <tbody data-suite-internal-body></tbody>
+                    </table>
+                </div>
+
+                <footer class="suite-internal-import-list-footer">
+                    <span data-suite-internal-summary>顯示 0 筆，共 0 筆</span>
+                    <div class="pagination-controls suite-internal-pagination-controls">
+                        <nav class="basic-pagination suite-pagination" aria-label="院內組套分頁" data-suite-internal-pagination></nav>
+                        <select class="page-select" aria-label="每頁顯示院內組套筆數" data-suite-internal-page-size>
+                            <option value="10" selected>10筆/頁</option>
+                            <option value="20">20筆/頁</option>
+                        </select>
+                    </div>
+                </footer>
+            </div>
+
+            <footer class="suite-create-footer">
+                <button class="ghost-button" type="button" data-suite-internal-import-close>
+                    <span class="suite-modal-x-icon" aria-hidden="true"></span>
+                    <span>取消</span>
+                </button>
+                <button class="primary-button" type="button" data-suite-internal-confirm disabled>
+                    <span class="suite-modal-check-icon" aria-hidden="true"></span>
+                    <span>確認匯入</span>
+                </button>
+            </footer>
+        </section>
+    </div>
+</section>
+
+<script>
+    (function () {
+        const page = document.querySelector("[data-suite-page]");
+
+        if (!page) {
+            return;
+        }
+
+        const INTERNAL_SUITE_SOURCE = "internal";
+        const INTERNAL_SUITE_NOTE = "院內組套匯入";
+        const DEFAULT_ACCOUNTING_CODE = "00";
+        const DEFAULT_ACCOUNTING_NAME = "無優待";
+        const suites = [];
+        let availableOrders = @Html.Raw(availableOrdersJson);
+        const sourceQuery = new URLSearchParams(window.location.search);
+        const initialSelectedIds = [];
+        const availableBody = page.querySelector("[data-suite-available-body]");
+        const selectedBody = page.querySelector("[data-suite-selected-body]");
+        const carryLinks = Array.from(page.querySelectorAll("[data-wizard-carry-link]"));
+        const stepAccountingModal = page.querySelector("[data-step-self-pay-accounting-modal]");
+        const stepAccountingCloseButtons = Array.from(page.querySelectorAll("[data-step-close-self-pay-accounting]"));
+        const stepAccountingFilters = Array.from(page.querySelectorAll("[data-step-accounting-filter]"));
+        const stepAccountingRows = Array.from(page.querySelectorAll("[data-step-accounting-row]"));
+        const stepAccountingEmpty = page.querySelector("[data-step-accounting-empty]");
+        const stepAccountingClearFiltersButton = page.querySelector("[data-step-clear-accounting-filters]");
+        const allAccountingValue = page.querySelector("[data-suite-accounting-all-value]");
+        const allAccountingQueryButton = page.querySelector("[data-suite-accounting-all-query]");
+        const allAccountingClearButton = page.querySelector("[data-suite-accounting-all-clear]");
+        let previousStepAccountingFocus = null;
+        let activeAccountingSuiteId = "";
+        const categoryControl = page.querySelector("[data-suite-category-control]");
+        const categorySearch = page.querySelector("[data-suite-category-search]");
+        const categoryPicker = page.querySelector("[data-suite-category-picker]");
+        const categoryMenu = page.querySelector("[data-suite-category-menu]");
+        const searchInput = page.querySelector("[data-suite-search]");
+        const selectAll = page.querySelector("[data-suite-select-all]");
+        const addAvailableButton = page.querySelector("[data-suite-add]");
+        const availablePageSizeSelect = page.querySelector("[data-suite-page-size]");
+        const availablePagination = page.querySelector("[data-suite-pagination]");
+        const createSuiteButton = page.querySelector("[data-suite-create]");
+        const createSuiteModal = page.querySelector("[data-suite-create-modal]");
+        const createSuiteForm = page.querySelector("[data-suite-create-form]");
+        const createSuiteTitle = page.querySelector("[data-suite-create-title]");
+        const createSuiteSubmitText = page.querySelector("[data-suite-create-submit-text]");
+        const createSuiteNameInput = page.querySelector("[data-suite-new-name]");
+        const createSuiteNoteInput = page.querySelector("[data-suite-new-note]");
+        const createSuitePriceInput = page.querySelector("[data-suite-new-price]");
+        const createSuiteError = page.querySelector("[data-suite-create-error]");
+        const createSuiteCloseButtons = Array.from(page.querySelectorAll("[data-suite-create-close]"));
+        const internalSuiteImportButton = page.querySelector("[data-suite-import-internal]");
+        const internalSuiteImportModal = page.querySelector("[data-suite-internal-import-modal]");
+        const internalSuiteImportCloseButtons = Array.from(page.querySelectorAll("[data-suite-internal-import-close]"));
+        const internalSuiteBody = page.querySelector("[data-suite-internal-body]");
+        const internalSuiteSelectAll = page.querySelector("[data-suite-internal-select-all]");
+        const internalSuiteConfirmButton = page.querySelector("[data-suite-internal-confirm]");
+        const internalSuiteSummary = page.querySelector("[data-suite-internal-summary]");
+        const internalSuitePagination = page.querySelector("[data-suite-internal-pagination]");
+        const internalSuitePageSizeSelect = page.querySelector("[data-suite-internal-page-size]");
+        const internalSuiteFilterControls = Array.from(page.querySelectorAll("[data-suite-internal-filter]"));
+        const internalSuiteSearchButton = page.querySelector("[data-suite-internal-search]");
+        const internalSuiteClearButton = page.querySelector("[data-suite-internal-clear]");
+        const createSuiteFeeTypes = Array.from(page.querySelectorAll("[data-suite-fee-type]"));
+        const categoryButtons = Array.from(page.querySelectorAll("[data-suite-category]"));
+        const categoryOptionButtons = Array.from(page.querySelectorAll("[data-suite-category-option]"));
+        const itemsUrl = page.dataset.suiteItemsUrl || "";
+        const initialSelectedSuites = @Html.Raw(initialSelectedSuitesJson);
+        const internalSuitesUrl = page.dataset.suiteInternalUrl || "";
+        const internalSuiteDetailUrl = page.dataset.suiteInternalDetailUrl || "";
+        const nextStepLink = page.querySelector("[data-suite-next-link]");
+        const discountAmount = 0;
+        let activeCategory = "";
+        let loadTimer = 0;
+        let requestSerial = 0;
+        let activeAvailablePage = 1;
+        const checkedAvailableCodes = new Set();
+        let selectedSuites = [];
+        let expandedIds = new Set();
+        let activeSelectedId = "";
+        let editingSuiteId = "";
+        let activeInternalSuitePage = 1;
+        const checkedInternalSuiteIds = new Set();
+        let internalSuiteOptions = [];
+        let internalSuiteTotalCount = 0;
+        let internalSuiteRequestSerial = 0;
+        const checkedInternalSuiteOptions = new Map();
+
+        function cloneSuite(suite) {
+            return {
+                ...suite,
+                source: suite.source || "manual",
+                orders: suite.orders.map((order) => ({ ...order }))
+            };
+        }
+
+        function cloneOrder(order) {
+            return {
+                code: order.code,
+                name: String(order.name || "").trim(),
+                category: order.itemCategory || order.categoryName || order.category || "",
+                required: order.required,
+                source: order.source || "",
+                locked: Boolean(order.locked)
+            };
+        }
+
+        function byId(id) {
+            return suites.find((suite) => suite.id === id);
+        }
+
+        function byOrderCode(code) {
+            return availableOrders.find((order) => order.code === code);
+        }
+
+        function parseSelectedSuitePayload() {
+            if (!sourceQuery.has("selectedSuites")) {
+                return initialSelectedSuites;
+            }
+
+            const value = sourceQuery.get("selectedSuites") || "";
+
+            if (!value) {
+                return [];
+            }
+
+            try {
+                const parsed = JSON.parse(value);
+
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function parseSelectedOrderPairs() {
+            const value = sourceQuery.get("selectedOrders") || "";
+
+            return value
+                .split(",")
+                .map((token) => token.trim())
+                .filter(Boolean)
+                .map((token) => {
+                    const separatorIndex = token.indexOf(":");
+
+                    if (separatorIndex < 0) {
+                        return { schemeNo: "1", checkNo: token };
+                    }
+
+                    return {
+                        schemeNo: token.slice(0, separatorIndex).trim() || "1",
+                        checkNo: token.slice(separatorIndex + 1).trim()
+                    };
+                })
+                .filter((pair) => pair.checkNo);
+        }
+
+        function accountingUnitName(code) {
+            const target = normalize(code);
+            const row = stepAccountingRows.find((candidate) => normalize(candidate.dataset.accountingCode) === target);
+            return String(row?.dataset.accountingName || "").trim();
+        }
+
+        function accountingUnitDisplay(suite) {
+            const code = String(suite?.selfPayAccountingUnit || "").trim();
+            const name = String(suite?.selfPayAccountingUnitName || accountingUnitName(code)).trim();
+            return code ? (name ? "[" + code + "] " + name : code) : "未選擇";
+        }
+        function createSuite(id, options = {}) {
+            const price = Number.parseInt(String(options.price ?? "0").replace(/,/g, ""), 10);
+            const accountingCode = String(options.selfPayAccountingUnit ?? DEFAULT_ACCOUNTING_CODE).trim() || DEFAULT_ACCOUNTING_CODE;
+            const accountingName = String(options.selfPayAccountingUnitName || accountingUnitName(accountingCode)).trim()
+                || (accountingCode === DEFAULT_ACCOUNTING_CODE ? DEFAULT_ACCOUNTING_NAME : "");
+
+            return {
+                id: id || "1",
+                name: options.name || "組套 " + (id || "1"),
+                note: options.note || "",
+                category: options.category || "self",
+                categoryName: options.categoryName || "自費",
+                itemCount: 0,
+                price: Number.isFinite(price) && price >= 0 ? price : 0,
+                description: "",
+                required: Boolean(options.required),
+                source: options.source || "manual",
+                selfPayAccountingUnit: accountingCode,
+                selfPayAccountingUnitName: accountingName,
+                ordersLoaded: options.ordersLoaded !== false,
+                ordersLoading: false,
+                ordersError: "",
+                orders: []
+            };
+        }
+
+        function buildInitialSelectedSuites() {
+            const payloadSuites = parseSelectedSuitePayload();
+
+            if (payloadSuites.length > 0) {
+                return payloadSuites.map((payload, index) => {
+                    const id = String(payload.id || payload.schemeNo || index + 1);
+                    const feeType = payload.feeType || payload.categoryName || (payload.category === "public" ? "公費" : "自費");
+                    const suite = createSuite(id, {
+                        name: payload.name || "組套 " + id,
+                        note: payload.note || "",
+                        price: payload.price || 0,
+                        category: feeType === "公費" ? "public" : "self",
+                        categoryName: feeType,
+                        required: feeType === "公費",
+                        source: payload.source || "manual",
+                        selfPayAccountingUnit: Object.prototype.hasOwnProperty.call(payload, "selfPayAccountingUnit")
+                            ? payload.selfPayAccountingUnit
+                            : "",
+                        selfPayAccountingUnitName: payload.selfPayAccountingUnitName || ""
+                    });
+                    const payloadOrders = Array.isArray(payload.orders) ? payload.orders : [];
+                    const payloadCheckNos = Array.isArray(payload.checkNos) ? payload.checkNos : [];
+                    const orders = payloadOrders
+                        .map((order) => ({
+                            code: String(order.code || order.checkNo || "").trim(),
+                            name: order.name || "",
+                            category: order.category || order.categoryName || order.itemCategory || "",
+                            source: order.source || "",
+                            locked: Boolean(order.locked)
+                        }))
+                        .concat(payloadCheckNos.map((checkNo) => ({
+                            code: String(checkNo || "").trim(),
+                            name: "",
+                            category: "",
+                            source: "",
+                            locked: false
+                        })));
+                    const seenCodes = new Set();
+                    const hasLoadedInternalOrders = orders.some((order) => Boolean(order.locked) || isInternalOrderSource(order.source));
+                    suite.ordersLoaded = !isInternalSuite(suite) || hasLoadedInternalOrders;
+
+                    suite.orders = orders
+                        .map((order) => {
+                            const code = String(order.code || "").trim();
+                            const key = normalize(code);
+
+                            if (!key || seenCodes.has(key)) {
+                                return null;
+                            }
+
+                            seenCodes.add(key);
+
+                            const sourceOrder = byOrderCode(code) || {
+                                code,
+                                name: order.name || code,
+                                categoryName: order.category || "",
+                                itemCategory: order.category || "",
+                                required: false
+                            };
+
+                            const clonedOrder = cloneOrder(sourceOrder);
+                            clonedOrder.source = order.source || clonedOrder.source || "";
+                            clonedOrder.locked = Boolean(order.locked) || isInternalOrderSource(clonedOrder.source);
+
+                            return clonedOrder;
+                        })
+                        .filter(Boolean);
+
+                    return suite;
+                }).filter((suite) => suite.orders.length > 0 || suite.name);
+            }
+
+            const suiteMap = new Map();
+
+            parseSelectedOrderPairs().forEach((pair) => {
+                if (!suiteMap.has(pair.schemeNo)) {
+                    suiteMap.set(pair.schemeNo, createSuite(pair.schemeNo));
+                }
+
+                const suite = suiteMap.get(pair.schemeNo);
+                const order = byOrderCode(pair.checkNo) || {
+                    code: pair.checkNo,
+                    name: pair.checkNo,
+                    categoryName: "",
+                    itemCategory: "",
+                    required: false
+                };
+
+                if (!suite.orders.some((candidate) => candidate.code === pair.checkNo)) {
+                    suite.orders.push(cloneOrder(order));
+                }
+            });
+
+            return Array.from(suiteMap.values());
+        }
+
+        function nextSuiteId() {
+            let index = 1;
+
+            while (selectedSuites.some((suite) => suite.id === String(index))) {
+                index += 1;
+            }
+
+            return String(index);
+        }
+
+        function activeSuite() {
+            return selectedSuites.find((suite) => suite.id === activeSelectedId) || selectedSuites[0] || null;
+        }
+
+        function ensureActiveSuite() {
+            let suite = activeSuite();
+
+            if (suite) {
+                return suite;
+            }
+
+            suite = createSuite(nextSuiteId());
+            selectedSuites.push(suite);
+            activeSelectedId = suite.id;
+            expandedIds.add(suite.id);
+
+            return suite;
+        }
+
+        function suiteOrderCodes(suite) {
+            const seenCodes = new Set();
+
+            return (suite.orders || [])
+                .map((order) => String(order.code || order.checkNo || "").trim())
+                .filter((code) => {
+                    const key = normalize(code);
+
+                    if (!key || seenCodes.has(key)) {
+                        return false;
+                    }
+
+                    seenCodes.add(key);
+                    return true;
+                });
+        }
+
+        function suiteOrderPayload(suite) {
+            const seenCodes = new Set();
+
+            return (suite.orders || [])
+                .map((order) => {
+                    const code = String(order.code || order.checkNo || "").trim();
+                    const key = normalize(code);
+
+                    if (!key || seenCodes.has(key)) {
+                        return null;
+                    }
+
+                    seenCodes.add(key);
+                    const locked = isLockedSuiteOrder(suite, order);
+
+                    return {
+                        code,
+                        checkNo: code,
+                        name: String(order.name || "").trim(),
+                        category: order.category || "",
+                        source: locked ? INTERNAL_SUITE_SOURCE : (order.source || ""),
+                        locked
+                    };
+                })
+                .filter(Boolean);
+        }
+
+        function selectedOrderValue() {
+            return "";
+        }
+
+        function selectedSuitePayload(suite) {
+            const source = isInternalSuite(suite) ? INTERNAL_SUITE_SOURCE : (suite.source || "manual");
+            const payload = {
+                id: suite.id,
+                name: suite.name,
+                note: suite.note || "",
+                category: suite.category,
+                categoryName: suite.categoryName,
+                feeType: suiteFeeType(suite),
+                price: suite.price,
+                selfPayAccountingUnit: suite.selfPayAccountingUnit || "",
+                selfPayAccountingUnitName: suite.selfPayAccountingUnitName || accountingUnitName(suite.selfPayAccountingUnit),
+                source
+            };
+
+            const orderPayload = suiteOrderPayload(suite);
+
+            if (source === INTERNAL_SUITE_SOURCE) {
+                payload.orders = orderPayload.filter((order) => !order.locked && !isInternalOrderSource(order.source));
+                payload.checkNos = [];
+            } else {
+                payload.orders = orderPayload;
+                payload.checkNos = suiteOrderCodes(suite);
+            }
+
+            return payload;
+        }
+
+        function selectedSuiteValue() {
+            return JSON.stringify(selectedSuites.map(selectedSuitePayload));
+        }
+
+        function syncWizardLinks() {
+            carryLinks.forEach((link) => {
+                const url = new URL(link.href, window.location.href);
+
+                sourceQuery.forEach((value, key) => {
+                    if (key !== "selectedOrders" && key !== "selectedSuites") {
+                        url.searchParams.set(key, value);
+                    }
+                });
+
+                url.searchParams.set("selectedOrders", selectedOrderValue());
+                url.searchParams.set("selectedSuites", selectedSuiteValue());
+                link.href = url.href;
+            });
+        }
+
+        function selectedIndex(id) {
+            return selectedSuites.findIndex((suite) => suite.id === id);
+        }
+
+        function money(value) {
+            return Math.max(0, Number(value) || 0).toLocaleString("en-US");
+        }
+
+        function normalize(value) {
+            return String(value || "").trim().toUpperCase();
+        }
+
+        function stepAccountingFilterValue(name) {
+            const input = stepAccountingFilters.find((candidate) => candidate.dataset.stepAccountingFilter === name);
+            return normalize(input?.value);
+        }
+
+        function renderStepAccountingRows() {
+            const codeKeyword = stepAccountingFilterValue("code");
+            const nameKeyword = stepAccountingFilterValue("name");
+            let visibleCount = 0;
+
+            stepAccountingRows.forEach((row) => {
+                const visible = (!codeKeyword || normalize(row.dataset.accountingCode).includes(codeKeyword))
+                    && (!nameKeyword || normalize(row.dataset.accountingName).includes(nameKeyword));
+                row.hidden = !visible;
+                visibleCount += visible ? 1 : 0;
+            });
+
+            if (stepAccountingEmpty) {
+                stepAccountingEmpty.hidden = visibleCount > 0;
+            }
+        }
+
+        function setStepAccountingUnit(row) {
+            const code = String(row?.dataset.accountingCode || DEFAULT_ACCOUNTING_CODE).trim() || DEFAULT_ACCOUNTING_CODE;
+            const name = String(row?.dataset.accountingName || accountingUnitName(code)).trim()
+                || (code === DEFAULT_ACCOUNTING_CODE ? DEFAULT_ACCOUNTING_NAME : "");
+
+            if (activeAccountingSuiteId === "*") {
+                selectedSuites.forEach((suite) => {
+                    suite.selfPayAccountingUnit = code;
+                    suite.selfPayAccountingUnitName = name;
+                });
+                renderSelected();
+                return;
+            }
+
+            const suite = selectedSuites.find((candidate) => candidate.id === activeAccountingSuiteId);
+
+            if (!suite) {
+                return;
+            }
+
+            suite.selfPayAccountingUnit = code;
+            suite.selfPayAccountingUnitName = name;
+            renderSelected();
+        }
+
+        function openStepAccountingLookup(suiteId) {
+            const appliesToAll = suiteId === "*";
+
+            if (!stepAccountingModal
+                || (appliesToAll ? selectedSuites.length === 0 : !selectedSuites.some((suite) => suite.id === suiteId))) {
+                return;
+            }
+
+            activeAccountingSuiteId = suiteId;
+            previousStepAccountingFocus = document.activeElement;
+            stepAccountingFilters.forEach((input) => { input.value = ""; });
+            renderStepAccountingRows();
+            stepAccountingModal.hidden = false;
+            document.body.classList.add("project-lookup-open");
+            stepAccountingFilters[0]?.focus();
+        }
+
+        function closeStepAccountingLookup() {
+            if (!stepAccountingModal) {
+                return;
+            }
+
+            stepAccountingModal.hidden = true;
+            document.body.classList.remove("project-lookup-open");
+            activeAccountingSuiteId = "";
+            previousStepAccountingFocus?.focus();
+        }        function isInternalOrderSource(value) {
+            return normalize(value) === normalize(INTERNAL_SUITE_SOURCE);
+        }
+
+        function isInternalSuite(suite) {
+            return Boolean(suite)
+                && (isInternalOrderSource(suite.source) || normalize(suite.note).includes(normalize(INTERNAL_SUITE_NOTE)));
+        }
+
+        function isLockedSuiteOrder(suite, order) {
+            return isInternalSuite(suite) && (Boolean(order?.locked) || isInternalOrderSource(order?.source));
+        }
+
+        function suiteOrderSourceText(suite, order) {
+            return isLockedSuiteOrder(suite, order) ? "院內匯入" : "自行加入";
+        }
+
+        function activeSuiteBlocksOrderAdd() {
+            return false;
+        }
+
+        function html(value) {
+            return String(value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function setCreateSuiteError(message) {
+            if (!createSuiteError) {
+                return;
+            }
+
+            createSuiteError.textContent = message || "";
+            createSuiteError.hidden = !message;
+        }
+
+        function selectedCreateSuiteFeeType() {
+            return createSuiteFeeTypes.find((input) => input.checked)?.value || "自費";
+        }
+
+        function suiteFeeType(suite) {
+            if (suite?.categoryName === "公費" || suite?.category === "public" || suite?.required) {
+                return "公費";
+            }
+
+            return "自費";
+        }
+
+        function parseSuiteAmount(value) {
+            const cleanValue = String(value || "").replace(/,/g, "").trim();
+
+            if (!cleanValue) {
+                return 0;
+            }
+
+            if (!/^\d+$/.test(cleanValue)) {
+                return Number.NaN;
+            }
+
+            return Number.parseInt(cleanValue, 10);
+        }
+
+        function resetCreateSuiteForm() {
+            createSuiteForm?.reset();
+            const selfPayOption = createSuiteFeeTypes.find((input) => input.value === "自費");
+
+            if (selfPayOption) {
+                selfPayOption.checked = true;
+            }
+
+            if (createSuiteNameInput) {
+                createSuiteNameInput.value = "";
+            }
+
+            if (createSuiteNoteInput) {
+                createSuiteNoteInput.value = "";
+            }
+
+            if (createSuitePriceInput) {
+                createSuitePriceInput.value = "";
+            }
+
+            setCreateSuiteError("");
+        }
+
+        function setCreateSuiteModalMode(mode) {
+            const isEdit = mode === "edit";
+
+            if (createSuiteTitle) {
+                createSuiteTitle.textContent = isEdit ? "編輯組套" : "新增組套";
+            }
+
+            if (createSuiteSubmitText) {
+                createSuiteSubmitText.textContent = "確定";
+            }
+        }
+
+        function openCreateSuiteModal() {
+            if (!createSuiteModal) {
+                return;
+            }
+
+            editingSuiteId = "";
+            setCreateSuiteModalMode("create");
+            resetCreateSuiteForm();
+            createSuiteModal.hidden = false;
+            window.setTimeout(() => createSuiteNameInput?.focus(), 0);
+        }
+
+        function openEditSuiteModal(id) {
+            const suite = selectedSuites.find((item) => item.id === id);
+
+            if (!createSuiteModal || !suite || isInternalSuite(suite)) {
+                return;
+            }
+
+            editingSuiteId = id;
+            activeSelectedId = id;
+            setCreateSuiteModalMode("edit");
+            resetCreateSuiteForm();
+
+            const feeType = suiteFeeType(suite);
+            const feeInput = createSuiteFeeTypes.find((input) => input.value === feeType);
+
+            if (feeInput) {
+                feeInput.checked = true;
+            }
+
+            if (createSuiteNameInput) {
+                createSuiteNameInput.value = suite.name || "";
+            }
+
+            if (createSuiteNoteInput) {
+                createSuiteNoteInput.value = suite.note || "";
+            }
+
+            if (createSuitePriceInput) {
+                createSuitePriceInput.value = String(suite.price || 0);
+            }
+
+            createSuiteModal.hidden = false;
+            window.setTimeout(() => createSuiteNameInput?.focus(), 0);
+        }
+
+        function closeCreateSuiteModal() {
+            if (!createSuiteModal) {
+                return;
+            }
+
+            createSuiteModal.hidden = true;
+            editingSuiteId = "";
+            setCreateSuiteError("");
+            createSuiteButton?.focus();
+        }
+
+        function submitCreateSuite() {
+            const name = String(createSuiteNameInput?.value || "").trim();
+            const note = String(createSuiteNoteInput?.value || "").trim();
+            const amount = parseSuiteAmount(createSuitePriceInput?.value);
+            const feeType = selectedCreateSuiteFeeType();
+
+            if (!name) {
+                setCreateSuiteError("請輸入組套名稱");
+                createSuiteNameInput?.focus();
+                return;
+            }
+
+            if (!Number.isFinite(amount) || amount < 0) {
+                setCreateSuiteError("請輸入正確金額");
+                createSuitePriceInput?.focus();
+                return;
+            }
+
+            if (editingSuiteId) {
+                const suite = selectedSuites.find((item) => item.id === editingSuiteId);
+
+                if (!suite || isInternalSuite(suite)) {
+                    closeCreateSuiteModal();
+                    return;
+                }
+
+                suite.name = name;
+                suite.note = note;
+                suite.price = amount;
+                suite.category = feeType === "公費" ? "public" : "self";
+                suite.categoryName = feeType;
+                suite.required = feeType === "公費";
+                activeSelectedId = suite.id;
+            } else {
+                const suite = createSuite(nextSuiteId(), {
+                    name,
+                    note,
+                    price: amount,
+                    category: feeType === "公費" ? "public" : "self",
+                    categoryName: feeType,
+                    required: feeType === "公費"
+                });
+
+                selectedSuites.push(suite);
+                activeSelectedId = suite.id;
+            }
+
+            closeCreateSuiteModal();
+            renderAvailable();
+            renderSelected();
+        }
+
+        function internalSuiteFilterValue(name) {
+            const input = internalSuiteFilterControls.find((control) => control.dataset.suiteInternalFilter === name);
+
+            return input ? input.value.trim() : "";
+        }
+
+        function normalizeInternalSuiteOption(item) {
+            const id = String(item?.code || item?.id || "").trim();
+            const checkNos = Array.isArray(item?.checkNos) && item.checkNos.length
+                ? item.checkNos.map((checkNo) => String(checkNo || "").trim()).filter(Boolean)
+                : [id].filter(Boolean);
+
+            return {
+                id,
+                name: String(item?.name || "").trim(),
+                createdAt: String(item?.priceDate || item?.createdAt || "").trim(),
+                orderCount: Math.max(0, Number(item?.orderCount) || 0),
+                price: Math.max(0, Number(item?.price) || 0),
+                feeType: "自費",
+                note: "院內組套匯入",
+                checkNos
+            };
+        }
+
+        function internalSuiteById(id) {
+            return internalSuiteOptions.find((suite) => suite.id === id) || checkedInternalSuiteOptions.get(id) || null;
+        }
+
+        function setInternalSuiteChecked(id, checked) {
+            if (!id) {
+                return;
+            }
+
+            if (checked) {
+                checkedInternalSuiteIds.add(id);
+                const suite = internalSuiteById(id);
+
+                if (suite) {
+                    checkedInternalSuiteOptions.set(id, suite);
+                }
+            } else {
+                checkedInternalSuiteIds.delete(id);
+                checkedInternalSuiteOptions.delete(id);
+            }
+        }
+
+        function clearInternalSuiteSelection() {
+            checkedInternalSuiteIds.clear();
+            checkedInternalSuiteOptions.clear();
+        }
+
+        function buildInternalSuiteQuery(pageNumber) {
+            const url = new URL(internalSuitesUrl, window.location.href);
+            const filters = {
+                code: internalSuiteFilterValue("code"),
+                name: internalSuiteFilterValue("name"),
+                startDate: internalSuiteFilterValue("startDate"),
+                endDate: internalSuiteFilterValue("endDate")
+            };
+
+            url.searchParams.set("page", String(Math.max(1, pageNumber)));
+            url.searchParams.set("pageSize", String(getInternalSuitePageSize()));
+
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value) {
+                    url.searchParams.set(key, value);
+                }
+            });
+
+            return url;
+        }
+
+        function setInternalSuiteTransientRow(message) {
+            if (internalSuiteBody) {
+                internalSuiteBody.innerHTML = '<tr class="suite-internal-empty-row"><td colspan="6">' + html(message) + '</td></tr>';
+            }
+
+            if (internalSuiteSummary) {
+                internalSuiteSummary.textContent = message;
+            }
+
+            if (internalSuiteSelectAll) {
+                internalSuiteSelectAll.checked = false;
+                internalSuiteSelectAll.indeterminate = false;
+                internalSuiteSelectAll.disabled = true;
+            }
+
+            if (internalSuiteConfirmButton) {
+                internalSuiteConfirmButton.disabled = checkedInternalSuiteIds.size === 0;
+            }
+
+            internalSuitePagination?.replaceChildren();
+        }
+
+        function renderInternalSuiteError(message) {
+            internalSuiteOptions = [];
+            internalSuiteTotalCount = 0;
+            setInternalSuiteTransientRow(message);
+        }
+
+        async function loadInternalSuites(pageNumber = activeInternalSuitePage) {
+            if (!internalSuitesUrl) {
+                renderInternalSuiteError("缺少院內醫令資料來源");
+                return;
+            }
+
+            activeInternalSuitePage = Math.max(1, pageNumber);
+            const requestId = ++internalSuiteRequestSerial;
+
+            setInternalSuiteTransientRow("院內醫令資料載入中...");
+
+            try {
+                const response = await fetch(buildInternalSuiteQuery(activeInternalSuitePage), {
+                    headers: {
+                        Accept: "application/json"
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Internal medical order request failed.");
+                }
+
+                const result = await response.json();
+
+                if (requestId !== internalSuiteRequestSerial) {
+                    return;
+                }
+
+                internalSuiteOptions = Array.isArray(result.items)
+                    ? result.items.map(normalizeInternalSuiteOption).filter((suite) => suite.id || suite.name)
+                    : [];
+
+                const totalCount = Number(result.totalCount);
+                const resultPage = Number(result.page);
+
+                internalSuiteTotalCount = Number.isFinite(totalCount) ? Math.max(0, totalCount) : internalSuiteOptions.length;
+                activeInternalSuitePage = Number.isFinite(resultPage) ? Math.max(1, resultPage) : activeInternalSuitePage;
+                renderInternalSuites();
+            } catch {
+                if (requestId !== internalSuiteRequestSerial) {
+                    return;
+                }
+
+                renderInternalSuiteError("院內醫令資料讀取失敗，請稍後再試。");
+            }
+        }
+
+        function getInternalSuitePageSize() {
+            const parsed = Number.parseInt(internalSuitePageSizeSelect?.value || "10", 10);
+
+            return [10, 20].includes(parsed) ? parsed : 10;
+        }
+
+        function getInternalSuitePageCount(rowCount) {
+            return Math.max(1, Math.ceil(rowCount / getInternalSuitePageSize()));
+        }
+
+        function visibleInternalSuitePages(pageCount) {
+            if (pageCount <= 5) {
+                return Array.from({ length: pageCount }, (_, index) => index + 1);
+            }
+
+            if (activeInternalSuitePage <= 3) {
+                return [1, 2, 3, "ellipsis-end"];
+            }
+
+            if (activeInternalSuitePage >= pageCount - 2) {
+                return ["ellipsis-start", pageCount - 2, pageCount - 1, pageCount];
+            }
+
+            return ["ellipsis-start", activeInternalSuitePage - 1, activeInternalSuitePage, activeInternalSuitePage + 1, "ellipsis-end"];
+        }
+
+        function createInternalSuitePageButton(label, pageNumber, options = {}) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+
+            if (options.label) {
+                button.setAttribute("aria-label", options.label);
+            }
+
+            if (options.active) {
+                button.classList.add("active");
+                button.setAttribute("aria-current", "page");
+            }
+
+            if (options.disabled) {
+                button.disabled = true;
+            } else {
+                button.addEventListener("click", function () {
+                    loadInternalSuites(pageNumber);
+                });
+            }
+
+            return button;
+        }
+
+        function createInternalSuiteEllipsis() {
+            return createInternalSuitePageButton("...", 0, { disabled: true, label: "省略頁碼" });
+        }
+
+        function renderInternalSuitePagination(rowCount) {
+            if (!internalSuitePagination) {
+                return;
+            }
+
+            const pageCount = getInternalSuitePageCount(rowCount);
+            const atFirstPage = activeInternalSuitePage <= 1;
+            const atLastPage = activeInternalSuitePage >= pageCount;
+            const pageButtons = visibleInternalSuitePages(pageCount).map((pageNumber) => {
+                if (typeof pageNumber !== "number") {
+                    return createInternalSuiteEllipsis();
+                }
+
+                return createInternalSuitePageButton(String(pageNumber), pageNumber, {
+                    active: pageNumber === activeInternalSuitePage,
+                    label: "第 " + pageNumber + " 頁"
+                });
+            });
+            const buttons = [
+                createInternalSuitePageButton("<<", 1, { disabled: atFirstPage, label: "第一頁" }),
+                createInternalSuitePageButton("<", activeInternalSuitePage - 1, { disabled: atFirstPage, label: "上一頁" }),
+                ...pageButtons,
+                createInternalSuitePageButton(">", activeInternalSuitePage + 1, { disabled: atLastPage, label: "下一頁" }),
+                createInternalSuitePageButton(">>", pageCount, { disabled: atLastPage, label: "最後頁" })
+            ];
+
+            internalSuitePagination.replaceChildren(...buttons);
+        }
+
+        function syncInternalSuiteSelection() {
+            const visibleIds = Array.from(internalSuiteBody?.querySelectorAll("[data-internal-suite-check]") || [])
+                .map((checkbox) => checkbox.value);
+            const checkedVisibleCount = visibleIds.filter((id) => checkedInternalSuiteIds.has(id)).length;
+
+            internalSuiteBody?.querySelectorAll("[data-internal-suite-row]").forEach((row) => {
+                const id = row.getAttribute("data-internal-suite-row") || "";
+                const checkbox = row.querySelector("[data-internal-suite-check]");
+                const selected = checkedInternalSuiteIds.has(id);
+
+                if (checkbox) {
+                    checkbox.checked = selected;
+                }
+
+                row.classList.toggle("is-selected", selected);
+            });
+
+            if (internalSuiteSelectAll) {
+                internalSuiteSelectAll.checked = visibleIds.length > 0 && checkedVisibleCount === visibleIds.length;
+                internalSuiteSelectAll.indeterminate = checkedVisibleCount > 0 && checkedVisibleCount < visibleIds.length;
+                internalSuiteSelectAll.disabled = visibleIds.length === 0;
+            }
+
+            if (internalSuiteConfirmButton) {
+                internalSuiteConfirmButton.disabled = checkedInternalSuiteIds.size === 0;
+            }
+        }
+
+        function renderInternalSuites() {
+            if (!internalSuiteBody) {
+                return;
+            }
+
+            const rows = internalSuiteOptions;
+            const rowCount = internalSuiteTotalCount;
+            const pageSize = getInternalSuitePageSize();
+            const startIndex = rowCount > 0 ? (activeInternalSuitePage - 1) * pageSize : 0;
+            const endIndex = Math.min(startIndex + rows.length, rowCount);
+
+            internalSuiteBody.innerHTML = rows.length
+                ? rows.map((suite) => [
+                    '<tr data-internal-suite-row="' + html(suite.id) + '">',
+                    '<td><input type="checkbox" value="' + html(suite.id) + '" aria-label="選擇 ' + html(suite.name) + '" data-internal-suite-check /></td>',
+                    '<td><strong>' + html(suite.id) + '</strong></td>',
+                    '<td>' + html(suite.name) + '</td>',
+                    '<td>' + html(suite.createdAt) + '</td>',
+                    '<td>' + suite.orderCount + '</td>',
+                    '<td class="suite-internal-money-cell">' + money(suite.price) + '</td>',
+                    '</tr>'
+                ].join("")).join("")
+                : '<tr class="suite-internal-empty-row"><td colspan="6">查無符合條件的院內醫令</td></tr>';
+
+            if (internalSuiteSummary) {
+                internalSuiteSummary.textContent = rowCount
+                    ? `顯示第 ${startIndex + 1} - ${endIndex} 筆，共 ${rowCount} 筆`
+                    : "顯示 0 筆，共 0 筆";
+            }
+
+            renderInternalSuitePagination(rowCount);
+            syncInternalSuiteSelection();
+        }
+
+        function openInternalSuiteImportModal() {
+            if (!internalSuiteImportModal) {
+                return;
+            }
+
+            activeInternalSuitePage = 1;
+            clearInternalSuiteSelection();
+            internalSuiteImportModal.hidden = false;
+            loadInternalSuites(1);
+            window.setTimeout(() => internalSuiteFilterControls[0]?.focus(), 0);
+        }
+
+        function closeInternalSuiteImportModal() {
+            if (!internalSuiteImportModal) {
+                return;
+            }
+
+            internalSuiteImportModal.hidden = true;
+            internalSuiteImportButton?.focus();
+        }
+
+        function resetInternalSuiteFilters() {
+            internalSuiteFilterControls.forEach((control) => {
+                control.value = control.defaultValue || "";
+            });
+
+            activeInternalSuitePage = 1;
+            clearInternalSuiteSelection();
+            loadInternalSuites(1);
+        }
+
+        function normalizeInternalSuiteOrder(item) {
+            const code = String(item?.code || item?.checkNo || "").trim();
+            const name = String(item?.name || "").trim();
+
+            return {
+                code,
+                name: name || code,
+                category: String(item?.category || "院內組套").trim() || "院內組套",
+                required: false,
+                source: INTERNAL_SUITE_SOURCE,
+                locked: true
+            };
+        }
+
+        async function fetchInternalSuiteOrders(suiteId) {
+            if (!internalSuiteDetailUrl || !suiteId) {
+                return [];
+            }
+
+            const url = new URL(internalSuiteDetailUrl, window.location.href);
+            url.searchParams.set("code", suiteId);
+
+            const response = await fetch(url, {
+                headers: {
+                    Accept: "application/json"
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("Internal medical order detail request failed.");
+            }
+
+            const result = await response.json();
+
+            return Array.isArray(result.orders)
+                ? result.orders.map(normalizeInternalSuiteOrder).filter((order) => order.code || order.name)
+                : [];
+        }
+
+        function mergeInternalSuiteOrders(suite, internalOrders) {
+            const mergedOrders = [];
+            const seenCodes = new Set();
+
+            function addOrder(order, imported) {
+                const code = String(order?.code || order?.checkNo || "").trim();
+                const key = normalize(code);
+
+                if (!key || seenCodes.has(key)) {
+                    return;
+                }
+
+                seenCodes.add(key);
+                mergedOrders.push({
+                    code,
+                    name: String(order?.name || code).trim(),
+                    category: String(order?.category || order?.categoryName || order?.itemCategory || "").trim(),
+                    required: Boolean(order?.required),
+                    source: imported ? INTERNAL_SUITE_SOURCE : (order?.source || ""),
+                    locked: imported || Boolean(order?.locked)
+                });
+            }
+
+            internalOrders.forEach((order) => addOrder(order, true));
+            (suite.orders || [])
+                .filter((order) => !isLockedSuiteOrder(suite, order))
+                .forEach((order) => addOrder(order, false));
+
+            return mergedOrders;
+        }
+
+        async function loadInternalSuiteOrders(suite, options = {}) {
+            if (!suite || !isInternalSuite(suite) || suite.ordersLoaded || suite.ordersLoading) {
+                return suite?.orders || [];
+            }
+
+            const shouldRender = options.render !== false;
+            suite.ordersLoading = true;
+            suite.ordersError = "";
+
+            if (shouldRender) {
+                renderSelected();
+            }
+
+            try {
+                suite.orders = mergeInternalSuiteOrders(suite, await fetchInternalSuiteOrders(suite.id));
+                suite.ordersLoaded = true;
+            } catch {
+                suite.orders = (suite.orders || []).filter((order) => !isLockedSuiteOrder(suite, order));
+                suite.ordersLoaded = false;
+                suite.ordersError = "院內組套細項讀取失敗";
+            } finally {
+                suite.ordersLoading = false;
+
+                if (shouldRender) {
+                    renderAvailable();
+                    renderSelected();
+                }
+            }
+
+            return suite.orders;
+        }
+
+        async function importCheckedInternalSuites() {
+            const importSuites = Array.from(checkedInternalSuiteIds)
+                .map((id) => checkedInternalSuiteOptions.get(id) || internalSuiteById(id))
+                .filter(Boolean);
+
+            if (importSuites.length === 0) {
+                return;
+            }
+
+            if (internalSuiteConfirmButton) {
+                internalSuiteConfirmButton.disabled = true;
+            }
+
+            for (const sourceSuite of importSuites) {
+                let suite = selectedSuites.find((candidate) => candidate.id === sourceSuite.id);
+
+                if (!suite) {
+                    suite = createSuite(sourceSuite.id, {
+                        name: sourceSuite.name,
+                        note: sourceSuite.note,
+                        price: sourceSuite.price,
+                        category: "self",
+                        categoryName: sourceSuite.feeType,
+                        required: false,
+                        source: "internal",
+                        ordersLoaded: false
+                    });
+
+                    selectedSuites.push(suite);
+                } else {
+                    const wasInternalSuite = isInternalSuite(suite);
+                    suite.source = INTERNAL_SUITE_SOURCE;
+                    suite.note = suite.note || sourceSuite.note;
+
+                    if (!wasInternalSuite) {
+                        suite.ordersLoaded = false;
+                    }
+                }
+
+                activeSelectedId = suite.id;
+                await loadInternalSuiteOrders(suite, { render: false });
+            }
+
+            clearInternalSuiteSelection();
+            closeInternalSuiteImportModal();
+            renderAvailable();
+            renderSelected();
+        }
+
+        function isOrderInActiveSuite(code) {
+            const suite = activeSuite();
+
+            return Boolean(suite?.orders.some((order) => order.code === code));
+        }
+
+        function filteredOrders() {
+            const keyword = normalize(searchInput?.value);
+            const categoryKeyword = normalize(activeCategory);
+
+            return availableOrders.filter((order) => {
+                const categoryMatch = !categoryKeyword
+                    || normalize(order.category).includes(categoryKeyword)
+                    || normalize(order.categoryName).includes(categoryKeyword);
+                const keywordText = normalize([
+                    order.code,
+                    order.name,
+                    order.categoryName,
+                    order.itemCategory,
+                    order.reportName,
+                    order.description
+                ].join(" "));
+                const keywordMatch = !keyword || keywordText.includes(keyword);
+
+                return categoryMatch && keywordMatch;
+            });
+        }
+
+        function getAvailablePageSize() {
+            const parsed = Number.parseInt(availablePageSizeSelect?.value || "10", 10);
+
+            return [10, 20, 30, 40, 50].includes(parsed) ? parsed : 10;
+        }
+
+        function getAvailablePageCount(rowCount) {
+            return Math.max(1, Math.ceil(rowCount / getAvailablePageSize()));
+        }
+
+        function clampAvailablePage(rowCount) {
+            activeAvailablePage = Math.min(Math.max(activeAvailablePage, 1), getAvailablePageCount(rowCount));
+        }
+
+        function resetAvailablePaging(clearChecked = true) {
+            activeAvailablePage = 1;
+
+            if (clearChecked) {
+                checkedAvailableCodes.clear();
+            }
+
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+        }
+
+        function visibleAvailablePages(pageCount) {
+            const maxVisible = 7;
+
+            if (pageCount <= maxVisible) {
+                return Array.from({ length: pageCount }, (_, index) => index + 1);
+            }
+
+            let start = Math.max(1, activeAvailablePage - Math.floor(maxVisible / 2));
+            let end = Math.min(pageCount, start + maxVisible - 1);
+            start = Math.max(1, end - maxVisible + 1);
+
+            return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+        }
+
+        function createAvailablePageButton(label, pageNumber, options = {}) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+
+            if (options.label) {
+                button.setAttribute("aria-label", options.label);
+            }
+
+            if (options.active) {
+                button.classList.add("active");
+                button.setAttribute("aria-current", "page");
+            }
+
+            if (options.disabled) {
+                button.disabled = true;
+            } else {
+                button.addEventListener("click", function () {
+                    setAvailablePage(pageNumber);
+                });
+            }
+
+            return button;
+        }
+
+        function renderAvailablePagination(rowCount) {
+            if (!availablePagination) {
+                return;
+            }
+
+            const pageSize = getAvailablePageSize();
+            const pageCount = getAvailablePageCount(rowCount);
+
+            availablePagination.replaceChildren();
+
+            if (rowCount <= pageSize) {
+                return;
+            }
+
+            const atFirstPage = activeAvailablePage <= 1;
+            const atLastPage = activeAvailablePage >= pageCount;
+            const buttons = [
+                createAvailablePageButton("<<", 1, { disabled: atFirstPage, label: "第一頁" }),
+                createAvailablePageButton("<", activeAvailablePage - 1, { disabled: atFirstPage, label: "上一頁" }),
+                ...visibleAvailablePages(pageCount).map((pageNumber) => createAvailablePageButton(String(pageNumber), pageNumber, {
+                    active: pageNumber === activeAvailablePage,
+                    label: "第 " + pageNumber + " 頁"
+                })),
+                createAvailablePageButton(">", activeAvailablePage + 1, { disabled: atLastPage, label: "下一頁" }),
+                createAvailablePageButton(">>", pageCount, { disabled: atLastPage, label: "最後一頁" })
+            ];
+
+            availablePagination.replaceChildren(...buttons);
+        }
+
+        function setAvailablePage(pageNumber) {
+            activeAvailablePage = pageNumber;
+            renderAvailable();
+        }
+
+        function renderAvailableLoading() {
+            if (!availableBody) {
+                return;
+            }
+
+            availableBody.innerHTML = '<tr class="suite-empty-row"><td colspan="5">載入檢驗項...</td></tr>';
+            availablePagination?.replaceChildren();
+
+            const summary = page.querySelector("[data-suite-available-summary]");
+            if (summary) {
+                summary.textContent = "載入中...";
+            }
+
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+        }
+
+        function syncCategoryButtons() {
+            const activeText = normalize(activeCategory);
+
+            categoryButtons.forEach((button) => {
+                const buttonValue = normalize(button.getAttribute("data-suite-category") || "");
+                const active = buttonValue === activeText;
+                button.classList.toggle("active", active);
+                button.setAttribute("aria-pressed", String(active));
+            });
+
+            categoryOptionButtons.forEach((button) => {
+                const buttonValue = normalize(button.getAttribute("data-suite-category-option") || "");
+                const active = buttonValue === activeText;
+                button.classList.toggle("active", active);
+                button.setAttribute("aria-pressed", String(active));
+            });
+        }
+
+        function closeCategoryMenu() {
+            if (!categoryMenu || !categoryPicker) {
+                return;
+            }
+
+            categoryMenu.hidden = true;
+            categoryPicker.setAttribute("aria-expanded", "false");
+        }
+
+        function toggleCategoryMenu() {
+            if (!categoryMenu || !categoryPicker) {
+                return;
+            }
+
+            const expanded = categoryMenu.hidden;
+            categoryMenu.hidden = !expanded;
+            categoryPicker.setAttribute("aria-expanded", String(expanded));
+        }
+
+        function scheduleLoadAvailableOrders() {
+            window.clearTimeout(loadTimer);
+            loadTimer = window.setTimeout(loadAvailableOrders, 220);
+        }
+
+        async function loadAvailableOrders() {
+            if (!itemsUrl) {
+                renderAvailable();
+                return;
+            }
+
+            const serial = ++requestSerial;
+            const url = new URL(itemsUrl, window.location.href);
+            const category = categorySearch?.value.trim() || activeCategory;
+            const keyword = searchInput?.value.trim() || "";
+
+            url.searchParams.set("category", category);
+            url.searchParams.set("keyword", keyword);
+            renderAvailableLoading();
+
+            try {
+                const response = await fetch(url.toString(), {
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+
+                if (serial !== requestSerial) {
+                    return;
+                }
+
+                if (!response.ok) {
+                    availableOrders = [];
+                    renderAvailable();
+                    return;
+                }
+
+                const result = await response.json();
+                availableOrders = Array.isArray(result.items) ? result.items : [];
+                renderAvailable();
+            } catch {
+                if (serial === requestSerial) {
+                    availableOrders = [];
+                    renderAvailable();
+                }
+            }
+        }
+
+        function renderAvailable() {
+            if (!availableBody) {
+                return;
+            }
+
+            const rows = filteredOrders();
+            clampAvailablePage(rows.length);
+
+            const pageSize = getAvailablePageSize();
+            const startIndex = rows.length ? (activeAvailablePage - 1) * pageSize : 0;
+            const endIndex = Math.min(startIndex + pageSize, rows.length);
+            const visibleRows = rows.slice(startIndex, endIndex);
+
+            availableBody.innerHTML = visibleRows.length
+                ? visibleRows.map((order) => {
+                    const itemCategory = order.itemCategory || order.categoryName || "";
+                    const reportName = order.reportName || order.description || "";
+                    const nameMeta = order.categoryName || "";
+                    const icon = order.icon || "stethoscope";
+                    const added = isOrderInActiveSuite(order.code);
+                    const blocked = activeSuiteBlocksOrderAdd();
+                    const disabled = added || blocked;
+
+                    if (disabled) {
+                        checkedAvailableCodes.delete(order.code);
+                    }
+
+                    const checked = !disabled && checkedAvailableCodes.has(order.code);
+                    const rowClass = added ? "is-added" : (blocked ? "is-disabled" : "");
+
+                    return [
+                    '<tr data-available-order="' + html(order.code) + '" class="' + rowClass + '">',
+                    '<td><input type="checkbox" aria-label="選取 ' + html(order.name) + '" data-order-check="' + html(order.code) + '" ' + (disabled ? "disabled" : "") + (checked ? " checked" : "") + ' /></td>',
+                    '<td><strong>' + html(order.code) + '</strong></td>',
+                    '<td><span class="suite-item-name"><span class="package-item-icon ' + html(icon) + '" aria-hidden="true"></span><span><strong>' + html(order.name) + '</strong><small>' + html(nameMeta) + '</small></span></span></td>',
+                    '<td>' + html(itemCategory) + '</td>',
+                    '<td>' + html(reportName) + '</td>',
+                    '</tr>'
+                    ].join("");
+                }).join("")
+                : '<tr class="suite-empty-row"><td colspan="5">沒有符合條件的檢驗項</td></tr>';
+
+            const summary = page.querySelector("[data-suite-available-summary]");
+            if (summary) {
+                summary.textContent = rows.length
+                    ? `顯示第 ${startIndex + 1} - ${endIndex} 筆，共 ${rows.length} 筆`
+                    : "顯示 0 筆，共 0 筆";
+            }
+
+            renderAvailablePagination(rows.length);
+            syncAvailablePickedRows();
+        }
+
+        function syncAvailablePickedRows() {
+            const checkboxes = Array.from(availableBody?.querySelectorAll("[data-order-check]") || []);
+
+            checkboxes.forEach((checkbox) => {
+                const code = checkbox.getAttribute("data-order-check") || "";
+
+                if (!code) {
+                    return;
+                }
+
+                if (checkbox.disabled) {
+                    checkedAvailableCodes.delete(code);
+                } else if (checkbox.checked) {
+                    checkedAvailableCodes.add(code);
+                } else {
+                    checkedAvailableCodes.delete(code);
+                }
+
+                const row = checkbox.closest("[data-available-order]");
+                row?.classList.toggle("is-picked", Boolean(checkbox.checked && !checkbox.disabled));
+            });
+
+            const availableCheckboxes = checkboxes.filter((checkbox) => !checkbox.disabled);
+            const checkedCount = availableCheckboxes.filter((checkbox) => checkbox.checked).length;
+
+            if (selectAll) {
+                selectAll.checked = availableCheckboxes.length > 0 && checkedCount === availableCheckboxes.length;
+                selectAll.indeterminate = checkedCount > 0 && checkedCount < availableCheckboxes.length;
+                selectAll.disabled = activeSuiteBlocksOrderAdd() || availableCheckboxes.length === 0;
+            }
+
+            if (addAvailableButton) {
+                addAvailableButton.disabled = activeSuiteBlocksOrderAdd() || checkedAvailableCodes.size === 0;
+            }
+        }
+
+        function clearCheckedAvailableCodes() {
+            checkedAvailableCodes.clear();
+            availableBody?.querySelectorAll("[data-available-order]").forEach((row) => {
+                const checkbox = row.querySelector("[data-order-check]");
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+                row.classList.remove("is-picked");
+            });
+
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+                selectAll.disabled = activeSuiteBlocksOrderAdd();
+            }
+
+            if (addAvailableButton) {
+                addAvailableButton.disabled = true;
+            }
+        }
+
+        function detailRow(suite) {
+            let orderRows = "";
+
+            if (suite.ordersLoading) {
+                orderRows = '<tr class="suite-internal-empty-row"><td colspan="6">組套細項載入中...</td></tr>';
+            } else if (suite.ordersError) {
+                orderRows = '<tr class="suite-internal-empty-row"><td colspan="6">' + html(suite.ordersError) + '</td></tr>';
+            } else if (suite.orders.length === 0) {
+                orderRows = '<tr class="suite-internal-empty-row"><td colspan="6">查無組套細項</td></tr>';
+            } else {
+                orderRows = suite.orders.map((order, index) => {
+                    const locked = isLockedSuiteOrder(suite, order);
+                    const sourceText = suiteOrderSourceText(suite, order);
+                    const actionCell = locked
+                        ? '<td><span class="suite-detail-locked" aria-label="院內組套匯入醫令已鎖定" title="院內組套匯入醫令已鎖定"><span class="suite-locked-icon" aria-hidden="true"></span></span></td>'
+                        : '<td><button type="button" class="suite-detail-remove" data-order-remove="' + html(suite.id) + '" data-order-code="' + html(order.code) + '" aria-label="移除 ' + html(order.name) + '"><span class="customer-action-icon trash" aria-hidden="true"></span></button></td>';
+
+                    return [
+                        '<tr class="' + (locked ? "is-locked" : "") + '">',
+                        actionCell,
+                        '<td>' + (index + 1) + '</td>',
+                        '<td>' + html(order.code) + '</td>',
+                        '<td>' + html(String(order.name || "").trim()) + '</td>',
+                        '<td>' + html(order.category) + '</td>',
+                        '<td>' + html(sourceText) + '</td>',
+                        '</tr>'
+                    ].join("");
+                }).join("");
+            }
+
+            return [
+                '<tr class="suite-detail-row" data-suite-detail="' + html(suite.id) + '">',
+                '<td colspan="6">',
+                '<div class="suite-detail-box">',
+                '<div class="suite-detail-note">',
+                '<span>備註</span>',
+                '<strong>' + html(suite.note || "無") + '</strong>',
+                '</div>',
+                '<p><span class="suite-info-dot" aria-hidden="true">i</span>組套醫令僅供檢視，不個別計價；費用以組套總價為準。</p>',
+                '<table>',
+                '<thead><tr><th>操作</th><th>順序</th><th>醫令代碼</th><th>醫令名稱</th><th>分類</th><th>來源</th></tr></thead>',
+                '<tbody>' + orderRows + '</tbody>',
+                '</table>',
+                '</div>',
+                '</td>',
+                '</tr>'
+            ].join("");
+        }
+
+        function selectedRow(suite, index) {
+            const expanded = expandedIds.has(suite.id);
+            const active = suite.id === activeSelectedId;
+            const feeType = suiteFeeType(suite);
+            const feeClass = feeType === "公費" ? "public" : "self";
+            const lockedSuite = isInternalSuite(suite);
+            const editActions = lockedSuite
+                ? '<span class="suite-row-locked" aria-label="院內組套匯入組套已鎖定" title="院內組套匯入組套已鎖定"><span class="suite-locked-icon" aria-hidden="true"></span></span>'
+                : '<button type="button" data-suite-edit="' + html(suite.id) + '" aria-label="編輯 ' + html(suite.name) + '"><span class="customer-action-icon edit" aria-hidden="true"></span></button><button type="button" data-suite-remove-row="' + html(suite.id) + '" aria-label="刪除 ' + html(suite.name) + '"><span class="customer-action-icon trash" aria-hidden="true"></span></button>';
+
+            return [
+                '<tr data-selected-suite="' + html(suite.id) + '" class="' + (active ? "is-selected " : "") + (expanded ? "is-expanded " : "") + (lockedSuite ? "is-locked-suite" : "") + '">',
+                '<td><span class="suite-row-actions"><button type="button" data-suite-expand="' + html(suite.id) + '" aria-label="' + (expanded ? "收合" : "展開") + ' ' + html(suite.name) + '"><span class="suite-chevron" aria-hidden="true"></span></button>' + editActions + '</span></td>',
+                '<td>' + html(suite.name) + '</td>',
+                '<td><span class="suite-price-value">NT$ ' + money(suite.price) + '</span></td>',
+                '<td>' + (suite.ordersLoading ? '載入中' : suite.orders.length + '項') + '</td>',
+                '<td><span class="suite-fee-pill ' + feeClass + '">' + html(feeType) + '</span></td>',
+                '<td><button type="button" class="suite-accounting-cell-button" data-suite-accounting-query="' + html(suite.id) + '" aria-label="更改 ' + html(suite.name) + ' 優待身分"><strong>' + html(accountingUnitDisplay(suite)) + '</strong><small>個別更改</small></button></td>',
+                '</tr>',
+                expanded ? detailRow(suite) : ""
+            ].join("");
+        }
+
+        function renderSelected() {
+            if (!selectedBody) {
+                return;
+            }
+
+            selectedBody.innerHTML = selectedSuites.length
+                ? selectedSuites.map(selectedRow).join("")
+                : '<tr class="suite-empty-row"><td colspan="6">尚未加入組套</td></tr>';
+
+            updateTotals();
+            updateAllAccountingEditor();
+            updateToggleAllButton();
+            syncWizardLinks();
+        }
+
+        function updateAllAccountingEditor() {
+            const firstSuite = selectedSuites[0];
+            const firstCode = String(firstSuite?.selfPayAccountingUnit || "").trim();
+            const firstName = String(firstSuite?.selfPayAccountingUnitName || accountingUnitName(firstCode)).trim();
+            const allMatch = selectedSuites.length > 0 && selectedSuites.every((suite) =>
+                String(suite.selfPayAccountingUnit || "").trim() === firstCode
+                && String(suite.selfPayAccountingUnitName || accountingUnitName(suite.selfPayAccountingUnit)).trim() === firstName);
+            const hasAnyAccounting = selectedSuites.some((suite) => String(suite.selfPayAccountingUnit || "").trim());
+
+            if (allAccountingValue) {
+                allAccountingValue.textContent = selectedSuites.length === 0
+                    ? "尚無組套"
+                    : (allMatch ? accountingUnitDisplay(firstSuite) : "各組套設定不同");
+            }
+
+            if (allAccountingQueryButton) {
+                allAccountingQueryButton.disabled = selectedSuites.length === 0;
+            }
+
+            if (allAccountingClearButton) {
+                allAccountingClearButton.disabled = !hasAnyAccounting;
+            }
+        }
+
+        function updateTotals() {
+            const suiteCount = selectedSuites.length;
+            const orderCount = selectedSuites.reduce((sum, suite) => sum + suite.orders.length, 0);
+            const subtotal = selectedSuites.reduce((sum, suite) => sum + suite.price, 0);
+            const finalPrice = Math.max(0, subtotal - discountAmount);
+
+            page.querySelector("[data-suite-count]").textContent = String(suiteCount);
+            page.querySelector("[data-suite-order-count]").textContent = String(orderCount);
+            page.querySelector("[data-suite-discount]").textContent = money(discountAmount);
+            page.querySelector("[data-suite-final-price]").textContent = money(finalPrice);
+        }
+
+        function updateToggleAllButton() {
+            const toggleButton = page.querySelector("[data-suite-toggle-all]");
+            const toggleText = page.querySelector("[data-suite-toggle-all-text]");
+            const allExpanded = selectedSuites.length > 0 && selectedSuites.every((suite) => expandedIds.has(suite.id));
+
+            if (toggleButton) {
+                toggleButton.disabled = selectedSuites.length === 0;
+                toggleButton.setAttribute("aria-expanded", String(allExpanded));
+                toggleButton.classList.toggle("active", allExpanded);
+            }
+
+            if (toggleText) {
+                toggleText.textContent = allExpanded ? "縮小全部" : "展開全部";
+            }
+        }
+
+        async function addCheckedOrders() {
+            const checkedCodes = Array.from(checkedAvailableCodes);
+
+            if (checkedCodes.length === 0) {
+                return;
+            }
+
+            const targetSuite = ensureActiveSuite();
+
+            if (isInternalSuite(targetSuite)) {
+                await loadInternalSuiteOrders(targetSuite, { render: false });
+            }
+
+            checkedCodes.forEach((code) => {
+                const order = byOrderCode(code);
+
+                if (!order || targetSuite.orders.some((item) => item.code === code)) {
+                    return;
+                }
+
+                targetSuite.orders.push(cloneOrder(order));
+            });
+
+            activeSelectedId = targetSuite.id;
+            expandedIds.add(targetSuite.id);
+            clearCheckedAvailableCodes();
+            renderAvailable();
+            renderSelected();
+        }
+
+        function removeSuite(id) {
+            const index = selectedIndex(id);
+
+            if (index < 0 || isInternalSuite(selectedSuites[index])) {
+                return;
+            }
+
+            selectedSuites.splice(index, 1);
+            expandedIds.delete(id);
+            if (activeSelectedId === id) {
+                activeSelectedId = selectedSuites[Math.min(index, selectedSuites.length - 1)]?.id || "";
+            }
+
+            renderAvailable();
+            renderSelected();
+        }
+
+        function moveActive(direction) {
+            const index = selectedIndex(activeSelectedId);
+            const targetIndex = index + direction;
+
+            if (index < 0 || targetIndex < 0 || targetIndex >= selectedSuites.length) {
+                return;
+            }
+
+            if (isInternalSuite(selectedSuites[index]) || isInternalSuite(selectedSuites[targetIndex])) {
+                return;
+            }
+
+            const [suite] = selectedSuites.splice(index, 1);
+            selectedSuites.splice(targetIndex, 0, suite);
+            renderSelected();
+        }
+
+        categoryButtons.forEach((button) => {
+            button.addEventListener("click", function () {
+                activeCategory = button.getAttribute("data-suite-category") || "";
+                if (categorySearch) {
+                    categorySearch.value = activeCategory;
+                }
+                syncCategoryButtons();
+                closeCategoryMenu();
+                resetAvailablePaging(true);
+                loadAvailableOrders();
+            });
+        });
+
+        categoryOptionButtons.forEach((button) => {
+            button.addEventListener("click", function () {
+                activeCategory = button.getAttribute("data-suite-category-option") || "";
+                if (categorySearch) {
+                    categorySearch.value = activeCategory;
+                }
+                syncCategoryButtons();
+                closeCategoryMenu();
+                resetAvailablePaging(true);
+                loadAvailableOrders();
+            });
+        });
+
+        categoryPicker?.addEventListener("click", function () {
+            toggleCategoryMenu();
+        });
+
+        document.addEventListener("click", function (event) {
+            if (!categoryControl || categoryControl.contains(event.target)) {
+                return;
+            }
+
+            closeCategoryMenu();
+        });
+
+        categorySearch?.addEventListener("input", function () {
+            activeCategory = categorySearch.value.trim();
+            syncCategoryButtons();
+            resetAvailablePaging(true);
+            scheduleLoadAvailableOrders();
+        });
+
+        searchInput?.addEventListener("input", function () {
+            resetAvailablePaging(true);
+            scheduleLoadAvailableOrders();
+        });
+        availablePageSizeSelect?.addEventListener("change", function () {
+            resetAvailablePaging(false);
+            renderAvailable();
+        });
+        selectAll?.addEventListener("change", function () {
+            page.querySelectorAll("[data-order-check]:not(:disabled)").forEach((checkbox) => {
+                checkbox.checked = selectAll.checked;
+            });
+            syncAvailablePickedRows();
+        });
+
+        availableBody?.addEventListener("click", function (event) {
+            if (event.target.closest("input")) {
+                syncAvailablePickedRows();
+                return;
+            }
+
+            const row = event.target.closest("[data-available-order]");
+            const checkbox = row?.querySelector("[data-order-check]");
+
+            if (checkbox && !checkbox.disabled) {
+                checkbox.checked = !checkbox.checked;
+                syncAvailablePickedRows();
+            }
+        });
+
+        internalSuiteImportButton?.addEventListener("click", openInternalSuiteImportModal);
+        internalSuiteImportCloseButtons.forEach((button) => {
+            button.addEventListener("click", closeInternalSuiteImportModal);
+        });
+        internalSuiteSearchButton?.addEventListener("click", function () {
+            activeInternalSuitePage = 1;
+            clearInternalSuiteSelection();
+            loadInternalSuites(1);
+        });
+        internalSuiteClearButton?.addEventListener("click", resetInternalSuiteFilters);
+        internalSuitePageSizeSelect?.addEventListener("change", function () {
+            activeInternalSuitePage = 1;
+            loadInternalSuites(1);
+        });
+        internalSuiteFilterControls.forEach((control) => {
+            control.addEventListener("change", function () {
+                activeInternalSuitePage = 1;
+                clearInternalSuiteSelection();
+                loadInternalSuites(1);
+            });
+        });
+        internalSuiteSelectAll?.addEventListener("change", function () {
+            const visibleCheckboxes = Array.from(internalSuiteBody?.querySelectorAll("[data-internal-suite-check]") || []);
+
+            visibleCheckboxes.forEach((checkbox) => {
+                setInternalSuiteChecked(checkbox.value, internalSuiteSelectAll.checked);
+            });
+
+            syncInternalSuiteSelection();
+        });
+        internalSuiteBody?.addEventListener("click", function (event) {
+            const row = event.target.closest("[data-internal-suite-row]");
+            const checkbox = event.target.closest("[data-internal-suite-check]");
+
+            if (!row) {
+                return;
+            }
+
+            const id = row.getAttribute("data-internal-suite-row") || "";
+            const nextChecked = checkbox ? checkbox.checked : !checkedInternalSuiteIds.has(id);
+
+            setInternalSuiteChecked(id, nextChecked);
+            syncInternalSuiteSelection();
+        });
+        internalSuiteConfirmButton?.addEventListener("click", importCheckedInternalSuites);
+
+        createSuiteButton?.addEventListener("click", openCreateSuiteModal);
+        createSuiteCloseButtons.forEach((button) => {
+            button.addEventListener("click", closeCreateSuiteModal);
+        });
+        createSuiteForm?.addEventListener("submit", function (event) {
+            event.preventDefault();
+            submitCreateSuite();
+        });
+        createSuitePriceInput?.addEventListener("input", function () {
+            createSuitePriceInput.value = createSuitePriceInput.value.replace(/[^\d,]/g, "");
+            setCreateSuiteError("");
+        });
+        createSuiteNameInput?.addEventListener("input", function () {
+            setCreateSuiteError("");
+        });
+        createSuiteNoteInput?.addEventListener("input", function () {
+            setCreateSuiteError("");
+        });
+        document.addEventListener("keydown", function (event) {
+            if (event.key !== "Escape") {
+                return;
+            }
+
+            if (createSuiteModal && !createSuiteModal.hidden) {
+                closeCreateSuiteModal();
+                return;
+            }
+
+            if (internalSuiteImportModal && !internalSuiteImportModal.hidden) {
+                closeInternalSuiteImportModal();
+            }
+        });
+
+        addAvailableButton?.addEventListener("click", addCheckedOrders);
+        page.querySelector("[data-suite-remove]")?.addEventListener("click", function () {
+            if (activeSelectedId) {
+                removeSuite(activeSelectedId);
+            }
+        });
+        page.querySelector("[data-suite-move-up]")?.addEventListener("click", function () {
+            moveActive(-1);
+        });
+        page.querySelector("[data-suite-move-down]")?.addEventListener("click", function () {
+            moveActive(1);
+        });
+        page.querySelector("[data-suite-clear]")?.addEventListener("click", function () {
+            selectedSuites = selectedSuites.filter((suite) => isInternalSuite(suite));
+            activeSelectedId = selectedSuites.some((suite) => suite.id === activeSelectedId)
+                ? activeSelectedId
+                : selectedSuites[0]?.id || "";
+            expandedIds = new Set(Array.from(expandedIds).filter((id) => selectedSuites.some((suite) => suite.id === id)));
+            renderAvailable();
+            renderSelected();
+        });
+
+        page.querySelector("[data-suite-toggle-all]")?.addEventListener("click", function () {
+            const shouldCollapse = selectedSuites.length > 0 && selectedSuites.every((suite) => expandedIds.has(suite.id));
+            expandedIds = shouldCollapse
+                ? new Set()
+                : new Set(selectedSuites.map((suite) => suite.id));
+            renderSelected();
+
+            if (!shouldCollapse) {
+                selectedSuites.forEach((suite) => {
+                    loadInternalSuiteOrders(suite);
+                });
+            }
+        });
+
+        allAccountingQueryButton?.addEventListener("click", function () {
+            openStepAccountingLookup("*");
+        });
+        allAccountingClearButton?.addEventListener("click", function () {
+            activeAccountingSuiteId = "*";
+            setStepAccountingUnit(null);
+            activeAccountingSuiteId = "";
+        });
+
+        selectedBody?.addEventListener("click", function (event) {
+            const selectedRowElement = event.target.closest("[data-selected-suite]");
+            const expandButton = event.target.closest("[data-suite-expand]");
+            const removeButton = event.target.closest("[data-suite-remove-row]");
+            const editButton = event.target.closest("[data-suite-edit]");
+            const removeOrderButton = event.target.closest("[data-order-remove]");
+            const accountingQueryButton = event.target.closest("[data-suite-accounting-query]");
+
+            if (accountingQueryButton) {
+                openStepAccountingLookup(accountingQueryButton.getAttribute("data-suite-accounting-query") || "");
+                return;
+            }
+
+            if (removeOrderButton) {
+                const suiteId = removeOrderButton.getAttribute("data-order-remove") || "";
+                const orderCode = removeOrderButton.getAttribute("data-order-code") || "";
+                const suite = selectedSuites.find((item) => item.id === suiteId);
+
+                const order = suite?.orders.find((item) => item.code === orderCode);
+
+                if (suite && order && !isLockedSuiteOrder(suite, order)) {
+                    suite.orders = suite.orders.filter((item) => item.code !== orderCode);
+                    activeSelectedId = suite.id;
+                    expandedIds.add(suite.id);
+                    renderAvailable();
+                    renderSelected();
+                }
+
+                return;
+            }
+
+            if (selectedRowElement) {
+                activeSelectedId = selectedRowElement.getAttribute("data-selected-suite") || "";
+            }
+
+            if (expandButton) {
+                const id = expandButton.getAttribute("data-suite-expand") || "";
+                const expanding = !expandedIds.has(id);
+
+                if (expanding) {
+                    expandedIds.add(id);
+                } else {
+                    expandedIds.delete(id);
+                }
+
+                activeSelectedId = id;
+                renderAvailable();
+                renderSelected();
+
+                if (expanding) {
+                    loadInternalSuiteOrders(selectedSuites.find((suite) => suite.id === id));
+                }
+
+                return;
+            }
+
+            if (removeButton) {
+                removeSuite(removeButton.getAttribute("data-suite-remove-row") || "");
+                return;
+            }
+
+            if (editButton) {
+                openEditSuiteModal(editButton.getAttribute("data-suite-edit") || "");
+                return;
+            }
+
+            if (selectedRowElement && !event.target.closest("button, input")) {
+                renderAvailable();
+                renderSelected();
+            }
+        });
+
+        stepAccountingCloseButtons.forEach((button) => button.addEventListener("click", closeStepAccountingLookup));
+        stepAccountingClearFiltersButton?.addEventListener("click", () => {
+            stepAccountingFilters.forEach((input) => { input.value = ""; });
+            renderStepAccountingRows();
+            stepAccountingFilters[0]?.focus();
+        });
+        stepAccountingFilters.forEach((input) => {
+            input.addEventListener("input", renderStepAccountingRows);
+            input.addEventListener("change", renderStepAccountingRows);
+        });
+        page.querySelectorAll("[data-step-accounting-select]").forEach((button) => {
+            button.addEventListener("click", () => {
+                setStepAccountingUnit(button.closest("[data-step-accounting-row]"));
+                closeStepAccountingLookup();
+            });
+        });
+        stepAccountingRows.forEach((row) => {
+            row.addEventListener("dblclick", () => {
+                setStepAccountingUnit(row);
+                closeStepAccountingLookup();
+            });
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && stepAccountingModal && !stepAccountingModal.hidden) {
+                closeStepAccountingLookup();
+            }
+        });
+        selectedSuites = buildInitialSelectedSuites();
+        activeSelectedId = selectedSuites[0]?.id || "";
+        renderAvailable();
+        renderSelected();
+    })();
+</script>
+
+
+
+
+
+

@@ -1,0 +1,3629 @@
+﻿@model HealthSys_20260428_v2.csproj.Models.AppointmentManagementViewModel
+
+@{
+    ViewData["Title"] = "預約清單";
+    var selectedAppointment = Model.SelectedAppointment;
+    var totalAppointmentCount = Model.SummaryCards.FirstOrDefault(card => card.Key == "total")?.Value ?? Model.Appointments.Count;
+    var individualAppointmentCount = Model.SummaryCards.FirstOrDefault(card => card.Key == "individual")?.Value ?? 0;
+    var groupAppointmentCount = Model.SummaryCards.FirstOrDefault(card => card.Key == "group")?.Value ?? 0;
+    const int defaultPageSize = 20;
+    var initialPageSize = Model.PageSizeOptions.Contains(defaultPageSize)
+        ? defaultPageSize
+        : Model.PageSizeOptions.FirstOrDefault();
+    initialPageSize = initialPageSize > 0 ? initialPageSize : defaultPageSize;
+    var initialVisibleCount = Math.Min(initialPageSize, Model.Appointments.Count);
+}
+
+<link rel="stylesheet" href="~/css/appointment-sorting.css" asp-append-version="true" />
+
+<link rel="stylesheet" href="~/css/appointment-status-colors.css" asp-append-version="true" />
+
+<section class="appointment-page appointment-list-page today-appointment-page" id="today-appointment-list" aria-label="預約清單" data-appointment-delete-url="@Url.Action("DeleteAppointment", "Appointment")" data-appointment-cancel-url="@Url.Action("CancelAppointment", "Appointment")" data-create-appointment-url="@Url.Action("CreateAppointment", "Appointment")" data-appointment-batch-register-url="@Url.Action("BathRegistered", "Appointment")" data-supplement-order-options-url="@Url.Action("GetSupplementOrderOptions", "Appointment")" data-supplement-order-submit-url="@Url.Action("AddSupplementOrders", "Appointment")" data-supplement-other-suite-lookup-url="@Url.Action("OtherSuiteLookupFrame", "Appointment")">
+    @Html.AntiForgeryToken()
+    <div data-ai-page="appointments" data-ai-result-count="@Model.Appointments.Count" data-ai-query-error="@Model.QueryErrorMessage" hidden></div>
+    <span class="sr-only" id="individual-appointment">個人預約</span>
+    <header class="appointment-page-header">
+        <div>
+            <div class="appointment-page-meta" aria-label="預約摘要">
+                <span>共 <b class="indigo" data-dashboard-count="total">@totalAppointmentCount</b> 筆</span>
+                <span>團檢 <b class="teal" data-dashboard-count="group">@groupAppointmentCount</b></span>
+                <span>個人 <b class="violet" data-dashboard-count="individual">@individualAppointmentCount</b></span>
+            </div>
+        </div>
+        <div class="appointment-page-actions">
+            <button class="ghost-button appointment-refresh-button" type="button">
+                <span class="refresh-mini-icon" aria-hidden="true"></span>
+                <span>重新整理</span>
+            </button>
+            <button class="ghost-button appointment-export-button" type="button">
+                <span>匯出</span>
+                <span class="down-caret" aria-hidden="true"></span>
+            </button>
+            <a class="primary-button appointment-add-button" asp-controller="Appointment" asp-action="CreateAppointment" aria-label="新增臨時預約">
+                <span class="plus-icon" aria-hidden="true"></span>
+                <span>新增臨時預約</span>
+            </a>
+        </div>
+    </header>
+
+    <div class="appointment-list-layout">
+        <div class="appointment-list-main">
+            <section class="panel appointment-filter-panel" aria-label="預約查詢條件">
+                <div class="field-group appointment-time-range-field">
+                    <span>預約時間</span>
+                    <span class="appointment-time-range">
+                        <input type="date" value="@Model.FilterStartDate.Replace("/", "-")" aria-label="預約開始日期" min="0001-01-01" max="9999-12-30" data-appointment-start-date />
+                        <span aria-hidden="true">至</span>
+                        <input type="date" value="@Model.FilterEndDate.Replace("/", "-")" aria-label="預約結束日期" min="0001-01-01" max="9999-12-30" data-appointment-end-date />
+                    </span>
+                </div>
+                <label class="field-group">
+                    <span>預約區域</span>
+                    <select aria-label="預約區域" data-reservation-area-filter>
+                        @foreach (var option in Model.ReservationAreaOptions)
+                        {
+                            <option value="@option.Value" selected="@option.IsSelected">@option.Text</option>
+                        }
+                    </select>
+                </label>
+                <label class="field-group">
+                    <span>預約狀態</span>
+                    <select aria-label="預約狀態" data-appointment-status-filter>
+                        @foreach (var option in Model.AppointmentStatusOptions)
+                        {
+                            <option value="@option.Value" selected="@option.IsSelected">@option.Text</option>
+                        }
+                    </select>
+                </label>
+                <label class="field-group search-field">
+                    <span>關鍵字搜尋</span>
+                    <span class="appointment-search-box">
+                        <input type="search" value="@Model.FilterKeyword" placeholder="姓名 / 身分證 / 專案編號 / Barcode / 公司" aria-label="搜尋姓名、身分證、專案編號、Barcode 或公司" data-appointment-keyword-filter />
+                    </span>
+                </label>
+                <div class="appointment-filter-actions">
+                    <button class="primary-button appointment-filter-search-button" type="button" data-appointment-search-button>
+                        <span class="search-icon" aria-hidden="true"></span>
+                        <span data-appointment-search-label>搜尋</span>
+                    </button>
+                    <span class="appointment-query-status" role="status" aria-live="polite" data-appointment-query-status></span>
+                </div>
+            </section>
+
+            <section class="appointment-status-overview" aria-label="預約狀態人數統計">
+                @foreach (var card in Model.StatusSummaryCards)
+                {
+                    <article class="appointment-status-metric @card.Tone" data-status-summary-card="@card.Key">
+                        <div class="status-metric-content">
+                            <div class="status-metric-main">
+                                <span class="status-metric-icon" aria-hidden="true"></span>
+                                <div class="status-metric-copy">
+                                    <span>@card.Label</span>
+                                    <strong><b data-status-summary-count="@card.Key-total">@card.TotalCount</b><small>人</small></strong>
+                                </div>
+                            </div>
+                            <div class="status-metric-breakdown" aria-label="@card.Label 團檢與個人人數">
+                                <span>團檢 <b data-status-summary-count="@card.Key-group">@card.GroupCount</b></span>
+                                <span>個人 <b data-status-summary-count="@card.Key-individual">@card.IndividualCount</b></span>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </section>
+
+            <section class="panel appointment-table-panel" aria-label="預約清單">
+                <div class="appointment-batch-toolbar" aria-label="批次掛號工具列">
+                    <div class="appointment-batch-selection" aria-live="polite">
+                        <strong data-batch-selected-count>已標記 0 筆預約</strong>
+                        <span data-batch-selection-hint>點選移動光棒，Ctrl 多選，Shift 範圍，Ctrl+A 全選</span>
+                    </div>
+                    <div class="appointment-batch-actions">
+                        <button class="ghost-button appointment-batch-clear" type="button" data-batch-clear disabled>清除</button>
+                        <button class="primary-button appointment-batch-register" type="button" data-batch-register disabled>批次掛號</button>
+                    </div>
+                </div>
+                <div class="appointment-table-frame">
+                    <div class="appointment-table-wrap" data-appointment-table-wrap>
+                        <table class="appointment-table today-appointment-table">
+                        <thead>
+                            <tr>
+                                <th>操作</th>
+                                <th>受檢者</th>
+                                <th>病歷號</th>
+                                <th aria-sort="none"><button type="button" class="appointment-sort-button" data-appointment-sort="appointmentDate" aria-label="預約日期：點擊遞增排序">預約日期<span class="appointment-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                <th aria-sort="none"><button type="button" class="appointment-sort-button" data-appointment-sort="time" aria-label="時段：點擊遞增排序">時段<span class="appointment-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                <th aria-sort="none"><button type="button" class="appointment-sort-button" data-appointment-sort="status" aria-label="預約狀態：點擊遞增排序">預約狀態<span class="appointment-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                <th aria-sort="none"><button type="button" class="appointment-sort-button" data-appointment-sort="doctorName" aria-label="看診醫師：點擊遞增排序">看診醫師<span class="appointment-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th>
+                                <th>診間號</th>
+                                <th>預約區域</th>
+                                <th>類型</th>
+                                <th>公司 / 團體</th>
+                                <th>方案</th>
+                                <th>資料狀態</th>
+                                <th>聯絡電話</th>
+                                <th>備註</th>
+                                <th>專案編號</th>
+                                <th>Barcode編號</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var appointment in Model.Appointments)
+                            {
+                                var normalizedAppointmentStatus = (appointment.AppointmentStatus ?? string.Empty).Trim();
+                                var normalizedReserveStatus = (appointment.ReserveStatus ?? string.Empty).Trim();
+                                var currentReserveStatus = normalizedReserveStatus switch
+                                {
+                                    "0" or "1" or "2" or "4" or "5" => normalizedReserveStatus,
+                                    _ when string.Equals(normalizedAppointmentStatus, "已預約", StringComparison.Ordinal) => "1",
+                                    _ when string.Equals(normalizedAppointmentStatus, "已取消", StringComparison.Ordinal) => "0",
+                                    _ when string.Equals(normalizedAppointmentStatus, "佔名額", StringComparison.Ordinal) => "2",
+                                    _ when string.Equals(normalizedAppointmentStatus, "已掛號", StringComparison.Ordinal) => "4",
+                                    _ when string.Equals(normalizedAppointmentStatus, "已報到", StringComparison.Ordinal) => "5",
+                                    _ => ""
+                                };
+                                var isConfirmedStatus = currentReserveStatus == "1";
+                                var isReservedSlotStatus = currentReserveStatus == "2";
+                                var isCancelledStatus = currentReserveStatus == "0";
+                                var isRegisteredStatus = currentReserveStatus == "4";
+                                var canSupplementOrders = currentReserveStatus is "4" or "5";
+                                var hasRegistrationStatus = currentReserveStatus is "4" or "5";
+                                var hideReservedSlotAction = isConfirmedStatus || isReservedSlotStatus;
+
+                                <tr class="@(appointment.Selected ? "is-selected" : "")"
+                                    tabindex="0"
+                                    aria-selected="@(appointment.Selected ? "true" : "false")"
+                                    data-appointment-row
+                                    data-name="@appointment.Name"
+                                    data-appointment-date="@appointment.AppointmentDate"
+                                    data-time="@appointment.Time"                               
+                                    data-doctor-name="@appointment.DoctorName"
+                                    data-doctor-id="@appointment.DoctorId"
+                                    data-room-no="@appointment.RoomNo"
+                                    data-work-area="@appointment.WorkArea"
+                                    data-appointment-type="@appointment.Type"
+                                    data-project-number="@appointment.ProjectNumber"
+                                    data-self-pay-accounting-unit="@appointment.SelfPayAccountingUnit"
+                                    data-barcode="@appointment.Barcode"
+                                    data-pat-no="@appointment.PatNo"
+                                    data-id-number="@appointment.IdNumber"
+                                    data-gender="@appointment.Gender"
+                                    data-has-selected-appointment-item="@appointment.HasSelectedAppointmentItem.ToString().ToLowerInvariant()"
+                                    data-has-missing-accounting-unit="@appointment.HasMissingAccountingUnit.ToString().ToLowerInvariant()"
+                                    data-company="@appointment.Company"
+                                    data-plan="@appointment.Plan"
+                                    data-phone="@appointment.Phone"
+                                    data-note="@appointment.Note"
+                                    data-status="@normalizedAppointmentStatus"
+                                    data-status-tone="@appointment.AppointmentTone"
+                                    data-reserve-status="@currentReserveStatus">
+                                    <td>
+                                        <div class="table-actions appointment-row-actions">
+                                            <button class="row-more-button appointment-action-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-label="開啟 @appointment.Name 的操作選單">
+                                                <span class="appointment-action-icon" aria-hidden="true"></span>
+                                            </button>
+                                            <div class="row-action-menu" role="menu" aria-label="@appointment.Name 的操作選單">
+                                                <a class="query appointment-readonly-query-action" role="menuitem" asp-controller="Appointment" asp-action="CreateAppointment" asp-route-projectNumber="@appointment.ProjectNumber" asp-route-barcode="@appointment.Barcode" asp-route-reserveStatus="@currentReserveStatus" asp-route-readOnly="true" data-readonly-appointment-link hidden="@(!hasRegistrationStatus)">查詢個人預約</a>
+                                                <button class="supplement-order" role="menuitem" type="button" data-supplement-order data-name="@appointment.Name" data-project-number="@appointment.ProjectNumber" data-barcode="@appointment.Barcode" hidden="@(!canSupplementOrders)">補下醫令</button>
+                                                <button class="cancel-registration" role="menuitem" type="button" data-cancel-registration data-name="@appointment.Name" hidden="@(!isRegisteredStatus)">取消掛號</button>
+                                                <a class="edit appointment-edit-register-action" role="menuitem" asp-controller="Appointment" asp-action="CreateAppointment" asp-route-projectNumber="@appointment.ProjectNumber" asp-route-barcode="@appointment.Barcode" asp-route-reserveStatus="@currentReserveStatus" data-edit-appointment-link data-standard-appointment-action hidden="@hasRegistrationStatus">
+                                                <span class="appointment-edit-register-label">編輯預約</span>
+                                            </a>
+                                                <button class="status-confirmed" role="menuitem" type="button" data-update-appointment-status data-name="@appointment.Name" data-target-reserve-status="1" data-target-status-name="已預約" data-standard-appointment-action hidden="@(hasRegistrationStatus || isConfirmedStatus)">已預約</button>
+                                                <button class="status-reserved-slot" role="menuitem" type="button" data-update-appointment-status data-name="@appointment.Name" data-target-reserve-status="2" data-target-status-name="佔名額" data-standard-appointment-action hidden="@(hasRegistrationStatus || hideReservedSlotAction)">佔名額</button>
+                                                <button class="cancel" role="menuitem" type="button" data-cancel-appointment data-name="@appointment.Name" data-target-reserve-status="0" data-target-status-name="已取消" data-standard-appointment-action hidden="@(hasRegistrationStatus || isCancelledStatus)">取消預約</button>
+                                                <button class="danger" role="menuitem" type="button" data-delete-appointment data-name="@appointment.Name" data-standard-appointment-action hidden="@hasRegistrationStatus">刪除</button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>@appointment.Name</td>
+                                    <td>@appointment.PatNo</td>
+                                    <td>@appointment.AppointmentDate</td>
+                                    <td>@appointment.Time</td>
+                                    <td><span class="appointment-status @appointment.AppointmentTone" data-appointment-status-cell>@appointment.AppointmentStatus</span></td>
+                                    <td>@appointment.DoctorName</td>
+                                    <td>@appointment.RoomNo</td>
+                                    <td>@appointment.WorkArea</td>
+                                    <td><span class="appointment-kind @appointment.TypeTone">@appointment.Type</span></td>
+                                    <td>@appointment.Company</td>
+                                    <td>@appointment.Plan</td>
+                                    <td><span class="appointment-status @appointment.DataTone">@appointment.DataStatus</span></td>
+                                    <td>@appointment.Phone</td>
+                                    <td>@appointment.Note</td>
+                                    <td>@appointment.ProjectNumber</td>
+                                    <td>@appointment.Barcode</td>
+                                </tr>
+                            }
+                        </tbody>
+                        </table>
+                    </div>
+                    <div class="appointment-table-scrollbar" data-appointment-table-scrollbar tabindex="0" aria-label="預約清單水平捲動">
+                        <div class="appointment-table-scrollbar-content" data-appointment-table-scrollbar-content></div>
+                    </div>
+                </div>
+                <footer class="table-footer">
+                    @if (Model.Appointments.Any())
+                    {
+                        <span>顯示第 1 - @initialVisibleCount 筆，共 @Model.Appointments.Count 筆</span>
+                    }
+                    else
+                    {
+                        <span>顯示 0 筆，共 0 筆</span>
+                    }
+                    <div class="pagination-controls">
+                        <select class="page-select" aria-label="每頁筆數">
+                            @foreach (var pageSize in Model.PageSizeOptions)
+                            {
+                                <option value="@pageSize" selected="@(pageSize == initialPageSize ? "selected" : null)">@pageSize 筆/頁</option>
+                            }
+                        </select>
+                        <div class="pagination" aria-label="分頁">
+                            <button type="button" data-pagination-prev disabled aria-label="上一頁">‹</button>
+                            <button type="button" class="active" data-page="1" aria-current="page">1</button>
+                            <button type="button" data-page="2">2</button>
+                            <button type="button" data-page="3">3</button>
+                            <button type="button" data-page="4">4</button>
+                            <button type="button" data-page="5">5</button>
+                            <button type="button" disabled>...</button>
+                            <button type="button" data-page="13">13</button>
+                            <button type="button" data-pagination-next aria-label="下一頁">›</button>
+                        </div>
+                    </div>
+                </footer>
+            </section>
+        </div>
+
+        <aside class="appointment-list-side" aria-label="預約側欄資訊">
+            <section class="panel capacity-panel" aria-labelledby="capacity-title">
+                <h2 id="capacity-title">時段容量 <span class="info-dot" aria-hidden="true">i</span></h2>
+                <div class="capacity-list">
+                    @foreach (var capacity in Model.CapacitySlots)
+                    {
+                        <article class="capacity-slot @(capacity.Active ? "is-active" : "")">
+                            <div>
+                                <strong>@capacity.Time</strong>
+                                <span>@capacity.Detail</span>
+                            </div>
+                            <div class="capacity-count">
+                                <strong>@capacity.Used</strong>
+                                <span>@capacity.Hint</span>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </section>
+
+            @if (selectedAppointment is not null)
+            {
+                <section class="panel selected-appointment-panel" aria-labelledby="selected-title">
+                    <h2 id="selected-title">目前預約</h2>
+                    <div class="selected-person-card">
+                        <span class="person-avatar" aria-hidden="true"></span>
+                        <div>
+                            <strong data-selected-field="name">@selectedAppointment.Name</strong>
+                            <span class="appointment-status @selectedAppointment.AppointmentTone" data-selected-field="status">@selectedAppointment.AppointmentStatus</span>
+                            <p data-selected-field="projectNumber">@selectedAppointment.ProjectNumber</p>
+                        </div>
+                    </div>
+                    <dl class="selected-appointment-data">
+                        <div>
+                            <dt>預約時段</dt>
+                            <dd data-selected-field="dateTime">@selectedAppointment.AppointmentDate @selectedAppointment.Time</dd>
+                        </div>
+                        <div>
+                            <dt>健檢方案</dt>
+                            <dd data-selected-field="plan">@selectedAppointment.Plan</dd>
+                        </div>
+                        <div>
+                            <dt>聯絡電話</dt>
+                            <dd data-selected-field="phone">@selectedAppointment.Phone</dd>
+                        </div>
+                        <div>
+                            <dt>提醒事項</dt>
+                            <dd data-selected-field="note">@selectedAppointment.Note</dd>
+                        </div>
+                    </dl>
+                    <div class="selected-actions">
+                        <button class="primary-button wide-action" type="button" data-open-selected-appointment>
+                            <span class="person-small-icon" aria-hidden="true"></span>
+                            <span>預約</span>
+                        </button>
+                    </div>
+                </section>
+            }
+
+            <section class="panel appointment-reminder-panel" aria-labelledby="reminder-title">
+                <h2 id="reminder-title">今日提醒</h2>
+                <div class="reminder-list">
+                    @foreach (var reminder in Model.Reminders)
+                    {
+                        <div class="reminder-item @reminder.Tone">
+                            <span class="reminder-icon @reminder.Icon" aria-hidden="true"></span>
+                            <span>@reminder.Label</span>
+                            <strong>@reminder.Value <small>@reminder.Unit</small></strong>
+                        </div>
+                    }
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <div class="appointment-confirm-modal danger" data-appointment-query-error-modal hidden>
+        <button class="appointment-confirm-backdrop" type="button" data-appointment-query-error-close aria-label="關閉查詢錯誤視窗"></button>
+        <div class="appointment-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="appointment-query-error-title" aria-describedby="appointment-query-error-message">
+            <h2 id="appointment-query-error-title">查詢逾時</h2>
+            <p id="appointment-query-error-message" data-appointment-query-error-message>@Model.QueryErrorMessage</p>
+            <div class="appointment-confirm-actions">
+                <button class="primary-button" type="button" data-appointment-query-error-close>關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="appointment-confirm-modal appointment-rejection-modal" data-appointment-rejection-modal hidden>
+        <button class="appointment-confirm-backdrop" type="button" data-appointment-rejection-close aria-label="關閉拒絕預約視窗"></button>
+        <div class="appointment-confirm-dialog appointment-rejection-dialog" role="alertdialog" aria-modal="true" aria-labelledby="appointment-rejection-title" aria-describedby="appointment-rejection-message">
+            <div class="appointment-rejection-hero">
+                <span class="appointment-rejection-icon" aria-hidden="true"><i></i></span>
+                <div><span>RESERVATION CHECK</span><strong>預約資料完整性檢核</strong></div>
+            </div>
+            <h2 id="appointment-rejection-title" data-appointment-rejection-title>拒絕預約</h2>
+            <p id="appointment-rejection-message" data-appointment-rejection-message>必要欄位尚未填寫完整，無法改為已預約。</p>
+            <div class="appointment-rejection-detail">
+                <span>請先補齊以下資料</span>
+                <ul data-appointment-rejection-list></ul>
+            </div>
+            <div class="appointment-confirm-actions">
+                <button class="primary-button" type="button" data-appointment-rejection-close>返回補齊資料</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="appointment-confirm-modal" data-appointment-confirm-modal hidden>
+        <button class="appointment-confirm-backdrop" type="button" data-appointment-confirm-close aria-label="關閉確認視窗"></button>
+        <div class="appointment-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="appointment-confirm-title" aria-describedby="appointment-confirm-message">
+            <div class="appointment-cancel-registration-hero" data-cancel-registration-confirm-hero hidden>
+                <span class="appointment-cancel-registration-icon" aria-hidden="true"><i></i></span>
+                <div>
+                    <span>REGISTRATION CONTROL</span>
+                    <strong>掛號狀態管理</strong>
+                </div>
+            </div>
+            <h2 id="appointment-confirm-title" data-appointment-confirm-title>確認操作</h2>
+            <p id="appointment-confirm-message" data-appointment-confirm-message></p>
+            <p class="appointment-confirm-warning" data-appointment-confirm-warning hidden></p>
+            <div class="appointment-confirm-actions">
+                <button class="ghost-button" type="button" data-appointment-confirm-close>取消</button>
+                <button class="primary-button" type="button" data-appointment-confirm-submit>確認</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="appointment-supplement-order-modal" data-supplement-order-modal hidden>
+        <button class="appointment-supplement-order-backdrop" type="button" data-supplement-order-close aria-label="關閉補下醫令視窗"></button>
+        <div class="appointment-supplement-order-dialog" role="dialog" aria-modal="true" aria-label="補下醫令">
+            <header class="appointment-supplement-order-header">
+                <button class="appointment-supplement-order-close" type="button" data-supplement-order-close aria-label="關閉補下醫令視窗"></button>
+            </header>
+            <div class="appointment-supplement-order-context" aria-label="補下醫令對象" hidden>
+                <article><span>專案編號 PROJECTNO</span><strong data-supplement-order-project>--</strong></article>
+                <article><span>Barcode BARCODESTR</span><strong data-supplement-order-barcode>--</strong></article>
+            </div>
+            <div class="appointment-supplement-order-body">
+                <section class="appointment-supplement-order-card new-items reference-layout">
+                    <span data-supplement-new-count hidden>新增 0 項</span>
+                    <div class="appointment-supplement-project-panel">
+                        <div class="booking-section-heading has-required">
+                            <div class="supplement-package-heading-line">
+                                <h3><span class="panel-title-icon lock-mini-icon" aria-hidden="true"></span>套餐 / 套組選擇</h3>
+                                <label class="field-group supplement-inline-project-field">
+                                    <span>健檢專案 / 方案 <em>*</em></span>
+                                    <span class="project-lookup-control" role="group" aria-label="補下醫令健檢專案與操作">
+                                        <input type="text" data-supplement-selected-project readonly aria-label="目前健檢專案 / 方案" />
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="suite-accounting-bulk-editor appointment-accounting-bulk-editor" aria-label="已選套組優待身分總項">
+                                <span>優待身分（總項）</span>
+                                <strong data-supplement-accounting-all-value>尚未選擇套組</strong>
+                                <span class="suite-accounting-actions">
+                                    <button type="button" class="ghost-button" data-supplement-accounting-all-clear disabled>重設</button>
+                                    <button type="button" class="primary-button" data-supplement-accounting-all-apply disabled>套用全部</button>
+                                </span>
+                                <small data-supplement-accounting-all-reminder>請先在下方勾選至少一個套組，才能設定總項</small>
+                            </div>
+                            <span class="required-pill">必選</span>
+                        </div>
+                        <div class="suite-category-tabs package-category-tabs" aria-label="套組分類" data-supplement-package-category-tabs></div>
+                        <div class="package-filter-row">
+                            <label class="package-filter-field">
+                                <span class="customer-action-icon search" aria-hidden="true"></span>
+                                <input type="search" data-supplement-package-search placeholder="輸入套組名稱搜尋" autocomplete="off" />
+                            </label>
+                        </div>
+                        <div class="package-data-grid-shell" role="region" aria-label="套餐 / 套組選擇清單" tabindex="0">
+                            <table class="compact-choice-table choice-data-grid package-data-grid" data-grid="supplement-package-options">
+                                <thead><tr><th class="choice-column"><input type="checkbox" data-supplement-package-select-all aria-label="全選目前顯示的套組" /></th><th>套組名稱</th><th>優待身分</th><th class="money-column">金額</th></tr></thead>
+                                <tbody data-supplement-package-picker-body><tr class="empty-row"><td colspan="4">請先選擇健檢專案 / 方案</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="package-pagination-controls pagination-controls" aria-label="套組分頁控制">
+                            <select class="page-select" aria-label="套組每頁筆數" data-supplement-package-page-size>
+                                <option value="5" selected>5 項/頁</option>
+                                <option value="10">10 項/頁</option>
+                                <option value="15">15 項/頁</option>
+                                <option value="20">20 項/頁</option>
+                            </select>
+                            <span class="package-page-info" data-supplement-package-page-info>顯示 0 筆，共 0 筆</span>
+                            <div class="pagination" aria-label="套組分頁" data-supplement-package-pagination></div>
+                        </div>
+                        <div class="booking-section-heading other-suite-heading">
+                            <h3><span class="panel-title-icon lock-mini-icon" aria-hidden="true"></span>其他組套</h3>
+                            <div class="other-suite-heading-actions"><span class="required-pill optional-pill">選填</span><button class="ghost-button other-suite-add-button" type="button" data-supplement-add-other-suite aria-label="開啟新增其他醫令視窗"><span class="customer-action-icon add" aria-hidden="true"></span><span>新增其他醫令</span></button></div>
+                        </div>
+                        <div class="package-data-grid-shell other-suite-data-grid-shell" role="region" aria-label="其他組套清單" tabindex="0">
+                            <table class="compact-choice-table choice-data-grid package-data-grid other-suite-data-grid">
+                                <thead><tr><th>組套名稱</th><th>組套碼</th><th>優待身分</th><th class="money-column">金額</th><th>操作</th></tr></thead>
+                                <tbody data-supplement-new-order-body><tr class="empty-row"><td colspan="5">請先新增組套</td></tr></tbody>
+                            </table>
+                        </div>
+                        <div class="package-pagination-controls pagination-controls other-suite-pagination-controls" aria-label="其他組套分頁控制">
+                            <select class="page-select" aria-label="其他組套每頁筆數" data-supplement-other-suite-page-size>
+                                <option value="5" selected>5 項/頁</option>
+                                <option value="10">10 項/頁</option>
+                                <option value="15">15 項/頁</option>
+                                <option value="20">20 項/頁</option>
+                            </select>
+                            <span class="package-page-info" data-supplement-other-suite-page-info>顯示 0 筆，共 0 筆</span>
+                            <div class="pagination" aria-label="其他組套分頁" data-supplement-other-suite-pagination></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <footer class="appointment-supplement-order-footer">
+                <div><span>本次準備新增</span><strong data-supplement-order-total>0</strong><small>筆醫令</small></div>
+                <div class="appointment-supplement-order-actions">
+                    <button class="ghost-button appointment-supplement-order-cancel" type="button" data-supplement-order-cancel-action aria-label="取消並關閉補下醫令視窗">取消</button>
+                    <button class="primary-button appointment-supplement-order-submit" type="button" data-supplement-order-submit aria-label="新增勾選的醫令">新增</button>
+                </div>
+            </footer>
+        </div>
+    </div>
+    <div class="project-lookup-modal project-self-pay-accounting-modal" data-supplement-accounting-modal hidden>
+        <button class="patient-lookup-backdrop" type="button" data-supplement-accounting-close aria-label="關閉優待身分查詢視窗"></button>
+        <div class="project-lookup-shell" role="dialog" aria-modal="true" aria-labelledby="supplement-accounting-title">
+            <header class="project-lookup-header">
+                <h2 id="supplement-accounting-title">優待身分查詢</h2>
+                <button class="project-lookup-close" type="button" data-supplement-accounting-close aria-label="關閉優待身分查詢視窗">×</button>
+            </header>
+            <div class="project-lookup-body">
+                <div class="project-lookup-filters project-self-pay-accounting-filters" aria-label="優待身分搜尋條件">
+                    <label><span>代碼</span><input type="search" placeholder="請輸入代碼" autocomplete="off" data-supplement-accounting-filter="code" /></label>
+                    <label><span>優待身分</span><input type="search" placeholder="請輸入優待身分" autocomplete="off" data-supplement-accounting-filter="name" /></label>
+                    <button class="ghost-button project-self-pay-accounting-clear" type="button" data-supplement-accounting-clear>清除</button>
+                </div>
+                <div class="suite-category-tabs project-self-pay-accounting-tabs" aria-label="優待身分兩字搜尋" data-supplement-accounting-tabs></div>
+                <div class="project-lookup-results">
+                    <table class="project-lookup-table project-self-pay-accounting-table">
+                        <thead><tr><th>代碼</th><th>優待身分</th><th>操作</th></tr></thead>
+                        <tbody data-supplement-accounting-results><tr class="project-lookup-empty"><td colspan="3">尚無優待身分資料</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="patient-lookup-modal other-suite-lookup-modal supplement-other-suite-lookup-modal" data-supplement-other-suite-lookup-modal hidden>
+        <button class="patient-lookup-backdrop" type="button" data-supplement-other-suite-lookup-close aria-label="關閉新增其他組套視窗"></button>
+        <div class="patient-lookup-frame-shell other-suite-lookup-frame-shell" role="dialog" aria-modal="true" aria-label="新增其他組套">
+            <div data-supplement-other-suite-lookup-host></div>
+        </div>
+    </div>
+    <div class="appointment-batch-progress-modal supplement-order-progress-modal" data-supplement-order-progress hidden>
+        <div class="appointment-batch-progress-dialog supplement-order-progress-dialog" role="alertdialog" aria-modal="true" aria-labelledby="supplement-order-progress-title" aria-describedby="supplement-order-progress-message">
+            <div class="appointment-batch-progress-spinner" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="appointment-batch-progress-copy">
+                <span class="appointment-batch-progress-kicker">SUPPLEMENTAL ORDERS IN PROGRESS</span>
+                <h2 id="supplement-order-progress-title">正在新增補下醫令</h2>
+                <p id="supplement-order-progress-message" data-supplement-order-progress-message>正在準備醫令資料…</p>
+            </div>
+            <div class="supplement-order-marquee" aria-hidden="true"><span>準備參數　→　逐筆送出醫令　→　確認執行結果　→　儲存健檢套組</span></div>
+            <div class="appointment-batch-progress-track" aria-hidden="true"><span></span></div>
+            <small>系統處理中，請勿關閉視窗或重複按下新增。</small>
+        </div>
+    </div>
+    <div class="supplement-order-result-modal" data-supplement-order-result hidden data-state="success">
+        <div class="supplement-order-result-backdrop" aria-hidden="true"></div>
+        <div class="supplement-order-result-dialog" role="alertdialog" aria-modal="true" aria-labelledby="supplement-order-result-title" aria-describedby="supplement-order-result-message">
+            <div class="supplement-order-result-icon" aria-hidden="true"><span></span></div>
+            <span class="supplement-order-result-kicker" data-supplement-order-result-kicker>ORDER CREATED</span>
+            <h2 id="supplement-order-result-title" data-supplement-order-result-title>新增成功</h2>
+            <p id="supplement-order-result-message" data-supplement-order-result-message>補下醫令已新增完成。</p>
+            <button class="primary-button supplement-order-result-close" type="button" data-supplement-order-result-close>完成</button>
+        </div>
+    </div>
+    <div class="appointment-batch-progress-modal" data-appointment-batch-progress-modal hidden>
+        <div class="appointment-batch-progress-dialog" role="alertdialog" aria-modal="true" aria-labelledby="appointment-batch-progress-title" aria-describedby="appointment-batch-progress-message">
+            <div class="appointment-batch-progress-spinner" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="appointment-batch-progress-copy">
+                <span class="appointment-batch-progress-kicker">BATCH REGISTRATION</span>
+                <h2 id="appointment-batch-progress-title">正在執行批次掛號</h2>
+                <p id="appointment-batch-progress-message" data-appointment-batch-progress-message>正在處理選取的預約資料…</p>
+            </div>
+            <div class="appointment-batch-progress-track" aria-hidden="true"><span></span></div>
+            <small>請稍候，完成後將自動更新預約狀態與儀表板。</small>
+        </div>
+    </div>
+
+    <div class="appointment-batch-result-modal" data-appointment-batch-result-modal hidden>
+        <button class="appointment-batch-result-backdrop" type="button" data-batch-result-close aria-label="關閉批次掛號結果"></button>
+        <div class="appointment-batch-result-dialog" role="dialog" aria-modal="true" aria-labelledby="appointment-batch-result-title">
+            <header class="appointment-batch-result-header">
+                <span class="appointment-batch-result-icon" aria-hidden="true"></span>
+                <div><h2 id="appointment-batch-result-title">批次處理結果</h2><p>批次掛號處理結果</p></div>
+                <button class="appointment-batch-result-close" type="button" data-batch-result-close aria-label="關閉批次掛號結果"></button>
+            </header>
+            <div class="appointment-batch-result-summary" aria-label="批次掛號統計">
+                <article><span>總計</span><strong><b data-batch-result-total>0</b><small>筆</small></strong></article>
+                <article class="success"><span>完成</span><strong><b data-batch-result-success>0</b><small>筆</small></strong></article>
+                <article class="failed"><span>失敗</span><strong><b data-batch-result-failed>0</b><small>筆</small></strong></article>
+            </div>
+            <section class="appointment-batch-result-detail" aria-label="批次掛號結果明細">
+                <h3>處理結果明細</h3>
+                <div class="appointment-batch-result-list" data-batch-result-list></div>
+            </section>
+            <footer class="appointment-batch-result-actions">
+                <button class="ghost-button" type="button" data-batch-result-download>下載結果</button>
+                <button class="primary-button" type="button" data-batch-result-close>關閉</button>
+            </footer>
+        </div>
+    </div>
+</section>
+
+<script>
+    (() => {
+        const page = document.querySelector(".today-appointment-page");
+        if (!page) {
+            return;
+        }
+
+        const selectedFields = {
+            name: page.querySelector("[data-selected-field='name']"),
+            status: page.querySelector("[data-selected-field='status']"),
+            projectNumber: page.querySelector("[data-selected-field='projectNumber']"),
+            dateTime: page.querySelector("[data-selected-field='dateTime']"),
+            plan: page.querySelector("[data-selected-field='plan']"),
+            phone: page.querySelector("[data-selected-field='phone']"),
+            note: page.querySelector("[data-selected-field='note']")
+        };
+
+        let allRows = Array.from(page.querySelectorAll("[data-appointment-row]"));
+        let rows = allRows.slice();
+        let dateFilterTouched = false;
+        const startDateInput = page.querySelector("[data-appointment-start-date]");
+        const endDateInput = page.querySelector("[data-appointment-end-date]");
+        const reservationAreaSelect = page.querySelector("[data-reservation-area-filter]");
+        const appointmentStatusSelect = page.querySelector("[data-appointment-status-filter]");
+        const keywordInput = page.querySelector("[data-appointment-keyword-filter]");
+        const searchButton = page.querySelector("[data-appointment-search-button]");
+        const searchButtonLabel = page.querySelector("[data-appointment-search-label]");
+        const queryStatus = page.querySelector("[data-appointment-query-status]");
+        const queryErrorModal = page.querySelector("[data-appointment-query-error-modal]");
+        const queryErrorMessage = page.querySelector("[data-appointment-query-error-message]");
+        const queryErrorCloseButtons = Array.from(page.querySelectorAll("[data-appointment-query-error-close]"));
+        const rejectionModal = page.querySelector("[data-appointment-rejection-modal]");
+        const rejectionTitle = page.querySelector("[data-appointment-rejection-title]");
+        const rejectionMessage = page.querySelector("[data-appointment-rejection-message]");
+        const rejectionList = page.querySelector("[data-appointment-rejection-list]");
+        const rejectionCloseButtons = Array.from(page.querySelectorAll("[data-appointment-rejection-close]"));
+        const dashboardCountTargets = {
+            total: Array.from(page.querySelectorAll("[data-dashboard-count='total']")),
+            group: Array.from(page.querySelectorAll("[data-dashboard-count='group']")),
+            individual: Array.from(page.querySelectorAll("[data-dashboard-count='individual']"))
+        };
+
+        const tablePanel = page.querySelector(".appointment-table-panel");
+        const tableWrap = page.querySelector("[data-appointment-table-wrap]");
+        const horizontalScrollbar = page.querySelector("[data-appointment-table-scrollbar]");
+        const horizontalScrollbarContent = page.querySelector("[data-appointment-table-scrollbar-content]");
+        const confirmModal = page.querySelector("[data-appointment-confirm-modal]");
+        const confirmTitle = page.querySelector("[data-appointment-confirm-title]");
+        const confirmMessage = page.querySelector("[data-appointment-confirm-message]");
+        const confirmWarning = page.querySelector("[data-appointment-confirm-warning]");
+        const confirmSubmit = page.querySelector("[data-appointment-confirm-submit]");
+        const cancelRegistrationConfirmHero = page.querySelector("[data-cancel-registration-confirm-hero]");
+        const supplementOrderModal = page.querySelector("[data-supplement-order-modal]");
+        const supplementOrderCloseButtons = Array.from(page.querySelectorAll("[data-supplement-order-close]"));
+        const supplementOrderName = page.querySelector("[data-supplement-order-name]");
+        const supplementOrderProject = page.querySelector("[data-supplement-order-project]");
+        const supplementOrderBarcode = page.querySelector("[data-supplement-order-barcode]");
+        const supplementOrderSubmitButton = page.querySelector("[data-supplement-order-submit]");
+        const supplementOrderCancelButton = page.querySelector("[data-supplement-order-cancel-action]");
+        const supplementOrderProgressModal = page.querySelector("[data-supplement-order-progress]");
+        const supplementOrderProgressMessage = page.querySelector("[data-supplement-order-progress-message]");
+        const supplementOrderResultModal = page.querySelector("[data-supplement-order-result]");
+        const supplementOrderResultKicker = page.querySelector("[data-supplement-order-result-kicker]");
+        const supplementOrderResultTitle = page.querySelector("[data-supplement-order-result-title]");
+        const supplementOrderResultMessage = page.querySelector("[data-supplement-order-result-message]");
+        const supplementOrderResultCloseButton = page.querySelector("[data-supplement-order-result-close]");
+        const supplementPackageBody = page.querySelector("[data-supplement-package-body]");
+        const supplementOtherSuiteBody = page.querySelector("[data-supplement-other-suite-body]");
+        const supplementPackageCount = page.querySelector("[data-supplement-package-count]");
+        const supplementOtherSuiteCount = page.querySelector("[data-supplement-other-suite-count]");
+        const supplementOrderTotal = page.querySelector("[data-supplement-order-total]");
+        const supplementPackagePickerBody = page.querySelector("[data-supplement-package-picker-body]");
+        const supplementPackageSearch = page.querySelector("[data-supplement-package-search]");
+        const supplementPackageCategoryTabs = page.querySelector("[data-supplement-package-category-tabs]");
+        const supplementPackageSelectAll = page.querySelector("[data-supplement-package-select-all]");
+        const supplementPackagePageSize = page.querySelector("[data-supplement-package-page-size]");
+        const supplementPackagePageInfo = page.querySelector("[data-supplement-package-page-info]");
+        const supplementPackagePagination = page.querySelector("[data-supplement-package-pagination]");
+        const supplementAccountingAllValue = page.querySelector("[data-supplement-accounting-all-value]");
+        const supplementAccountingAllClear = page.querySelector("[data-supplement-accounting-all-clear]");
+        const supplementAccountingAllApply = page.querySelector("[data-supplement-accounting-all-apply]");
+        const supplementAccountingAllReminder = page.querySelector("[data-supplement-accounting-all-reminder]");
+        const supplementAccountingModal = page.querySelector("[data-supplement-accounting-modal]");
+        const supplementAccountingCloseButtons = Array.from(page.querySelectorAll("[data-supplement-accounting-close]"));
+        const supplementAccountingFilters = Array.from(page.querySelectorAll("[data-supplement-accounting-filter]"));
+        const supplementAccountingTabs = page.querySelector("[data-supplement-accounting-tabs]");
+        const supplementAccountingResults = page.querySelector("[data-supplement-accounting-results]");
+        const supplementAccountingClear = page.querySelector("[data-supplement-accounting-clear]");
+        const supplementSelectedProject = page.querySelector("[data-supplement-selected-project]");
+        const supplementNewOrderBody = page.querySelector("[data-supplement-new-order-body]");
+        const supplementOtherSuitePageSize = page.querySelector("[data-supplement-other-suite-page-size]");
+        const supplementOtherSuitePageInfo = page.querySelector("[data-supplement-other-suite-page-info]");
+        const supplementOtherSuitePagination = page.querySelector("[data-supplement-other-suite-pagination]");
+        const supplementNewCount = page.querySelector("[data-supplement-new-count]");
+        const supplementAddOtherSuiteButton = page.querySelector("[data-supplement-add-other-suite]");
+        const supplementOtherSuiteLookupModal = page.querySelector("[data-supplement-other-suite-lookup-modal]");
+        const supplementOtherSuiteLookupHost = page.querySelector("[data-supplement-other-suite-lookup-host]");
+        const supplementOtherSuiteLookupCloseButtons = Array.from(page.querySelectorAll("[data-supplement-other-suite-lookup-close]"));
+        const confirmCloseButtons = Array.from(page.querySelectorAll("[data-appointment-confirm-close]"));
+        const batchRegisterButton = page.querySelector("[data-batch-register]");
+        const batchClearButton = page.querySelector("[data-batch-clear]");
+        const batchSelectedCount = page.querySelector("[data-batch-selected-count]");
+        const batchSelectionHint = page.querySelector("[data-batch-selection-hint]");
+        const batchResultModal = page.querySelector("[data-appointment-batch-result-modal]");
+        const batchProgressModal = page.querySelector("[data-appointment-batch-progress-modal]");
+        const batchProgressMessage = page.querySelector("[data-appointment-batch-progress-message]");
+        const batchResultCloseButtons = Array.from(page.querySelectorAll("[data-batch-result-close]"));
+        const batchResultDownloadButton = page.querySelector("[data-batch-result-download]");
+        const batchResultList = page.querySelector("[data-batch-result-list]");
+        const batchResultTotal = page.querySelector("[data-batch-result-total]");
+        const batchResultSuccess = page.querySelector("[data-batch-result-success]");
+        const batchResultFailed = page.querySelector("[data-batch-result-failed]");
+        const selectedAppointmentButton = page.querySelector("[data-open-selected-appointment]");
+        const createAppointmentUrl = page.dataset.createAppointmentUrl || "";
+        const batchRegisterUrl = page.dataset.appointmentBatchRegisterUrl || "";
+        const appointmentDeleteUrl = page.dataset.appointmentDeleteUrl || "";
+        const appointmentCancelUrl = page.dataset.appointmentCancelUrl || "";
+        const supplementOrderOptionsUrl = page.dataset.supplementOrderOptionsUrl || "";
+        const supplementOrderSubmitUrl = page.dataset.supplementOrderSubmitUrl || "";
+        const supplementOtherSuiteLookupUrl = page.dataset.supplementOtherSuiteLookupUrl || "";
+        let supplementOrderRequestController = null;
+        let supplementAccountingUnits = [];
+        let supplementActiveAccountingTarget = null;
+        let supplementActiveAccountingPrefix = "";
+        let supplementPreviousAccountingFocus = null;
+        let supplementAvailablePackages = [];
+        let supplementNewOrders = [];
+        let supplementExistingPackageItems = [];
+        let supplementExistingOrderNumbers = new Set();
+        let supplementExistingPackages = new Map();
+        let supplementExistingOtherSuites = [];
+        let supplementExpandedPackageIds = new Set();
+        let supplementSelectedProjectNo = "";
+        let supplementSelectedProjectName = "";
+        let supplementTargetProjectNo = "";
+        let supplementTargetBarcode = "";
+        let supplementPackagePage = 1;
+        let supplementOtherSuitePage = 1;
+        let supplementOrderProgressTimer = 0;
+        let supplementOrderSubmitInProgress = false;
+        let supplementOrderSubmitSucceeded = false;
+        const antiForgeryToken = page.querySelector("input[name='__RequestVerificationToken']")?.value || "";
+        const appointmentStatusByReserveStatus = {
+            "1": { status: "已預約", tone: "confirmed" },
+            "0": { status: "已取消", tone: "cancelled" },
+            "2": { status: "佔名額", tone: "reserved-slot" },
+            "4": { status: "已掛號", tone: "registered" },
+            "5": { status: "已報到", tone: "checked-in" },
+            "6": { status: "檢查中", tone: "checking" }
+        };
+        const reserveStatusByAppointmentStatus = {
+            "已預約": "1",
+            "預約取消": "0",
+            "佔名額": "2",
+            "已掛號": "4",
+            "已報到": "5",
+            "檢查中": "6",
+            "已取消": "0"
+        };
+        const statusSummaryKeyByReserveStatus = {
+            "1": "confirmed",
+            "4": "registered",
+            "2": "reserved",
+            "0": "cancelled"
+        };
+        let isSyncingHorizontalScroll = false;
+        let pendingConfirmAction = null;
+        let batchSelectionAnchor = null;
+        let lastBatchResults = [];
+        let isBatchRegisterRunning = false;
+        let appointmentQueryTimeoutTimer = 0;
+        let appointmentGridAnimationTimer = 0;
+        let isAppointmentQueryRunning = false;
+        const appointmentQueryTimeoutMilliseconds = 30000;
+        const appointmentQueryRefreshStorageKey = "appointment-query-grid-refresh";
+        const appointmentQueryRefreshStorage = (() => { try { return window.sessionStorage; } catch { return null; } })();
+        const markAppointmentGridRefresh = () => { try { appointmentQueryRefreshStorage?.setItem(appointmentQueryRefreshStorageKey, "1"); } catch { } };
+        const clearAppointmentGridRefreshMark = () => { try { appointmentQueryRefreshStorage?.removeItem(appointmentQueryRefreshStorageKey); } catch { } };
+        const consumeAppointmentGridRefreshMark = () => {
+            try {
+                const shouldPlay = appointmentQueryRefreshStorage?.getItem(appointmentQueryRefreshStorageKey) === "1";
+                appointmentQueryRefreshStorage?.removeItem(appointmentQueryRefreshStorageKey);
+                return shouldPlay;
+            } catch { return false; }
+        };
+
+        const setDashboardCount = (key, value) => {
+            dashboardCountTargets[key]?.forEach((target) => {
+                target.textContent = String(value);
+            });
+        };
+
+        const getAppointmentType = (row) => (row.dataset.appointmentType || "").trim();
+        const getAppointmentWorkArea = (row) => (row.dataset.workArea || "").trim();
+
+        const getAppointmentReserveStatus = (row) => {
+            const reserveStatus = String(row.dataset.reserveStatus || "").trim();
+
+            if (["0", "1", "2", "4", "5", "6"].includes(reserveStatus)) {
+                return reserveStatus;
+            }
+
+            return reserveStatusByAppointmentStatus[String(row.dataset.status || "").trim()] || "";
+        };
+
+        const normalizeFilterValue = (value) => String(value || "").trim().toUpperCase();
+
+        const normalizeDateValue = (value) => {
+            const text = String(value || "").trim();
+
+            if (!text) {
+                return "";
+            }
+
+            const digitsOnly = text.replace(/\D/g, "");
+            let year = "";
+            let month = "";
+            let day = "";
+
+            if (/^\d{8}$/.test(digitsOnly)) {
+                year = digitsOnly.slice(0, 4);
+                month = digitsOnly.slice(4, 6);
+                day = digitsOnly.slice(6, 8);
+            } else if (/^\d{7}$/.test(digitsOnly)) {
+                year = String(Number.parseInt(digitsOnly.slice(0, 3), 10) + 1911);
+                month = digitsOnly.slice(3, 5);
+                day = digitsOnly.slice(5, 7);
+            } else {
+                const match = text.match(/^(\d{2,4})\D+(\d{1,2})\D+(\d{1,2})$/);
+
+                if (!match) {
+                    return "";
+                }
+
+                year = match[1];
+                month = match[2];
+                day = match[3];
+            }
+
+            const parsedYear = Number.parseInt(year, 10);
+            const parsedMonth = Number.parseInt(month, 10);
+            const parsedDay = Number.parseInt(day, 10);
+
+            if (!Number.isFinite(parsedYear)
+                || !Number.isFinite(parsedMonth)
+                || !Number.isFinite(parsedDay)
+                || parsedMonth < 1
+                || parsedMonth > 12
+                || parsedDay < 1
+                || parsedDay > 31) {
+                return "";
+            }
+
+            const normalizedYear = year.length <= 3 && parsedYear > 0 && parsedYear < 1911
+                ? String(parsedYear + 1911)
+                : String(parsedYear).padStart(4, "0");
+
+            return `${normalizedYear}${String(parsedMonth).padStart(2, "0")}${String(parsedDay).padStart(2, "0")}`;
+        };
+
+        const isAppointmentDateInRange = (row, startDate, endDate) => {
+            if (!startDate && !endDate) {
+                return true;
+            }
+
+            const appointmentDate = normalizeDateValue(row.dataset.appointmentDate);
+
+            return Boolean(appointmentDate)
+                && (!startDate || appointmentDate >= startDate)
+                && (!endDate || appointmentDate <= endDate);
+        };
+
+        const getAppointmentKeywordText = (row) => normalizeFilterValue([
+            row.dataset.name,
+            row.dataset.idNumber,
+            row.dataset.projectNumber,
+            row.dataset.barcode,
+            row.dataset.company,
+            row.dataset.patNo
+        ].join(" "));
+
+        const matchesAppointmentKeyword = (row, keyword) =>
+            !keyword || getAppointmentKeywordText(row).includes(keyword);
+
+        const isDefaultTodayDateRange = () => {
+            const today = getTodayInputDate();
+
+            return Boolean(today)
+                && String(startDateInput?.value || "").trim() === today
+                && String(endDateInput?.value || "").trim() === today;
+        };
+
+        const createEmptyStatusSummaryCounts = () => ({
+            total: { total: 0, group: 0, individual: 0 },
+            confirmed: { total: 0, group: 0, individual: 0 },
+            registered: { total: 0, group: 0, individual: 0 },
+            reserved: { total: 0, group: 0, individual: 0 },
+            cancelled: { total: 0, group: 0, individual: 0 }
+        });
+
+        const incrementStatusSummaryCount = (summary, key, appointmentType) => {
+            if (!summary[key]) {
+                return;
+            }
+
+            summary[key].total += 1;
+
+            if (appointmentType === "團檢") {
+                summary[key].group += 1;
+            } else if (appointmentType === "個人") {
+                summary[key].individual += 1;
+            }
+        };
+
+        const setStatusSummaryCount = (key, bucket, value) => {
+            page.querySelectorAll(`[data-status-summary-count='${key}-${bucket}']`).forEach((target) => {
+                target.textContent = String(value);
+            });
+        };
+
+        const syncStatusSummaryCounts = () => {
+            const summaryCounts = createEmptyStatusSummaryCounts();
+
+            rows.forEach((row) => {
+                const appointmentType = getAppointmentType(row);
+                const reserveStatus = getAppointmentReserveStatus(row);
+                const statusKey = statusSummaryKeyByReserveStatus[reserveStatus];
+
+                incrementStatusSummaryCount(summaryCounts, "total", appointmentType);
+
+                if (statusKey) {
+                    incrementStatusSummaryCount(summaryCounts, statusKey, appointmentType);
+                }
+            });
+
+            Object.entries(summaryCounts).forEach(([key, counts]) => {
+                setStatusSummaryCount(key, "total", counts.total);
+                setStatusSummaryCount(key, "group", counts.group);
+                setStatusSummaryCount(key, "individual", counts.individual);
+            });
+        };
+
+        const syncDashboardCounts = () => {
+            setDashboardCount("total", rows.length);
+            setDashboardCount("group", rows.filter((row) => getAppointmentType(row) === "團檢").length);
+            setDashboardCount("individual", rows.filter((row) => getAppointmentType(row) === "個人").length);
+            syncStatusSummaryCounts();
+        };
+
+        const closeActionMenus = (exceptActions = null) => {
+            page.querySelectorAll(".appointment-row-actions").forEach((actions) => {
+                if (actions === exceptActions) {
+                    return;
+                }
+
+                actions.classList.remove("is-open");
+                actions.closest("[data-appointment-row]")?.classList.remove("has-open-actions");
+                const menu = actions.querySelector(".row-action-menu");
+
+                if (menu) {
+                    menu.style.left = "";
+                    menu.style.top = "";
+                }
+
+                actions.querySelector(".appointment-action-toggle")?.setAttribute("aria-expanded", "false");
+            });
+        };
+
+        const positionActionMenu = (actions) => {
+            const toggle = actions?.querySelector(".appointment-action-toggle");
+            const menu = actions?.querySelector(".row-action-menu");
+
+            if (!toggle || !menu) {
+                return;
+            }
+
+            const toggleRect = toggle.getBoundingClientRect();
+            const spacing = 6;
+            const menuWidth = menu.offsetWidth || 128;
+            const menuHeight = menu.offsetHeight || 78;
+            const viewportPadding = 8;
+            const left = Math.min(
+                Math.max(toggleRect.left - menuWidth - spacing, viewportPadding),
+                window.innerWidth - menuWidth - viewportPadding
+            );
+            const top = Math.min(
+                Math.max(toggleRect.top, viewportPadding),
+                window.innerHeight - menuHeight - viewportPadding
+            );
+
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
+        };
+
+        const openActionMenu = (actions) => {
+            if (!actions) {
+                return;
+            }
+
+            closeActionMenus(actions);
+            actions.classList.add("is-open");
+            const row = actions.closest("[data-appointment-row]");
+
+            row?.classList.add("has-open-actions");
+            syncAppointmentStatusActions(row);
+            actions.querySelector(".appointment-action-toggle")?.setAttribute("aria-expanded", "true");
+            positionActionMenu(actions);
+        };
+
+        const normalizeSupplementOrderNumber = (value) =>
+            String(value || "").trim().toLowerCase();
+
+        const getSupplementExistingPackage = (packageOption) => {
+            const orderNumber = normalizeSupplementOrderNumber(
+                packageOption?.orderNumber || packageOption?.id);
+            const name = normalizeSupplementOrderNumber(packageOption?.name);
+            return supplementExistingPackages.get("code|" + orderNumber)
+                || supplementExistingPackages.get("name|" + name)
+                || null;
+        };
+
+        const getSupplementNewOrderNumbers = () =>
+            new Set(supplementNewOrders.map(item => normalizeSupplementOrderNumber(item.orderNumber)));
+
+        const updateSupplementOrderCounts = () => {
+            if (supplementNewCount) supplementNewCount.textContent = "新增 " + supplementNewOrders.length + " 項";
+            if (supplementOrderTotal) supplementOrderTotal.textContent = String(supplementNewOrders.length);
+            if (supplementOrderSubmitButton) supplementOrderSubmitButton.disabled = supplementNewOrders.length === 0;
+
+            const packages = supplementNewOrders.filter(item => item.type === "package");
+            const selectedPackages = supplementExistingPackageItems.concat(packages);
+            const unitLabels = [...new Set(selectedPackages.map(item =>
+                item.selfPayAccountingUnitDisplay || getSupplementUnitDisplay(item.selfPayAccountingUnit)))];
+            if (supplementAccountingAllValue) {
+                supplementAccountingAllValue.textContent = selectedPackages.length === 0
+                    ? "尚未選擇套組"
+                    : unitLabels.length === 1 ? unitLabels[0] : "已選 " + selectedPackages.length + " 個套組";
+            }
+            if (supplementAccountingAllClear) supplementAccountingAllClear.disabled = packages.length === 0;
+            if (supplementAccountingAllApply) supplementAccountingAllApply.disabled = packages.length === 0;
+            if (supplementAccountingAllReminder) {
+                supplementAccountingAllReminder.textContent = packages.length === 0
+                    ? selectedPackages.length > 0
+                        ? "目前已有 " + selectedPackages.length + " 個套組；請勾選要新增的套組"
+                        : "請先在下方勾選至少一個套組，才能設定總項"
+                    : "已選擇 " + packages.length + " 個套組";
+            }
+        };
+
+        const renderSupplementPagination = (host, currentPage, totalPages, onChange) => {
+            if (!host) return;
+            const makeButton = (label, pageNumber, disabled = false, active = false) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.textContent = label;
+                button.disabled = disabled;
+                button.classList.toggle("is-active", active);
+                button.addEventListener("click", () => onChange(pageNumber));
+                return button;
+            };
+            const nodes = [makeButton("‹", Math.max(1, currentPage - 1), currentPage <= 1)];
+            for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+                nodes.push(makeButton(String(pageNumber), pageNumber, false, pageNumber === currentPage));
+            }
+            nodes.push(makeButton("›", Math.min(totalPages, currentPage + 1), currentPage >= totalPages));
+            host.replaceChildren(...nodes);
+        };
+
+        const renderSupplementOrderMessage = (body, title, detail = "", isError = false, colSpan = 5) => {
+            if (!body) return;
+
+            const row = document.createElement("tr");
+            row.className = "appointment-supplement-order-empty" + (isError ? " error" : "");
+            const cell = document.createElement("td");
+            cell.colSpan = colSpan;
+            const strong = document.createElement("strong");
+            strong.textContent = title;
+            cell.append(strong);
+
+            if (detail) {
+                const small = document.createElement("small");
+                small.textContent = detail;
+                cell.append(small);
+            }
+
+            row.append(cell);
+            body.replaceChildren(row);
+        };
+
+        const getSupplementUnitDisplay = (code, fallback = "") => {
+            const normalizedCode = String(code || "").trim();
+            const matchedUnit = supplementAccountingUnits.find(unit =>
+                String(unit?.code || "").trim().toLowerCase() === normalizedCode.toLowerCase());
+
+            return matchedUnit?.displayText || fallback || normalizedCode || "[00] 無優待";
+        };
+
+        const closeSupplementAccountingLookup = () => {
+            if (!supplementAccountingModal) return;
+            supplementAccountingModal.hidden = true;
+            document.body.classList.remove("project-lookup-open");
+            supplementPreviousAccountingFocus?.focus();
+            supplementActiveAccountingTarget = null;
+        };
+
+        const setSupplementAccountingUnit = unit => {
+            if (!supplementActiveAccountingTarget) return;
+            const code = String(unit?.code || "00").trim() || "00";
+            const display = String(unit?.displayText || (unit?.name ? "[" + code + "] " + unit.name : code)).trim();
+            const target = supplementActiveAccountingTarget;
+            target.selfPayAccountingUnit = code;
+            target.selfPayAccountingUnitDisplay = display;
+
+            const newOrder = supplementNewOrders.find(item =>
+                item === target || String(item.id || "") === String(target.id || ""));
+            if (newOrder) {
+                newOrder.selfPayAccountingUnit = code;
+                newOrder.selfPayAccountingUnitDisplay = display;
+            }
+
+            const packageOption = supplementAvailablePackages.find(item => item === target);
+            if (packageOption) {
+                supplementNewOrders
+                    .filter(item => item.type === "package" && String(item.sourceId) === String(packageOption.id))
+                    .forEach(item => {
+                        item.selfPayAccountingUnit = code;
+                        item.selfPayAccountingUnitDisplay = display;
+                    });
+            }
+
+            closeSupplementAccountingLookup();
+            renderSupplementAvailablePackages();
+            renderSupplementNewOrders();
+        };
+
+        const getSupplementAccountingPrefix = unit =>
+            Array.from(String(unit?.name || "").trim()).slice(0, 2).join("");
+
+        const renderSupplementAccountingTabs = () => {
+            if (!supplementAccountingTabs) return;
+            const prefixes = [...new Set(supplementAccountingUnits.map(getSupplementAccountingPrefix).filter(Boolean))];
+            const tabs = [{ value: "", label: "全部" }, ...prefixes.map(value => ({ value, label: value }))];
+            const tones = ["blue", "red", "green", "amber", "purple", "teal", "pink", "brown"];
+            supplementAccountingTabs.replaceChildren(...tabs.map((tab, index) => {
+                const button = document.createElement("button");
+                const icon = document.createElement("span");
+                const label = document.createElement("span");
+                button.type = "button";
+                button.className = tones[index % tones.length];
+                button.classList.toggle("active", tab.value === supplementActiveAccountingPrefix);
+                button.setAttribute("aria-pressed", String(tab.value === supplementActiveAccountingPrefix));
+                icon.className = "package-category-icon " + (tab.value ? "sample" : "stethoscope");
+                icon.setAttribute("aria-hidden", "true");
+                label.textContent = tab.label;
+                button.append(icon, label);
+                button.addEventListener("click", () => {
+                    supplementActiveAccountingPrefix = tab.value;
+                    supplementAccountingFilters.forEach(input => { input.value = ""; });
+                    renderSupplementAccountingTabs();
+                    renderSupplementAccountingRows();
+                });
+                return button;
+            }));
+        };
+
+        const renderSupplementAccountingRows = () => {
+            if (!supplementAccountingResults) return;
+            const filterValue = name => String(
+                supplementAccountingFilters.find(input => input.dataset.supplementAccountingFilter === name)?.value || "")
+                .normalize("NFKC").replace(/\s+/g, "").toLocaleLowerCase();
+            const codeKeyword = filterValue("code");
+            const nameKeyword = filterValue("name");
+            const visibleUnits = supplementAccountingUnits.filter(unit => {
+                const code = String(unit?.code || "").normalize("NFKC").replace(/\s+/g, "").toLocaleLowerCase();
+                const name = String(unit?.name || "").normalize("NFKC").replace(/\s+/g, "").toLocaleLowerCase();
+                return (!supplementActiveAccountingPrefix || getSupplementAccountingPrefix(unit) === supplementActiveAccountingPrefix)
+                    && (!codeKeyword || code.includes(codeKeyword))
+                    && (!nameKeyword || name.includes(nameKeyword));
+            });
+            if (!visibleUnits.length) {
+                const row = document.createElement("tr");
+                row.className = "project-lookup-empty";
+                const cell = document.createElement("td");
+                cell.colSpan = 3;
+                cell.textContent = "查無符合條件的優待身分";
+                row.append(cell);
+                supplementAccountingResults.replaceChildren(row);
+                return;
+            }
+            supplementAccountingResults.replaceChildren(...visibleUnits.map(unit => {
+                const row = document.createElement("tr");
+                const codeCell = document.createElement("td");
+                const nameCell = document.createElement("td");
+                const actionCell = document.createElement("td");
+                const button = document.createElement("button");
+                codeCell.textContent = unit?.code || "";
+                nameCell.textContent = unit?.name || "";
+                button.type = "button";
+                button.textContent = "選擇";
+                button.addEventListener("click", () => setSupplementAccountingUnit(unit));
+                actionCell.append(button);
+                row.append(codeCell, nameCell, actionCell);
+                row.addEventListener("dblclick", () => setSupplementAccountingUnit(unit));
+                return row;
+            }));
+        };
+
+        const openSupplementAccountingLookup = item => {
+            if (!supplementAccountingModal || !item) return;
+            supplementActiveAccountingTarget = item;
+            supplementPreviousAccountingFocus = document.activeElement;
+            supplementActiveAccountingPrefix = "";
+            supplementAccountingFilters.forEach(input => { input.value = ""; });
+            renderSupplementAccountingTabs();
+            renderSupplementAccountingRows();
+            supplementAccountingModal.hidden = false;
+            document.body.classList.add("project-lookup-open");
+            supplementAccountingFilters[0]?.focus();
+        };
+
+        const createSupplementUnitButton = item => {
+            const control = document.createElement("div");
+            const value = document.createElement("span");
+            const button = document.createElement("button");
+            control.className = "supplement-accounting-cell-control";
+            value.className = "appointment-supplement-order-original-unit";
+            value.textContent = item?.selfPayAccountingUnitDisplay
+                || getSupplementUnitDisplay(item?.selfPayAccountingUnit);
+            button.type = "button";
+            button.className = "supplement-accounting-change";
+            button.textContent = "更改";
+            button.setAttribute("aria-label", "更改 " + (item?.name || "套組") + " 優待身分");
+            button.addEventListener("click", event => {
+                event.stopPropagation();
+                openSupplementAccountingLookup(item);
+            });
+            control.append(value, button);
+            return control;
+        };
+
+        const createExistingSupplementOrderRow = (item) => {
+            const row = document.createElement("tr");
+            row.className = "appointment-supplement-order-existing-row";
+
+            const statusCell = document.createElement("td");
+            const status = document.createElement("span");
+            status.className = "appointment-supplement-order-lock";
+            status.textContent = "已存在・唯讀";
+            statusCell.append(status);
+
+            const codeCell = document.createElement("td");
+            codeCell.className = "appointment-supplement-order-code";
+            codeCell.textContent = item?.orderNumber || "--";
+
+            const nameCell = document.createElement("td");
+            nameCell.className = "appointment-supplement-order-name";
+            nameCell.textContent = item?.name || "--";
+
+            const accountingCell = document.createElement("td");
+            const accounting = document.createElement("span");
+            accounting.className = "appointment-supplement-order-original-unit";
+            accounting.textContent = item?.selfPayAccountingUnitDisplay
+                || getSupplementUnitDisplay(item?.selfPayAccountingUnit);
+            accountingCell.append(accounting);
+
+            row.append(statusCell, codeCell, nameCell, accountingCell);
+            return row;
+        };
+
+        const renderExistingSupplementOrders = (body, items, emptyMessage, countElement) => {
+            const normalizedItems = Array.isArray(items) ? items : [];
+            if (countElement) countElement.textContent = "既有 " + normalizedItems.length + " 項";
+
+            if (normalizedItems.length === 0) {
+                renderSupplementOrderMessage(body, emptyMessage, "", false, 4);
+                return;
+            }
+
+            body?.replaceChildren(...normalizedItems.map(createExistingSupplementOrderRow));
+        };
+
+        const addSupplementPackage = (packageId) => {
+            const packageOption = supplementAvailablePackages.find(item =>
+                String(item?.id || "") === String(packageId || ""));
+            if (!packageOption) return;
+
+            const orderNumber = String(packageOption.orderNumber || packageOption.id || "").trim();
+            const normalizedOrderNumber = normalizeSupplementOrderNumber(orderNumber);
+            if (!normalizedOrderNumber
+                || getSupplementExistingPackage(packageOption)
+                || supplementExistingOrderNumbers.has(normalizedOrderNumber)
+                || getSupplementNewOrderNumbers().has(normalizedOrderNumber)) {
+                return;
+            }
+
+            const code = String(packageOption.selfPayAccountingUnit || "00").trim() || "00";
+            supplementNewOrders.push({
+                id: "package|" + String(packageOption.id || orderNumber),
+                sourceId: String(packageOption.id || ""),
+                type: "package",
+                projectNo: supplementSelectedProjectNo,
+                projectName: supplementSelectedProjectName,
+                orderNumber: orderNumber,
+                name: String(packageOption.name || orderNumber),
+                selfPayAccountingUnit: code,
+                selfPayAccountingUnitDisplay: packageOption.selfPayAccountingUnitDisplay || getSupplementUnitDisplay(code),
+                price: Number(packageOption.price || 0)
+            });
+            supplementPackagePage = 1;
+            renderSupplementAvailablePackages();
+            renderSupplementNewOrders();
+        };
+
+        const removeSupplementNewOrder = (itemId) => {
+            supplementNewOrders = supplementNewOrders.filter(item => item.id !== itemId);
+            renderSupplementAvailablePackages();
+            renderSupplementNewOrders();
+        };
+
+        const createSupplementPackageDetailRow = (packageOption) => {
+            const orders = Array.isArray(packageOption?.orders) ? packageOption.orders : [];
+            const row = document.createElement("tr");
+            row.className = "appointment-supplement-package-detail-row";
+            const cell = document.createElement("td");
+            cell.colSpan = 4;
+            const box = document.createElement("div");
+            box.className = "suite-detail-box";
+            const note = document.createElement("p");
+            const info = document.createElement("span");
+            info.className = "suite-info-dot";
+            info.textContent = "i";
+            note.append(info, "套組醫令僅供檢視");
+
+            const table = document.createElement("table");
+            const thead = document.createElement("thead");
+            const headRow = document.createElement("tr");
+            ["順序", "醫令代碼", "醫令名稱", "分類"].forEach(label => {
+                const header = document.createElement("th");
+                header.textContent = label;
+                headRow.append(header);
+            });
+            thead.append(headRow);
+            const tbody = document.createElement("tbody");
+
+            if (orders.length === 0) {
+                const emptyRow = document.createElement("tr");
+                const emptyCell = document.createElement("td");
+                emptyCell.colSpan = 4;
+                emptyCell.textContent = "此套組尚無醫令細項";
+                emptyRow.append(emptyCell);
+                tbody.append(emptyRow);
+            } else {
+                orders.forEach((order, index) => {
+                    const detailRow = document.createElement("tr");
+                    [String(index + 1), order?.code || "--", order?.name || order?.code || "--", order?.category || "--"]
+                        .forEach(value => {
+                            const detailCell = document.createElement("td");
+                            detailCell.textContent = value;
+                            detailRow.append(detailCell);
+                        });
+                    tbody.append(detailRow);
+                });
+            }
+
+            table.append(thead, tbody);
+            box.append(note, table);
+            cell.append(box);
+            row.append(cell);
+            return row;
+        };
+
+        const normalizeSupplementPackageSearchValue = value =>
+            String(value || "")
+                .normalize("NFKC")
+                .replace(/\s+/g, "")
+                .trim()
+                .toLocaleLowerCase();
+
+        const getSupplementPackageCategory = packageOption =>
+            Array.from(String(packageOption?.name || packageOption?.id || "").trim())
+                .slice(0, 2)
+                .join("");
+
+        const syncSupplementPackageCategoryTabs = () => {
+            if (!supplementPackageCategoryTabs) return;
+            const keyword = normalizeSupplementPackageSearchValue(supplementPackageSearch?.value);
+            supplementPackageCategoryTabs.querySelectorAll("[data-supplement-package-category]").forEach(button => {
+                const category = normalizeSupplementPackageSearchValue(button.dataset.supplementPackageCategory);
+                const active = category ? category === keyword : !keyword;
+                button.classList.toggle("active", active);
+                button.classList.toggle("is-active", active);
+                button.setAttribute("aria-pressed", String(active));
+            });
+        };
+
+        const renderSupplementPackageCategoryTabs = () => {
+            if (!supplementPackageCategoryTabs) return;
+            const categories = [...new Set(supplementAvailablePackages
+                .map(getSupplementPackageCategory)
+                .filter(Boolean))]
+                .sort((left, right) => left.localeCompare(right, "zh-Hant"));
+            const tones = ["blue", "teal", "green", "purple", "pink", "orange"];
+            const createButton = (value, label, index) => {
+                const button = document.createElement("button");
+                const icon = document.createElement("span");
+                const text = document.createElement("span");
+                button.type = "button";
+                button.className = tones[index % tones.length];
+                button.dataset.supplementPackageCategory = value;
+                button.setAttribute("aria-pressed", "false");
+                icon.className = "package-category-icon " + (value ? "sample" : "stethoscope");
+                icon.setAttribute("aria-hidden", "true");
+                text.textContent = label;
+                button.append(icon, text);
+                return button;
+            };
+            supplementPackageCategoryTabs.replaceChildren(
+                createButton("", "全部", 0),
+                ...categories.map((category, index) => createButton(category, category, index + 1)));
+            syncSupplementPackageCategoryTabs();
+        };
+
+        const renderSupplementAvailablePackages = () => {
+            if (!supplementPackagePickerBody) return;
+
+            syncSupplementPackageCategoryTabs();
+            const keyword = String(supplementPackageSearch?.value || "").trim().toLowerCase();
+            const newOrderNumbers = getSupplementNewOrderNumbers();
+            const isSupplementPackageChecked = item => {
+                const orderNumber = normalizeSupplementOrderNumber(item?.orderNumber || item?.id);
+                return Boolean(getSupplementExistingPackage(item))
+                    || supplementExistingOrderNumbers.has(orderNumber)
+                    || newOrderNumbers.has(orderNumber);
+            };
+            const visiblePackages = supplementAvailablePackages
+                .map((item, originalIndex) => ({ item, originalIndex }))
+                .filter(entry => {
+                    const item = entry.item;
+                    const haystack = (String(item?.orderNumber || item?.id || "") + " " + String(item?.name || "")).toLowerCase();
+                    return !keyword || haystack.includes(keyword);
+                })
+                .sort((left, right) => {
+                    const leftSelected = isSupplementPackageChecked(left.item);
+                    const rightSelected = isSupplementPackageChecked(right.item);
+                    if (leftSelected !== rightSelected) return leftSelected ? -1 : 1;
+                    return left.originalIndex - right.originalIndex;
+                })
+                .map(entry => entry.item);
+            const pageSize = Number(supplementPackagePageSize?.value || 5);
+            const totalPages = Math.max(1, Math.ceil(visiblePackages.length / pageSize));
+            supplementPackagePage = Math.min(Math.max(1, supplementPackagePage), totalPages);
+            const pagePackages = visiblePackages.slice(
+                (supplementPackagePage - 1) * pageSize,
+                supplementPackagePage * pageSize);
+            if (supplementPackagePageInfo) {
+                const start = visiblePackages.length ? (supplementPackagePage - 1) * pageSize + 1 : 0;
+                const end = Math.min(supplementPackagePage * pageSize, visiblePackages.length);
+                supplementPackagePageInfo.textContent = "顯示 " + (visiblePackages.length ? start + "–" + end : "0") + " 筆，共 " + visiblePackages.length + " 筆";
+            }
+            renderSupplementPagination(
+                supplementPackagePagination,
+                supplementPackagePage,
+                totalPages,
+                pageNumber => { supplementPackagePage = pageNumber; renderSupplementAvailablePackages(); });
+
+            if (visiblePackages.length === 0) {
+                if (supplementPackageSelectAll) {
+                    supplementPackageSelectAll.checked = false;
+                    supplementPackageSelectAll.indeterminate = false;
+                    supplementPackageSelectAll.disabled = true;
+                }
+                renderSupplementOrderMessage(
+                    supplementPackagePickerBody,
+                    keyword ? "找不到符合的套餐／套組" : "此專案沒有可新增的套餐／套組",
+                    "",
+                    false,
+                    4);
+                return;
+            }
+
+            const rows = pagePackages.flatMap(packageOption => {
+                const row = document.createElement("tr");
+                const orderNumber = String(packageOption?.orderNumber || packageOption?.id || "").trim();
+                const normalizedOrderNumber = normalizeSupplementOrderNumber(orderNumber);
+                const existingPackage = getSupplementExistingPackage(packageOption);
+                const alreadyExists = Boolean(existingPackage)
+                    || supplementExistingOrderNumbers.has(normalizedOrderNumber);
+                const alreadyAdded = newOrderNumbers.has(normalizedOrderNumber);
+                const isExpanded = supplementExpandedPackageIds.has(String(packageOption?.id || orderNumber));
+
+                const choiceCell = document.createElement("td");
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.value = String(packageOption?.id || "");
+                checkbox.dataset.supplementPickerPackage = "";
+                checkbox.checked = alreadyExists || alreadyAdded;
+                checkbox.disabled = alreadyExists;
+                checkbox.setAttribute("aria-label", "選取 " + (packageOption?.name || orderNumber));
+                choiceCell.append(checkbox);
+
+                const nameCell = document.createElement("td");
+                nameCell.className = "appointment-supplement-order-name";
+                const nameWrapper = document.createElement("div");
+                nameWrapper.className = "package-name-with-expand";
+                const expandButton = document.createElement("button");
+                expandButton.type = "button";
+                expandButton.className = "package-row-expand";
+                expandButton.value = String(packageOption?.id || orderNumber);
+                expandButton.dataset.supplementPackageExpand = "";
+                expandButton.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+                expandButton.setAttribute("aria-label", (isExpanded ? "收合 " : "展開 ") + (packageOption?.name || orderNumber) + " 醫令細項");
+                const chevron = document.createElement("span");
+                chevron.className = "suite-chevron";
+                expandButton.append(chevron);
+                const name = document.createElement("span");
+                name.className = "item-name";
+                name.textContent = packageOption?.name || "--";
+                nameWrapper.append(expandButton, name);
+                nameCell.append(nameWrapper);
+
+                const accountingCell = document.createElement("td");
+                if (alreadyExists) {
+                    const accounting = document.createElement("span");
+                    accounting.className = "appointment-supplement-order-original-unit";
+                    accounting.textContent = existingPackage?.selfPayAccountingUnitDisplay
+                        || packageOption?.selfPayAccountingUnitDisplay
+                        || getSupplementUnitDisplay(existingPackage?.selfPayAccountingUnit || packageOption?.selfPayAccountingUnit);
+                    accountingCell.append(accounting);
+                } else {
+                    accountingCell.append(createSupplementUnitButton(packageOption));
+                }
+
+                const moneyCell = document.createElement("td");
+                moneyCell.className = "appointment-supplement-order-money";
+                moneyCell.textContent = packageOption?.priceText || "$" + Number(packageOption?.price || 0).toLocaleString("zh-TW");
+
+                row.classList.toggle("is-unavailable", alreadyExists);
+                row.classList.toggle("is-existing", alreadyExists);
+                row.classList.toggle("is-selected", alreadyExists || alreadyAdded);
+                row.classList.toggle("is-expanded", isExpanded);
+                row.append(choiceCell, nameCell, accountingCell, moneyCell);
+                return isExpanded ? [row, createSupplementPackageDetailRow(packageOption)] : [row];
+            });
+
+            supplementPackagePickerBody.replaceChildren(...rows);
+            if (supplementPackageSelectAll) {
+                const selectable = pagePackages.filter(item =>
+                    !getSupplementExistingPackage(item)
+                    && !supplementExistingOrderNumbers.has(normalizeSupplementOrderNumber(item?.orderNumber || item?.id)));
+                const selectedCount = selectable.filter(item =>
+                    newOrderNumbers.has(normalizeSupplementOrderNumber(item?.orderNumber || item?.id))).length;
+                supplementPackageSelectAll.disabled = selectable.length === 0;
+                supplementPackageSelectAll.checked = selectable.length > 0 && selectedCount === selectable.length;
+                supplementPackageSelectAll.indeterminate = selectedCount > 0 && selectedCount < selectable.length;
+            }
+        };
+
+        const updateSupplementSelectedProject = () => {
+            if (!supplementSelectedProject) return;
+            supplementSelectedProject.value = supplementSelectedProjectNo
+                ? "[" + supplementSelectedProjectNo + "] " + (supplementSelectedProjectName || "")
+                : "";
+            supplementSelectedProject.title = supplementSelectedProject.value;
+        };
+        const renderSupplementNewOrders = () => {
+            if (!supplementNewOrderBody) return;
+            const otherSuites = [
+                ...supplementExistingOtherSuites.map(item => ({ ...item, isExisting: true })),
+                ...supplementNewOrders
+                    .filter(item => item.type === "other-suite")
+                    .map(item => ({ ...item, isExisting: false }))
+            ];
+            const pageSize = Number(supplementOtherSuitePageSize?.value || 5);
+            const totalPages = Math.max(1, Math.ceil(otherSuites.length / pageSize));
+            supplementOtherSuitePage = Math.min(Math.max(1, supplementOtherSuitePage), totalPages);
+            const pageItems = otherSuites.slice(
+                (supplementOtherSuitePage - 1) * pageSize,
+                supplementOtherSuitePage * pageSize);
+            if (supplementOtherSuitePageInfo) {
+                const start = otherSuites.length ? (supplementOtherSuitePage - 1) * pageSize + 1 : 0;
+                const end = Math.min(supplementOtherSuitePage * pageSize, otherSuites.length);
+                supplementOtherSuitePageInfo.textContent = "顯示 " + (otherSuites.length ? start + "–" + end : "0") + " 筆，共 " + otherSuites.length + " 筆";
+            }
+            renderSupplementPagination(
+                supplementOtherSuitePagination,
+                supplementOtherSuitePage,
+                totalPages,
+                pageNumber => { supplementOtherSuitePage = pageNumber; renderSupplementNewOrders(); });
+
+            if (otherSuites.length === 0) {
+                renderSupplementOrderMessage(
+                    supplementNewOrderBody,
+                    "請先新增組套");
+                updateSupplementOrderCounts();
+                return;
+            }
+
+            const rows = pageItems.map(item => {
+                const row = document.createElement("tr");
+                if (!item.isExisting) row.dataset.supplementNewOrder = item.id;
+                row.classList.toggle("is-existing", item.isExisting);
+
+                const codeCell = document.createElement("td");
+                codeCell.className = "appointment-supplement-order-code";
+                codeCell.textContent = item.orderNumber || "--";
+
+                const nameCell = document.createElement("td");
+                nameCell.className = "appointment-supplement-order-name";
+                nameCell.textContent = item.name || "--";
+
+                const accountingCell = document.createElement("td");
+                if (item.isExisting) {
+                    const accounting = document.createElement("span");
+                    accounting.className = "appointment-supplement-order-original-unit";
+                    accounting.textContent = item.selfPayAccountingUnitDisplay
+                        || getSupplementUnitDisplay(item.selfPayAccountingUnit);
+                    accountingCell.append(accounting);
+                } else {
+                    accountingCell.append(createSupplementUnitButton(item));
+                }
+
+                const moneyCell = document.createElement("td");
+                moneyCell.className = "appointment-supplement-order-money";
+                moneyCell.textContent = item.isExisting
+                    ? "--"
+                    : "$" + Number(item.price || 0).toLocaleString("zh-TW");
+
+                const actionCell = document.createElement("td");
+                if (!item.isExisting) {
+                    const removeButton = document.createElement("button");
+                    removeButton.type = "button";
+                    removeButton.className = "appointment-supplement-order-remove-button";
+                    removeButton.value = item.id;
+                    removeButton.dataset.supplementRemoveOrder = "";
+                    removeButton.textContent = "移除";
+                    actionCell.append(removeButton);
+                }
+
+                row.append(nameCell, codeCell, accountingCell, moneyCell, actionCell);
+                return row;
+            });
+
+            supplementNewOrderBody.replaceChildren(...rows);
+            updateSupplementOrderCounts();
+        };
+
+        const closeSupplementOtherSuiteLookup = () => {
+            if (supplementOtherSuiteLookupModal) supplementOtherSuiteLookupModal.hidden = true;
+            if (supplementOtherSuiteLookupHost) supplementOtherSuiteLookupHost.replaceChildren();
+        };
+
+        const openSupplementOtherSuiteLookup = () => {
+            if (!supplementOtherSuiteLookupModal || !supplementOtherSuiteLookupHost || !supplementOtherSuiteLookupUrl) return;
+
+            const iframe = document.createElement("iframe");
+            iframe.title = "新增其他醫令";
+            const lookupUrl = new URL(supplementOtherSuiteLookupUrl, window.location.href);
+            if (supplementSelectedProjectNo) lookupUrl.searchParams.set("projectNo", supplementSelectedProjectNo);
+            if (supplementSelectedProjectName) lookupUrl.searchParams.set("projectName", supplementSelectedProjectName);
+            iframe.src = lookupUrl.toString();
+            iframe.loading = "eager";
+            iframe.setAttribute("data-other-suite-lookup-frame", "");
+            supplementOtherSuiteLookupHost.replaceChildren(iframe);
+            supplementOtherSuiteLookupModal.hidden = false;
+        };
+
+        const importSupplementOtherSuites = (suites) => {
+            const incomingSuites = Array.isArray(suites) ? suites : [];
+            let duplicateCount = 0;
+
+            incomingSuites.forEach(suite => {
+                const projectNo = String(suite?.projectNo || suite?.ProjectNo || "").trim();
+                const sourceId = String(suite?.id || suite?.Id || "").trim();
+                const orderNumber = String(suite?.code || suite?.Code || sourceId.split("|").pop() || "").trim();
+                const normalizedOrderNumber = normalizeSupplementOrderNumber(orderNumber);
+
+                if (!normalizedOrderNumber
+                    || supplementExistingOrderNumbers.has(normalizedOrderNumber)
+                    || getSupplementNewOrderNumbers().has(normalizedOrderNumber)) {
+                    duplicateCount += 1;
+                    return;
+                }
+
+                const code = String(suite?.selfPayAccountingUnit || suite?.SelfPayAccountingUnit || "00").trim() || "00";
+                supplementNewOrders.push({
+                    id: "other-suite|" + (sourceId || projectNo + "|" + orderNumber),
+                    sourceId: sourceId,
+                    projectNo: projectNo,
+                    type: "other-suite",
+                    orderNumber: orderNumber,
+                    name: String(suite?.name || suite?.Name || orderNumber).trim(),
+                    selfPayAccountingUnit: code,
+                    selfPayAccountingUnitDisplay: String(
+                        suite?.selfPayAccountingUnitDisplay
+                        || suite?.SelfPayAccountingUnitDisplay
+                        || getSupplementUnitDisplay(code)),
+                    price: Number(suite?.price ?? suite?.Price ?? 0)
+                });
+            });
+
+            renderSupplementNewOrders();
+            renderSupplementAvailablePackages();
+            closeSupplementOtherSuiteLookup();
+
+            if (duplicateCount > 0) {
+                window.alert("已略過 " + duplicateCount + " 個既有或重複的組套。");
+            }
+        };
+
+        const closeSupplementOrderDialog = () => {
+            if (supplementOrderSubmitInProgress) return;
+            supplementOrderRequestController?.abort();
+            supplementOrderRequestController = null;
+            closeSupplementAccountingLookup();
+            closeSupplementOtherSuiteLookup();
+            if (supplementOrderModal) supplementOrderModal.hidden = true;
+        };
+
+        const waitForSupplementFeedback = milliseconds =>
+            new Promise(resolve => window.setTimeout(resolve, Math.max(0, milliseconds)));
+
+        const showSupplementOrderProgress = () => {
+            const messages = [
+                "正在準備掛號與醫令參數…",
+                "正在逐筆送出補下醫令…",
+                "正在確認每筆醫令執行結果…",
+                "正在更新健檢套組資料…"
+            ];
+            let messageIndex = 0;
+            if (supplementOrderProgressMessage) supplementOrderProgressMessage.textContent = messages[messageIndex];
+            if (supplementOrderProgressModal) supplementOrderProgressModal.hidden = false;
+            window.clearInterval(supplementOrderProgressTimer);
+            supplementOrderProgressTimer = window.setInterval(() => {
+                messageIndex = (messageIndex + 1) % messages.length;
+                if (supplementOrderProgressMessage) supplementOrderProgressMessage.textContent = messages[messageIndex];
+            }, 1450);
+        };
+
+        const hideSupplementOrderProgress = () => {
+            window.clearInterval(supplementOrderProgressTimer);
+            supplementOrderProgressTimer = 0;
+            if (supplementOrderProgressModal) supplementOrderProgressModal.hidden = true;
+        };
+
+        const showSupplementOrderResult = (state, message) => {
+            const succeeded = state === "success";
+            supplementOrderSubmitSucceeded = succeeded;
+            if (!supplementOrderResultModal) {
+                window.alert(message);
+                if (succeeded) window.location.reload();
+                return;
+            }
+            supplementOrderResultModal.dataset.state = succeeded ? "success" : "error";
+            if (supplementOrderResultKicker) supplementOrderResultKicker.textContent = succeeded ? "ORDER CREATED" : "ORDER FAILED";
+            if (supplementOrderResultTitle) supplementOrderResultTitle.textContent = succeeded ? "新增成功" : "新增失敗";
+            if (supplementOrderResultMessage) supplementOrderResultMessage.textContent = message;
+            if (supplementOrderResultCloseButton) supplementOrderResultCloseButton.textContent = succeeded ? "完成" : "關閉並返回";
+            supplementOrderResultModal.hidden = false;
+            supplementOrderResultCloseButton?.focus();
+        };
+
+        const closeSupplementOrderResult = () => {
+            if (supplementOrderResultModal) supplementOrderResultModal.hidden = true;
+            if (supplementOrderSubmitSucceeded) {
+                window.location.reload();
+                return;
+            }
+            supplementOrderSubmitButton?.focus();
+        };
+
+        const submitSupplementOrders = async () => {
+            if (supplementOrderSubmitInProgress) return;
+            if (!supplementOrderSubmitUrl || !supplementTargetProjectNo || !supplementTargetBarcode) {
+                showSupplementOrderResult("error", "缺少補下醫令送出網址或預約識別資料。");
+                return;
+            }
+
+            if (supplementNewOrders.length === 0) {
+                showSupplementOrderResult("error", "請至少勾選一個健檢專案 / 方案套組，或新增一個其他組套。");
+                return;
+            }
+
+            const packages = supplementNewOrders.filter(item => item.type === "package");
+            const otherSuites = supplementNewOrders.filter(item => item.type === "other-suite");
+            const payload = {
+                projectNumber: supplementTargetProjectNo,
+                barcode: supplementTargetBarcode,
+                packageProjectNo: supplementSelectedProjectNo,
+                selectedPackageIds: packages.map(item => item.sourceId),
+                selectedPackageNames: packages.map(item => item.name),
+                selectedPackageAmounts: packages.map(item => String(item.price || 0)),
+                selectedPackageSelfPayAccountingUnits: packages.map(item => item.selfPayAccountingUnit || "00"),
+                selectedOtherSuiteIds: otherSuites.map(item => item.sourceId),
+                selectedOtherSuiteSelfPayAccountingUnits: otherSuites.map(item => item.selfPayAccountingUnit || "00")
+            };
+
+            supplementOrderSubmitInProgress = true;
+            supplementOrderSubmitSucceeded = false;
+            if (supplementOrderSubmitButton) supplementOrderSubmitButton.disabled = true;
+            if (supplementOrderCancelButton) supplementOrderCancelButton.disabled = true;
+            supplementOrderCloseButtons.forEach(button => { button.disabled = true; });
+            const feedbackStartedAt = window.performance.now();
+            showSupplementOrderProgress();
+
+            try {
+                const response = await fetch(supplementOrderSubmitUrl, {
+                    method: "POST",
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "RequestVerificationToken": antiForgeryToken,
+                        "X-Requested-With": "XMLHttpRequest"
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => null);
+                if (!response.ok || result?.success === false) {
+                    throw new Error(result?.message || "補下醫令新增失敗。");
+                }
+
+                await waitForSupplementFeedback(750 - (window.performance.now() - feedbackStartedAt));
+                hideSupplementOrderProgress();
+                showSupplementOrderResult("success", result?.message || "補下醫令已新增完成，資料已成功儲存。");
+            } catch (error) {
+                await waitForSupplementFeedback(750 - (window.performance.now() - feedbackStartedAt));
+                hideSupplementOrderProgress();
+                showSupplementOrderResult("error", error?.message || "補下醫令新增失敗，請稍後再試。");
+            } finally {
+                supplementOrderSubmitInProgress = false;
+                if (supplementOrderCancelButton) supplementOrderCancelButton.disabled = false;
+                supplementOrderCloseButtons.forEach(button => { button.disabled = false; });
+                updateSupplementOrderCounts();
+            }
+        };
+
+        const openSupplementOrderDialog = async (row) => {
+            if (!supplementOrderModal || !row) return;
+
+            const projectNumber = String(row.dataset.projectNumber || "").trim();
+            const barcode = String(row.dataset.barcode || "").trim();
+            supplementTargetProjectNo = projectNumber;
+            supplementTargetBarcode = barcode;
+            if (supplementOrderName) supplementOrderName.textContent = row.dataset.name || "--";
+            if (supplementOrderProject) supplementOrderProject.textContent = projectNumber || "--";
+            if (supplementOrderBarcode) supplementOrderBarcode.textContent = barcode || "--";
+            if (supplementPackageSearch) supplementPackageSearch.value = "";
+            supplementSelectedProjectNo = projectNumber;
+            supplementSelectedProjectName = String(row.dataset.plan || "").trim();
+            updateSupplementSelectedProject();
+
+            supplementAccountingUnits = [];
+            supplementAvailablePackages = [];
+            supplementNewOrders = [];
+            supplementExistingPackageItems = [];
+            supplementExistingOrderNumbers = new Set();
+            supplementExistingPackages = new Map();
+            supplementExistingOtherSuites = [];
+            supplementExpandedPackageIds = new Set();
+            supplementPackagePage = 1;
+            supplementOtherSuitePage = 1;
+            renderSupplementPackageCategoryTabs();
+            renderSupplementOrderMessage(supplementPackageBody, "正在載入當初的套餐／套組…", "", false, 4);
+            renderSupplementOrderMessage(supplementOtherSuiteBody, "正在載入當初的其他組套…", "", false, 4);
+            renderSupplementOrderMessage(supplementPackagePickerBody, "正在準備可新增的套餐／套組…", "", false, 4);
+            renderSupplementNewOrders();
+            supplementOrderModal.hidden = false;
+            supplementOrderModal.querySelector("[data-supplement-order-close]")?.focus();
+
+            if (!supplementOrderOptionsUrl || !projectNumber || !barcode) {
+                const message = "缺少 PROJECTNO 或 BARCODESTR，無法載入原始選擇。";
+                renderSupplementOrderMessage(supplementPackageBody, message, "", true, 4);
+                renderSupplementOrderMessage(supplementOtherSuiteBody, message, "", true, 4);
+                renderSupplementOrderMessage(supplementPackagePickerBody, message, "", true, 4);
+                return;
+            }
+
+            supplementOrderRequestController?.abort();
+            supplementOrderRequestController = new AbortController();
+
+            try {
+                const requestUrl = new URL(supplementOrderOptionsUrl, window.location.origin);
+                requestUrl.searchParams.set("projectNumber", projectNumber);
+                requestUrl.searchParams.set("barcode", barcode);
+                const response = await fetch(requestUrl, {
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    signal: supplementOrderRequestController.signal
+                });
+                const result = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    throw new Error(result?.message || "載入補下醫令資料失敗。");
+                }
+
+                const existingPackages = Array.isArray(result?.packages) ? result.packages : [];
+                const existingOtherSuites = Array.isArray(result?.otherSuites) ? result.otherSuites : [];
+                supplementExistingPackageItems = existingPackages;
+                supplementExistingOtherSuites = existingOtherSuites.map((item, index) => ({
+                    id: "existing-other-suite|" + String(item?.orderNumber || index),
+                    type: "other-suite",
+                    orderNumber: String(item?.orderNumber || "").trim(),
+                    name: String(item?.name || item?.orderNumber || "").trim(),
+                    selfPayAccountingUnit: String(item?.selfPayAccountingUnit || "00").trim() || "00",
+                    selfPayAccountingUnitDisplay: String(item?.selfPayAccountingUnitDisplay || "").trim(),
+                    price: 0
+                }));
+                supplementAccountingUnits = Array.isArray(result?.selfPayAccountingUnits)
+                    ? result.selfPayAccountingUnits
+                    : [];
+                supplementAvailablePackages = Array.isArray(result?.availablePackages)
+                    ? result.availablePackages
+                    : [];
+                supplementExistingOrderNumbers = new Set(
+                    existingPackages
+                        .concat(existingOtherSuites)
+                        .map(item => normalizeSupplementOrderNumber(item?.orderNumber))
+                        .filter(Boolean));
+                supplementExistingPackages = new Map();
+                existingPackages.forEach(item => {
+                    const code = normalizeSupplementOrderNumber(item?.orderNumber);
+                    const name = normalizeSupplementOrderNumber(item?.name);
+                    if (code) supplementExistingPackages.set("code|" + code, item);
+                    if (name) supplementExistingPackages.set("name|" + name, item);
+
+                    const alreadyInProject = supplementAvailablePackages.some(packageOption =>
+                        (code && normalizeSupplementOrderNumber(packageOption?.orderNumber || packageOption?.id) === code)
+                        || (name && normalizeSupplementOrderNumber(packageOption?.name) === name));
+                    if (!alreadyInProject) {
+                        supplementAvailablePackages.push({
+                            id: String(item?.orderNumber || item?.name || ""),
+                            orderNumber: String(item?.orderNumber || ""),
+                            name: String(item?.name || item?.orderNumber || ""),
+                            selfPayAccountingUnit: String(item?.selfPayAccountingUnit || "00"),
+                            selfPayAccountingUnitDisplay: String(item?.selfPayAccountingUnitDisplay || ""),
+                            price: 0,
+                            priceText: "--",
+                            orderTotal: 0,
+                            orders: []
+                        });
+                    }
+                });
+
+                renderSupplementPackageCategoryTabs();
+
+                renderExistingSupplementOrders(
+                    supplementPackageBody,
+                    existingPackages,
+                    "當初未選擇套餐／套組",
+                    supplementPackageCount);
+                renderExistingSupplementOrders(
+                    supplementOtherSuiteBody,
+                    existingOtherSuites,
+                    "當初未選擇其他組套",
+                    supplementOtherSuiteCount);
+                renderSupplementAvailablePackages();
+                renderSupplementNewOrders();
+            } catch (error) {
+                if (error?.name === "AbortError") return;
+                const message = error?.message || "載入補下醫令資料時發生錯誤，請稍後再試。";
+                renderSupplementOrderMessage(supplementPackageBody, message, "", true, 4);
+                renderSupplementOrderMessage(supplementOtherSuiteBody, message, "", true, 4);
+                renderSupplementOrderMessage(supplementPackagePickerBody, message, "", true, 4);
+                updateSupplementOrderCounts();
+            } finally {
+                supplementOrderRequestController = null;
+            }
+        };
+
+        supplementAccountingCloseButtons.forEach(button =>
+            button.addEventListener("click", closeSupplementAccountingLookup));
+        supplementAccountingFilters.forEach(input =>
+            input.addEventListener("input", renderSupplementAccountingRows));
+        supplementAccountingClear?.addEventListener("click", () => {
+            supplementAccountingFilters.forEach(input => { input.value = ""; });
+            supplementActiveAccountingPrefix = "";
+            renderSupplementAccountingTabs();
+            renderSupplementAccountingRows();
+            supplementAccountingFilters[0]?.focus();
+        });
+        supplementPackageSearch?.addEventListener("input", () => {
+            supplementPackagePage = 1;
+            renderSupplementAvailablePackages();
+        });
+        supplementPackageCategoryTabs?.addEventListener("click", event => {
+            const button = event.target.closest("[data-supplement-package-category]");
+            if (!button || !supplementPackageCategoryTabs.contains(button)) return;
+            if (supplementPackageSearch) {
+                supplementPackageSearch.value = button.dataset.supplementPackageCategory || "";
+            }
+            supplementPackagePage = 1;
+            renderSupplementAvailablePackages();
+        });
+        supplementPackagePageSize?.addEventListener("change", () => {
+            supplementPackagePage = 1;
+            renderSupplementAvailablePackages();
+        });
+        supplementOtherSuitePageSize?.addEventListener("change", () => {
+            supplementOtherSuitePage = 1;
+            renderSupplementNewOrders();
+        });
+        supplementPackageSelectAll?.addEventListener("change", () => {
+            const checkboxes = Array.from(
+                supplementPackagePickerBody?.querySelectorAll("[data-supplement-picker-package]:not(:disabled)") || []);
+            checkboxes.forEach(checkbox => {
+                if (supplementPackageSelectAll.checked && !checkbox.checked) {
+                    addSupplementPackage(checkbox.value);
+                } else if (!supplementPackageSelectAll.checked && checkbox.checked) {
+                    const packageOption = supplementAvailablePackages.find(item =>
+                        String(item?.id || "") === String(checkbox.value || ""));
+                    removeSupplementNewOrder("package|" + String(packageOption?.id || packageOption?.orderNumber || ""));
+                }
+            });
+            renderSupplementAvailablePackages();
+            renderSupplementNewOrders();
+        });
+        supplementAccountingAllClear?.addEventListener("click", () => {
+            supplementNewOrders.filter(item => item.type === "package").forEach(item => {
+                const source = supplementAvailablePackages.find(option =>
+                    String(option?.id || "") === String(item.sourceId || ""));
+                item.selfPayAccountingUnit = String(source?.selfPayAccountingUnit || "00").trim() || "00";
+                item.selfPayAccountingUnitDisplay = source?.selfPayAccountingUnitDisplay
+                    || getSupplementUnitDisplay(item.selfPayAccountingUnit);
+            });
+            renderSupplementAvailablePackages();
+            updateSupplementOrderCounts();
+        });
+        supplementAccountingAllApply?.addEventListener("click", () => {
+            const packages = supplementNewOrders.filter(item => item.type === "package");
+            const first = packages[0];
+            if (!first) return;
+            packages.forEach(item => {
+                item.selfPayAccountingUnit = first.selfPayAccountingUnit;
+                item.selfPayAccountingUnitDisplay = first.selfPayAccountingUnitDisplay;
+            });
+            renderSupplementAvailablePackages();
+            updateSupplementOrderCounts();
+        });
+        supplementPackagePickerBody?.addEventListener("change", event => {
+            const checkbox = event.target.closest("[data-supplement-picker-package]");
+            if (!checkbox || checkbox.disabled) return;
+
+            if (checkbox.checked) {
+                addSupplementPackage(checkbox.value);
+            } else {
+                const packageOption = supplementAvailablePackages.find(item =>
+                    String(item?.id || "") === String(checkbox.value || ""));
+                const itemId = "package|" + String(packageOption?.id || packageOption?.orderNumber || "");
+                removeSupplementNewOrder(itemId);
+            }
+        });
+        supplementPackagePickerBody?.addEventListener("click", event => {
+            const button = event.target.closest("[data-supplement-package-expand]");
+            if (!button) return;
+            const packageId = String(button.value || "");
+            if (supplementExpandedPackageIds.has(packageId)) {
+                supplementExpandedPackageIds.delete(packageId);
+            } else {
+                supplementExpandedPackageIds.add(packageId);
+            }
+            renderSupplementAvailablePackages();
+        });
+        supplementNewOrderBody?.addEventListener("click", event => {
+            const button = event.target.closest("[data-supplement-remove-order]");
+            if (button) removeSupplementNewOrder(button.value);
+        });
+        supplementAddOtherSuiteButton?.addEventListener("click", openSupplementOtherSuiteLookup);
+        supplementOrderSubmitButton?.addEventListener("click", submitSupplementOrders);
+        supplementOrderCancelButton?.addEventListener("click", closeSupplementOrderDialog);
+        supplementOrderResultCloseButton?.addEventListener("click", closeSupplementOrderResult);
+        supplementOtherSuiteLookupCloseButtons.forEach(button =>
+            button.addEventListener("click", closeSupplementOtherSuiteLookup));
+
+        window.addEventListener("message", event => {
+            if (event.origin !== window.location.origin || !event.data || supplementOtherSuiteLookupModal?.hidden) return;
+
+            if (event.data.type === "healthsys:other-suite-selected") {
+                importSupplementOtherSuites([event.data.suite]);
+            } else if (event.data.type === "healthsys:other-suites-selected") {
+                importSupplementOtherSuites(event.data.suites);
+            } else if (event.data.type === "healthsys:other-suite-lookup-close") {
+                closeSupplementOtherSuiteLookup();
+            }
+        });
+        const closeAppointmentRejection = () => {
+            if (rejectionModal) {
+                rejectionModal.hidden = true;
+            }
+        };
+
+        const openAppointmentRejection = ({ title = "拒絕預約", message, items = [] }) => {
+            if (!rejectionModal || !rejectionTitle || !rejectionMessage || !rejectionList) {
+                window.alert([title, message, ...items].filter(Boolean).join("\n"));
+                return;
+            }
+
+            rejectionTitle.textContent = title;
+            rejectionMessage.textContent = message || "這筆資料目前無法執行此操作。";
+            rejectionList.replaceChildren(...items.map((item) => {
+                const listItem = document.createElement("li");
+                listItem.textContent = item;
+                return listItem;
+            }));
+            rejectionModal.hidden = false;
+            rejectionCloseButtons.find((button) => button !== rejectionModal.querySelector(".appointment-confirm-backdrop"))?.focus();
+        };
+
+        const getMissingConfirmedAppointmentFields = (row) => {
+            const requiredFields = [
+                ["patNo", "病歷號"], ["name", "姓名"], ["idNumber", "身分證 / 居留證號"],
+                ["gender", "性別"], ["phone", "手機"], ["workArea", "預約區域"],
+                ["appointmentDate", "預約日期"], ["time", "預約時間"],
+                ["doctorId", "看診醫師"], ["roomNo", "診間號"], ["projectNumber", "健檢專案"]
+            ];
+            const missingFields = requiredFields
+                .filter(([field]) => !String(row?.dataset[field] || "").trim())
+                .map(([, label]) => label);
+
+            if (row?.dataset.hasSelectedAppointmentItem !== "true") {
+                missingFields.push("套餐 / 套組");
+            } else if (row?.dataset.hasMissingAccountingUnit === "true") {
+                missingFields.push("優待身分");
+            }
+
+            return missingFields;
+        };
+
+        const closeConfirmDialog = () => {
+            if (!confirmModal) {
+                return;
+            }
+
+            confirmModal.hidden = true;
+            confirmModal.classList.remove("danger");
+            confirmModal.classList.remove("cancel-registration");
+
+            if (cancelRegistrationConfirmHero) {
+                cancelRegistrationConfirmHero.hidden = true;
+            }
+
+            pendingConfirmAction = null;
+        };
+
+        const openConfirmDialog = ({ title, message, warning = "", confirmText = "確認", danger = false, variant = "", onConfirm }) => {
+            if (!confirmModal || !confirmTitle || !confirmMessage || !confirmWarning || !confirmSubmit) {
+                onConfirm?.();
+                return;
+            }
+
+            confirmTitle.textContent = title;
+            confirmMessage.textContent = message;
+            confirmSubmit.textContent = confirmText;
+            confirmModal.classList.toggle("danger", danger);
+            confirmModal.classList.toggle("cancel-registration", variant === "cancel-registration");
+
+            if (cancelRegistrationConfirmHero) {
+                cancelRegistrationConfirmHero.hidden = variant !== "cancel-registration";
+            }
+
+            if (warning) {
+                confirmWarning.textContent = warning;
+                confirmWarning.hidden = false;
+            } else {
+                confirmWarning.textContent = "";
+                confirmWarning.hidden = true;
+            }
+
+            pendingConfirmAction = onConfirm;
+            confirmModal.hidden = false;
+            confirmSubmit.focus();
+        };
+
+        const updateAppointmentStatus = (row, status, statusTone, reserveStatus, refreshFilters = true) => {
+            const nextReserveStatus = String(reserveStatus || "").trim();
+            const fallbackStatus = appointmentStatusByReserveStatus[nextReserveStatus] || appointmentStatusByReserveStatus["0"];
+            const nextStatus = String(status || fallbackStatus.status).trim() || fallbackStatus.status;
+            const nextStatusTone = String(statusTone || fallbackStatus.tone).trim() || fallbackStatus.tone;
+
+            row.dataset.status = nextStatus;
+            row.dataset.statusTone = nextStatusTone;
+
+            if (nextReserveStatus) {
+                row.dataset.reserveStatus = nextReserveStatus;
+            }
+
+            const statusCell = row.querySelector("[data-appointment-status-cell]");
+
+            if (statusCell) {
+                statusCell.textContent = nextStatus;
+                statusCell.className = `appointment-status ${nextStatusTone}`.trim();
+            }
+
+            if (row.classList.contains("is-selected")) {
+                setSelectedRow(row);
+            }
+
+            syncAppointmentStatusActions(row);
+
+            if (refreshFilters) {
+                applyAppointmentFilters(false);
+            }
+        };
+
+        const syncAppointmentStatusActions = (row) => {
+            const currentStatus = String(row?.dataset.status || "").trim();
+            const reserveStatusValue = String(row?.dataset.reserveStatus || "").trim();
+            const currentReserveStatus = ["0", "1", "2", "4", "5"].includes(reserveStatusValue)
+                ? reserveStatusValue
+                : String(reserveStatusByAppointmentStatus[currentStatus] || "").trim();
+            const isRegisteredStatus = currentReserveStatus === "4";
+            const hasRegistrationStatus = ["4", "5"].includes(currentReserveStatus);
+
+            row?.querySelectorAll("[data-standard-appointment-action]").forEach((action) => {
+                action.hidden = hasRegistrationStatus;
+            });
+
+            const cancelRegistrationButton = row?.querySelector("[data-cancel-registration]");
+            const supplementOrderButton = row?.querySelector("[data-supplement-order]");
+            const readOnlyQueryLink = row?.querySelector("[data-readonly-appointment-link]");
+
+            if (cancelRegistrationButton) {
+                cancelRegistrationButton.hidden = !isRegisteredStatus;
+            }
+
+            if (supplementOrderButton) {
+                supplementOrderButton.hidden = !hasRegistrationStatus;
+            }
+
+            if (readOnlyQueryLink) {
+                readOnlyQueryLink.hidden = !hasRegistrationStatus;
+            }
+
+            row?.querySelectorAll("[data-target-reserve-status]").forEach((button) => {
+                const targetReserveStatus = String(button.dataset.targetReserveStatus || "").trim();
+                const isCurrentStatus = Boolean(currentReserveStatus && targetReserveStatus === currentReserveStatus);
+                const isBlockedReservedSlotAction = currentReserveStatus === "1" && targetReserveStatus === "2";
+
+                button.hidden = hasRegistrationStatus || isCurrentStatus || isBlockedReservedSlotAction;
+
+                if (isCurrentStatus) {
+                    button.disabled = false;
+                }
+            });
+        };
+
+        const createCancelFormData = (row, reserveStatus) => {
+            const formData = new FormData();
+            const currentReserveStatus = String(row.dataset.reserveStatus || "").trim();
+            const nextReserveStatus = String(reserveStatus || currentReserveStatus).trim();
+
+            if (antiForgeryToken) {
+                formData.append("__RequestVerificationToken", antiForgeryToken);
+            }
+
+            formData.append("ProjectNumber", row.dataset.projectNumber || "");
+            formData.append("Barcode", row.dataset.barcode || "");
+            formData.append("PatNo", row.dataset.patNo || "");
+            formData.append("Name", row.dataset.name || "");
+            formData.append("CurrentReserveStatus", currentReserveStatus);
+            formData.append("ReserveStatus", nextReserveStatus);
+
+            return formData;
+        };
+
+        const showCancelErrorMessage = (message) => {
+            window.alert(String(message || "").trim() || "更新預約狀態失敗，請確認預約資料後再試一次。");
+        };
+
+        const cancelAppointmentRow = async (row, reserveStatus = "0", triggerButton = null) => {
+            if (!row || !appointmentCancelUrl) {
+                return;
+            }
+
+            if (!String(row.dataset.barcode || "").trim()) {
+                showCancelErrorMessage("缺少 Barcode 編號，無法更新預約狀態。");
+                return;
+            }
+
+            if (!["0", "1", "2"].includes(String(reserveStatus || "").trim())) {
+                showCancelErrorMessage("預約狀態只能是已取消、已預約、佔名額。");
+                return;
+            }
+
+            const cancelButton = triggerButton || row.querySelector(`[data-target-reserve-status='${reserveStatus}']`);
+
+            if (cancelButton) {
+                cancelButton.disabled = true;
+            }
+
+            try {
+                const response = await fetch(appointmentCancelUrl, {
+                    method: "POST",
+                    body: createCancelFormData(row, reserveStatus),
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+                let result = null;
+
+                try {
+                    result = await response.json();
+                } catch {
+                    result = null;
+                }
+
+                if (!response.ok) {
+                    if (reserveStatus === "1" && result?.rejected === true) {
+                        openAppointmentRejection({
+                            title: result.title || "拒絕預約",
+                            message: result.message,
+                            items: Array.isArray(result.missingFields) ? result.missingFields : []
+                        });
+                    } else {
+                        showCancelErrorMessage(result?.message);
+                    }
+                    return;
+                }
+
+                const updatedCount = Number.parseInt(result?.updatedCount || "0", 10);
+
+                if (result?.updated === true || result?.canceled === true || updatedCount >= 1) {
+                    updateAppointmentStatus(row, result?.status, result?.statusTone, result?.reserveStatus || reserveStatus);
+                } else {
+                    showCancelErrorMessage(result?.message || "更新預約狀態失敗，未更新任何預約資料。");
+                }
+            } catch {
+                showCancelErrorMessage("更新預約狀態時發生錯誤，請稍後再試。");
+            } finally {
+                if (cancelButton && row.isConnected) {
+                    cancelButton.disabled = false;
+                }
+            }
+        };
+
+        const removeAppointmentRow = (row) => {
+            row.remove();
+            allRows = Array.from(page.querySelectorAll("[data-appointment-row]"));
+            applyAppointmentFilters(false);
+        };
+
+        const createDeleteFormData = (row) => {
+            const formData = new FormData();
+
+            if (antiForgeryToken) {
+                formData.append("__RequestVerificationToken", antiForgeryToken);
+            }
+
+            formData.append("ProjectNumber", row.dataset.projectNumber || "");
+            formData.append("Barcode", row.dataset.barcode || "");
+            formData.append("PatNo", row.dataset.patNo || "");
+            formData.append("Name", row.dataset.name || "");
+
+            return formData;
+        };
+
+        const showDeleteErrorMessage = (message) => {
+            window.alert(String(message || "").trim() || "刪除失敗，請確認預約資料後再試一次。");
+        };
+
+        const deleteAppointmentRow = async (row) => {
+            if (!row || !appointmentDeleteUrl) {
+                return;
+            }
+
+            if (!String(row.dataset.barcode || "").trim()) {
+                showDeleteErrorMessage("缺少 Barcode 編號，無法刪除預約。");
+                return;
+            }
+
+            const deleteButton = row.querySelector("[data-delete-appointment]");
+
+            if (deleteButton) {
+                deleteButton.disabled = true;
+            }
+
+            try {
+                const response = await fetch(appointmentDeleteUrl, {
+                    method: "POST",
+                    body: createDeleteFormData(row),
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+                let result = null;
+
+                try {
+                    result = await response.json();
+                } catch {
+                    result = null;
+                }
+
+                if (!response.ok) {
+                    showDeleteErrorMessage(result?.message);
+                    return;
+                }
+
+                const deletedCount = Number.parseInt(result?.deletedCount || "0", 10);
+
+                if (result?.deleted === true || deletedCount >= 1) {
+                    removeAppointmentRow(row);
+                } else {
+                    showDeleteErrorMessage(result?.message || "刪除失敗，未刪除任何預約資料。");
+                }
+            } catch {
+                showDeleteErrorMessage("刪除預約時發生錯誤，請稍後再試。");
+            } finally {
+                if (deleteButton && row.isConnected) {
+                    deleteButton.disabled = false;
+                }
+            }
+        };
+
+        const getFixedColumnsWidth = () => {
+            const fixedHeaderCells = tableWrap?.querySelectorAll(".today-appointment-table thead th:nth-child(-n + 5)");
+
+            if (fixedHeaderCells?.length) {
+                return Array.from(fixedHeaderCells).reduce((width, cell) => width + cell.getBoundingClientRect().width, 0);
+            }
+
+            const styles = getComputedStyle(page);
+            const readPixelValue = (name) => Number.parseFloat(styles.getPropertyValue(name)) || 0;
+
+            return readPixelValue("--today-fixed-select-width")
+                + readPixelValue("--today-fixed-action-width")
+                + readPixelValue("--today-fixed-name-width")
+                + readPixelValue("--today-fixed-date-width")
+                + readPixelValue("--today-fixed-time-width")
+                + readPixelValue("--today-fixed-patno-width");
+        };
+
+        const syncHorizontalScrollbarSize = () => {
+            if (!tableWrap || !horizontalScrollbar || !horizontalScrollbarContent) {
+                return;
+            }
+
+            const fixedColumnsWidth = getFixedColumnsWidth();
+            const visibleScrollWidth = tableWrap.clientWidth - fixedColumnsWidth;
+            const scrollableContentWidth = tableWrap.scrollWidth - fixedColumnsWidth;
+            const hasHorizontalOverflow = tableWrap.scrollWidth > tableWrap.clientWidth + 1 && visibleScrollWidth > 0;
+            const scrollbarLeft = Math.max(0, Math.min(fixedColumnsWidth, tableWrap.clientWidth));
+
+            horizontalScrollbar.hidden = !hasHorizontalOverflow;
+            page.style.setProperty("--today-fixed-columns-width", `${scrollbarLeft}px`);
+            horizontalScrollbar.style.left = `${scrollbarLeft}px`;
+            horizontalScrollbarContent.style.width = `${Math.max(scrollableContentWidth, visibleScrollWidth)}px`;
+
+            if (hasHorizontalOverflow) {
+                horizontalScrollbar.scrollLeft = tableWrap.scrollLeft;
+            }
+        };
+
+        const syncFromTableScroll = () => {
+            if (!horizontalScrollbar || isSyncingHorizontalScroll) {
+                return;
+            }
+
+            closeActionMenus();
+            isSyncingHorizontalScroll = true;
+            horizontalScrollbar.scrollLeft = tableWrap?.scrollLeft || 0;
+            isSyncingHorizontalScroll = false;
+        };
+
+        const syncFromHorizontalScrollbar = () => {
+            if (!tableWrap || isSyncingHorizontalScroll) {
+                return;
+            }
+
+            isSyncingHorizontalScroll = true;
+            tableWrap.scrollLeft = horizontalScrollbar?.scrollLeft || 0;
+            isSyncingHorizontalScroll = false;
+        };
+
+        if (tableWrap && horizontalScrollbar && horizontalScrollbarContent) {
+            tableWrap.addEventListener("scroll", syncFromTableScroll);
+            horizontalScrollbar.addEventListener("scroll", syncFromHorizontalScrollbar);
+            tableWrap.addEventListener("wheel", (event) => {
+                const horizontalDelta = event.shiftKey ? event.deltaY : event.deltaX;
+
+                if (!horizontalDelta || horizontalScrollbar.hidden) {
+                    return;
+                }
+
+                const maxScrollLeft = tableWrap.scrollWidth - tableWrap.clientWidth;
+                const nextScrollLeft = Math.min(Math.max(tableWrap.scrollLeft + horizontalDelta, 0), maxScrollLeft);
+
+                if (nextScrollLeft === tableWrap.scrollLeft) {
+                    return;
+                }
+
+                tableWrap.scrollLeft = nextScrollLeft;
+                event.preventDefault();
+            }, { passive: false });
+
+            window.addEventListener("resize", syncHorizontalScrollbarSize);
+            window.addEventListener("resize", closeActionMenus);
+
+            if ("ResizeObserver" in window) {
+                const resizeObserver = new ResizeObserver(syncHorizontalScrollbarSize);
+                resizeObserver.observe(tableWrap);
+            }
+        }
+
+        page.addEventListener("click", (event) => {
+            const toggle = event.target.closest(".appointment-action-toggle");
+
+            if (toggle && page.contains(toggle)) {
+                const actions = toggle.closest(".appointment-row-actions");
+
+                if (actions?.classList.contains("is-open")) {
+                    closeActionMenus();
+                } else {
+                    openActionMenu(actions);
+                }
+
+                event.stopPropagation();
+                return;
+            }
+
+            const supplementOrderButton = event.target.closest("[data-supplement-order]");
+
+            if (supplementOrderButton && page.contains(supplementOrderButton)) {
+                const row = supplementOrderButton.closest("[data-appointment-row]");
+                closeActionMenus();
+                event.stopPropagation();
+                openSupplementOrderDialog(row);
+                return;
+            }
+            const cancelRegistrationButton = event.target.closest("[data-cancel-registration]");
+
+            if (cancelRegistrationButton && page.contains(cancelRegistrationButton)) {
+                const row = cancelRegistrationButton.closest("[data-appointment-row]");
+                const name = cancelRegistrationButton.dataset.name || row?.dataset.name || "這筆預約";
+
+                closeActionMenus();
+                event.stopPropagation();
+
+                openConfirmDialog({
+                    title: "取消掛號",
+                    message: `是否要執行「${name}」的取消掛號動作？`,
+                    warning: "取消後將解除目前掛號狀態，請先確認受檢者資料及作業需求。",
+                    confirmText: "確認",
+                    danger: false,
+                    variant: "cancel-registration",
+                    onConfirm: () => cancelAppointmentRow(row, "1", cancelRegistrationButton)
+                });
+                return;
+            }
+
+            const editAppointmentLink = event.target.closest("[data-edit-appointment-link], [data-readonly-appointment-link]");
+
+            if (editAppointmentLink && page.contains(editAppointmentLink)) {
+                const row = editAppointmentLink.closest("[data-appointment-row]");
+
+                if (row) {
+                    setSelectedRow(row);
+                }
+
+                editAppointmentLink.href = appendAppointmentReturnUrl(editAppointmentLink.href);
+                closeActionMenus();
+                return;
+            }
+
+            const statusButton = event.target.closest("[data-update-appointment-status], [data-cancel-appointment]");
+
+            if (statusButton && page.contains(statusButton)) {
+                const row = statusButton.closest("[data-appointment-row]");
+                const name = statusButton.dataset.name || row?.dataset.name || "這筆預約";
+                const reserveStatus = statusButton.dataset.targetReserveStatus || "0";
+                const targetStatusName = statusButton.dataset.targetStatusName
+                    || appointmentStatusByReserveStatus[reserveStatus]?.status
+                    || "預約狀態";
+                const isCancelStatus = reserveStatus === "0";
+
+                closeActionMenus();
+                event.stopPropagation();
+
+                if (!row) {
+                    return;
+                }
+
+                if (reserveStatus === "1") {
+                    const missingFields = getMissingConfirmedAppointmentFields(row);
+
+                    if (missingFields.length > 0) {
+                        openAppointmentRejection({
+                            title: "拒絕預約",
+                            message: `「${name}」的必要欄位尚未填寫完整，無法改為已預約。`,
+                            items: missingFields
+                        });
+                        return;
+                    }
+                }
+
+                openConfirmDialog({
+                    title: isCancelStatus ? "取消預約" : "更新預約狀態",
+                    message: `是否要將 ${name} 的預約狀態改為「${targetStatusName}」？`,
+                    confirmText: isCancelStatus ? "確認取消" : "確認更新",
+                    onConfirm: () => cancelAppointmentRow(row, reserveStatus, statusButton)
+                });
+
+                return;
+            }
+
+            const deleteButton = event.target.closest("[data-delete-appointment]");
+
+            if (deleteButton && page.contains(deleteButton)) {
+                const row = deleteButton.closest("[data-appointment-row]");
+                const name = deleteButton.dataset.name || row?.dataset.name || "這筆預約";
+
+                closeActionMenus();
+                event.stopPropagation();
+
+                if (!row) {
+                    return;
+                }
+
+                openConfirmDialog({
+                    title: "刪除預約",
+                    message: `是否真的要刪除 ${name} 嗎？`,
+                    warning: "刪除後，此筆資料就會消失。",
+                    confirmText: "確認刪除",
+                    danger: true,
+                    onConfirm: () => deleteAppointmentRow(row)
+                });
+                return;
+            }
+
+            if (!event.target.closest(".appointment-row-actions")) {
+                closeActionMenus();
+            }
+        });
+
+        page.addEventListener("keydown", (event) => {
+            const key = String(event.key || "").toLowerCase();
+
+            if ((event.ctrlKey || event.metaKey) && key === "a" && !event.target.closest("input, textarea, select, [contenteditable='true']")) {
+                event.preventDefault();
+                selectAllBatchRows();
+                return;
+            }
+
+            if (event.key === "Escape") {
+                closeActionMenus();
+                closeConfirmDialog();
+                closeSupplementOrderDialog();
+                closeBatchResultDialog();
+                closeAppointmentQueryError();
+            }
+        });
+
+        supplementOrderCloseButtons.forEach((button) => {
+            button.addEventListener("click", closeSupplementOrderDialog);
+        });
+        confirmCloseButtons.forEach((button) => {
+            button.addEventListener("click", closeConfirmDialog);
+        });
+
+        confirmSubmit?.addEventListener("click", () => {
+            const action = pendingConfirmAction;
+
+            closeConfirmDialog();
+            action?.();
+        });
+
+        const getSelectedAppointmentRow = () => rows.find((row) => row.classList.contains("is-selected"))
+            || allRows.find((row) => row.classList.contains("is-selected"))
+            || null;
+
+        const getAppointmentReturnUrl = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+        const appendAppointmentReturnUrl = (target) => {
+            const url = new URL(target, window.location.href);
+
+            url.searchParams.set("returnUrl", getAppointmentReturnUrl());
+
+            return url.toString();
+        };
+
+        const buildSelectedAppointmentUrl = (row) => {
+            const projectNumber = String(row?.dataset.projectNumber || "").trim();
+            const barcode = String(row?.dataset.barcode || "").trim();
+            const reserveStatus = String(row?.dataset.reserveStatus || "").trim();
+
+            if (!createAppointmentUrl || !projectNumber || !barcode) {
+                return "";
+            }
+
+            const url = new URL(createAppointmentUrl, window.location.href);
+            url.searchParams.set("projectNumber", projectNumber);
+            url.searchParams.set("barcode", barcode);
+
+            if (reserveStatus) {
+                url.searchParams.set("reserveStatus", reserveStatus);
+            }
+
+            return appendAppointmentReturnUrl(url.toString());
+        };
+
+        const syncSelectedAppointmentButton = (row = getSelectedAppointmentRow()) => {
+            if (!selectedAppointmentButton) {
+                return;
+            }
+
+            const canOpen = Boolean(buildSelectedAppointmentUrl(row));
+            selectedAppointmentButton.disabled = !canOpen;
+            selectedAppointmentButton.setAttribute("aria-disabled", canOpen ? "false" : "true");
+        };
+
+        const openSelectedAppointment = () => {
+            const targetUrl = buildSelectedAppointmentUrl(getSelectedAppointmentRow());
+
+            if (!targetUrl) {
+                window.alert("缺少專案編號或 Barcode，無法帶入個人預約。");
+                syncSelectedAppointmentButton();
+                return;
+            }
+
+            window.location.assign(targetUrl);
+        };
+
+        const clearSelectedFields = () => {
+            Object.entries(selectedFields).forEach(([fieldName, field]) => {
+                if (!field) {
+                    return;
+                }
+
+                field.textContent = "";
+
+                if (fieldName === "status") {
+                    field.className = "appointment-status";
+                }
+            });
+
+            syncSelectedAppointmentButton(null);
+        };
+
+        const setSelectedRow = (row) => {
+            rows.forEach((currentRow) => {
+                const isSelected = currentRow === row;
+                currentRow.classList.toggle("is-selected", isSelected);
+                currentRow.setAttribute("aria-selected", isSelected ? "true" : "false");
+            });
+
+            syncSelectedAppointmentButton(row);
+
+            if (!selectedFields.name) {
+                return;
+            }
+
+            selectedFields.name.textContent = row.dataset.name || "";
+            selectedFields.projectNumber.textContent = row.dataset.projectNumber || "";
+            selectedFields.dateTime.textContent = `${row.dataset.appointmentDate || ""} ${row.dataset.time || ""}`.trim();
+            selectedFields.plan.textContent = row.dataset.plan || "";
+            selectedFields.phone.textContent = row.dataset.phone || "";
+            selectedFields.note.textContent = row.dataset.note || "";
+
+            if (selectedFields.status) {
+                selectedFields.status.textContent = row.dataset.status || "";
+                selectedFields.status.className = `appointment-status ${row.dataset.statusTone || ""}`.trim();
+            }
+        };
+
+        const getCurrentPageRows = () => rows.filter((row) => !row.hidden);
+
+        const getBatchSelectedRows = () => allRows.filter((row) => row.classList.contains("is-batch-selected"));
+
+        const getBatchRegisterRows = () => {
+            const isEligible = (row) => String(row?.dataset.reserveStatus || "").trim() === "1";
+            const batchRows = getBatchSelectedRows().filter(isEligible);
+
+            if (batchRows.length > 0) {
+                return batchRows;
+            }
+
+            const selectedRow = getSelectedAppointmentRow();
+            return selectedRow && isEligible(selectedRow) ? [selectedRow] : [];
+        };
+
+        const setBatchRowSelected = (row, selected) => row?.classList.toggle("is-batch-selected", selected);
+
+        const syncBatchSelectionState = () => {
+            const selectedRows = getBatchSelectedRows();
+            const selectedCount = selectedRows.length;
+            const registerCount = getBatchRegisterRows().length;
+            const hasReservedSlot = selectedRows.some((row) => String(row.dataset.reserveStatus || "").trim() === "2")
+                || (selectedCount === 0 && String(getSelectedAppointmentRow()?.dataset.reserveStatus || "").trim() === "2");
+
+            if (batchSelectedCount) {
+                batchSelectedCount.textContent = selectedCount > 0
+                    ? `已標記 ${selectedCount} 筆預約`
+                    : `目前選取 ${registerCount} 筆預約`;
+            }
+            if (batchSelectionHint) {
+                batchSelectionHint.textContent = hasReservedSlot
+                    ? "選取資料包含佔名額，請先補齊資料並改為已預約"
+                    : selectedCount > 0
+                        ? "點選只移動光棒，Ctrl 可增減單筆，Shift 可延伸範圍，Ctrl+A 全選"
+                        : "可直接掛號目前選取的已預約資料；Ctrl 多選，Shift 範圍，Ctrl+A 全選";
+            }
+            if (batchRegisterButton) batchRegisterButton.disabled = registerCount === 0 || hasReservedSlot;
+            if (batchClearButton) batchClearButton.disabled = selectedCount === 0;
+        };
+        const clearBatchSelection = () => {
+            allRows.forEach((row) => setBatchRowSelected(row, false));
+            batchSelectionAnchor = null;
+            syncBatchSelectionState();
+        };
+
+        const toggleBatchRowSelection = (row) => {
+            setBatchRowSelected(row, !row.classList.contains("is-batch-selected"));
+            batchSelectionAnchor = row;
+            syncBatchSelectionState();
+        };
+
+        const selectBatchRange = (fromRow, toRow) => {
+            const fromIndex = rows.indexOf(fromRow);
+            const toIndex = rows.indexOf(toRow);
+
+            if (fromIndex < 0 || toIndex < 0) {
+                setBatchRowSelected(toRow, true);
+            } else {
+                rows.slice(Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex) + 1)
+                    .forEach((row) => setBatchRowSelected(row, true));
+            }
+            batchSelectionAnchor = toRow;
+            syncBatchSelectionState();
+        };
+
+        const selectAllBatchRows = () => {
+            allRows.forEach((row) => setBatchRowSelected(row, false));
+            rows.forEach((row) => setBatchRowSelected(row, true));
+            batchSelectionAnchor = rows.at(-1) || null;
+            syncBatchSelectionState();
+        };
+
+        const closeBatchResultDialog = () => {
+            if (batchResultModal) batchResultModal.hidden = true;
+        };
+
+        const showBatchProgressDialog = (count) => {
+            isBatchRegisterRunning = true;
+
+            if (batchRegisterButton) batchRegisterButton.disabled = true;
+            if (batchClearButton) batchClearButton.disabled = true;
+            if (batchProgressMessage) {
+                batchProgressMessage.textContent = "正在處理 " + count + " 筆預約資料，請勿關閉頁面…";
+            }
+            if (batchProgressModal) {
+                batchProgressModal.hidden = false;
+            }
+        };
+
+        const hideBatchProgressDialog = () => {
+            isBatchRegisterRunning = false;
+
+            if (batchProgressModal) {
+                batchProgressModal.hidden = true;
+            }
+            syncBatchSelectionState();
+        };
+
+        const normalizeBatchMessage = (value, fallback = "批次掛號失敗，請稍後再試。") => {
+            let message = value;
+
+            if (message instanceof Error) {
+                message = message.message;
+            }
+
+            for (let depth = 0; depth < 3; depth += 1) {
+                if (message && typeof message === "object") {
+                    message = message.message ?? message.detail ?? message.title ?? "";
+                    continue;
+                }
+
+                if (typeof message !== "string") {
+                    return fallback;
+                }
+
+                const trimmedMessage = message.trim();
+                if (!trimmedMessage) {
+                    return fallback;
+                }
+
+                if (trimmedMessage.startsWith("{") || trimmedMessage.startsWith("[")) {
+                    try {
+                        message = JSON.parse(trimmedMessage);
+                        continue;
+                    } catch {
+                        return fallback;
+                    }
+                }
+
+                if (/<[a-z][\s\S]*>/i.test(trimmedMessage)) {
+                    const documentContent = new DOMParser().parseFromString(trimmedMessage, "text/html");
+                    message = documentContent.querySelector("h1, h2, title")?.textContent
+                        ?? documentContent.body?.textContent
+                        ?? "";
+                    continue;
+                }
+
+                return trimmedMessage.replace(/\s+/g, " ");
+            }
+
+            return fallback;
+        };
+
+        const normalizeBatchResult = (result) => {
+            const success = result?.success === true;
+
+            return {
+                success,
+                projectNumber: String(result?.projectNumber ?? ""),
+                barcode: String(result?.barcode ?? ""),
+                patNo: String(result?.patNo ?? ""),
+                name: String(result?.name ?? ""),
+                message: normalizeBatchMessage(result?.message, success ? "掛號成功。" : "批次掛號失敗，請稍後再試。"),
+                processedAt: String(result?.processedAt ?? "")
+            };
+        };
+
+        const createBatchResultRow = (result) => {
+            const item = document.createElement("article");
+            item.className = `appointment-batch-result-item ${result.success ? "success" : "failed"}`;
+            item.innerHTML = `<span class="appointment-batch-result-badge">${result.success ? "成功" : "失敗"}</span><div><strong></strong><div class="appointment-batch-result-meta"><span class="appointment-batch-result-patno"></span><span aria-hidden="true">·</span><span class="appointment-batch-result-project"></span></div><p></p></div><time></time>`;
+            item.querySelector("strong").textContent = result.name || "未命名";
+            item.querySelector(".appointment-batch-result-patno").textContent = `病歷號 ${result.patNo || "--"}`;
+            item.querySelector(".appointment-batch-result-project").textContent = `專案編號 ${result.projectNumber || "--"}`;
+            item.querySelector("p").textContent = result.message;
+            item.querySelector("time").textContent = result.processedAt;
+            return item;
+        };
+
+        const openBatchResultDialog = (results) => {
+            if (!batchResultModal) return;
+            const successCount = results.filter((result) => result.success).length;
+            const failedCount = results.length - successCount;
+            if (batchResultTotal) batchResultTotal.textContent = String(results.length);
+            if (batchResultSuccess) batchResultSuccess.textContent = String(successCount);
+            if (batchResultFailed) batchResultFailed.textContent = String(failedCount);
+            if (batchResultList) batchResultList.replaceChildren(...results.map(createBatchResultRow));
+            batchResultModal.dataset.state = failedCount ? (successCount ? "partial" : "failed") : "success";
+            batchResultModal.hidden = false;
+            batchResultModal.querySelector("[data-batch-result-close]")?.focus();
+        };
+
+        const runBatchRegister = async () => {
+            if (isBatchRegisterRunning) {
+                return;
+            }
+
+            const explicitlySelectedRows = getBatchSelectedRows();
+            const candidateRows = explicitlySelectedRows.length > 0
+                ? explicitlySelectedRows
+                : [getSelectedAppointmentRow()].filter(Boolean);
+            const reservedSlotRows = candidateRows.filter((row) => String(row.dataset.reserveStatus || "").trim() === "2");
+
+            if (reservedSlotRows.length > 0) {
+                openAppointmentRejection({
+                    title: "無法批次掛號",
+                    message: "佔名額資料不可執行批次掛號，請先完成必要欄位並改為已預約。",
+                    items: reservedSlotRows.map((row) => row.dataset.name || row.dataset.barcode || "未命名資料")
+                });
+                return;
+            }
+
+            const selectedRows = getBatchRegisterRows();
+            const selectedItems = selectedRows.map((row) => ({
+                reserveStatus: row.dataset.reserveStatus || "",
+                projectNumber: row.dataset.projectNumber || "",
+                barcode: row.dataset.barcode || "",
+                patNo: row.dataset.patNo || "",
+                name: row.dataset.name || "",
+                appointmentDate: row.dataset.appointmentDate || "",
+                time: row.dataset.time || "",
+                doctorName: row.dataset.doctorName || "",
+                doctorId: row.dataset.doctorId || "",
+                roomNo: row.dataset.roomNo || "",
+                selfPayAccountingUnit: row.dataset.selfPayAccountingUnit || ""
+            }));
+
+            if (!selectedItems.length) {
+                return;
+            }
+
+            if (!batchRegisterUrl) {
+                lastBatchResults = selectedRows.map((row) => ({
+                    success: false,
+                    projectNumber: row.dataset.projectNumber || "",
+                    barcode: row.dataset.barcode || "",
+                    patNo: row.dataset.patNo || "",
+                    name: row.dataset.name || "",
+                    message: "找不到批次掛號的後端路由。",
+                    processedAt: new Date().toLocaleString("zh-TW", { hour12: false })
+                }));
+                openBatchResultDialog(lastBatchResults);
+                return;
+            }
+
+            closeActionMenus();
+            showBatchProgressDialog(selectedItems.length);
+
+            try {
+                const response = await fetch(batchRegisterUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "RequestVerificationToken": antiForgeryToken
+                    },
+                    body: JSON.stringify({ rows: selectedItems })
+                });
+                const responseText = await response.text();
+                let payload = null;
+
+                if (responseText.trim()) {
+                    try {
+                        payload = JSON.parse(responseText);
+                    } catch {
+                        payload = null;
+                    }
+                }
+
+                if (!response.ok) {
+                    const statusMessage = `批次掛號失敗（HTTP ${response.status}）。`;
+                    throw new Error(normalizeBatchMessage(payload ?? responseText, statusMessage));
+                }
+
+                if (!payload || !Array.isArray(payload.results)) {
+                    throw new Error(normalizeBatchMessage(payload ?? responseText));
+                }
+
+                const results = payload.results.map(normalizeBatchResult);
+
+                lastBatchResults = results;
+                results.filter((result) => result.success)
+                    .forEach((result) => {
+                        const matchingRows = allRows.filter((item) =>
+                            String(item.dataset.barcode || "").trim() === String(result.barcode || "").trim()
+                            && String(item.dataset.projectNumber || "").trim() === String(result.projectNumber || "").trim());
+
+                        matchingRows.forEach((row) => {
+                            updateAppointmentStatus(row, "已掛號", "registered", "4", false);
+                            setBatchRowSelected(row, false);
+                            row.classList.add("batch-register-success");
+                            window.setTimeout(() => row.classList.remove("batch-register-success"), 1800);
+                        });
+                    });
+                syncDashboardCounts();
+                setActivePage(activePage);
+                openBatchResultDialog(results);
+                syncBatchSelectionState();
+            } catch (error) {
+                const fallbackMessage = normalizeBatchMessage(error);
+                const processedAt = new Date().toLocaleString("zh-TW", { hour12: false });
+
+                lastBatchResults = selectedItems.map((item) => ({
+                    success: false,
+                    projectNumber: item.projectNumber,
+                    barcode: item.barcode,
+                    patNo: item.patNo,
+                    name: item.name,
+                    message: fallbackMessage,
+                    processedAt
+                }));
+                openBatchResultDialog(lastBatchResults);
+            } finally {
+                hideBatchProgressDialog();
+            }
+        };
+
+        const downloadBatchResults = () => {
+            if (!lastBatchResults.length) return;
+            const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+            const lines = [["處理結果", "受檢者", "病歷號", "專案編號", "Barcode", "訊息", "處理時間"], ...lastBatchResults.map((result) => [result.success ? "成功" : "失敗", result.name, result.patNo, result.projectNumber, result.barcode, result.message, result.processedAt])];
+            const csvContent = lines.map((line) => line.map(escapeCsv).join(",")).join("\r\n");
+            const utf8Bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const url = URL.createObjectURL(new Blob([utf8Bom, csvContent], { type: "text/csv;charset=utf-8;" }));
+            const link = Object.assign(document.createElement("a"), { href: url, download: "批次掛號結果.csv" });
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        };
+
+        const bindAppointmentRow = (row) => {
+            row.addEventListener("click", (event) => {
+                if (event.target.closest("a, button, input, select, textarea")) {
+                    return;
+                }
+
+                setSelectedRow(row);
+
+                if (event.shiftKey) {
+                    selectBatchRange(batchSelectionAnchor, row);
+                } else if (event.ctrlKey || event.metaKey) {
+                    toggleBatchRowSelection(row);
+                } else {
+                    batchSelectionAnchor = row;
+                    syncBatchSelectionState();
+                }
+            });
+
+            row.addEventListener("keydown", (event) => {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    setSelectedRow(row);
+                    batchSelectionAnchor = row;
+                    syncBatchSelectionState();
+                    return;
+                }
+
+                if (event.key !== " ") {
+                    return;
+                }
+
+                event.preventDefault();
+                setSelectedRow(row);
+
+                if (event.shiftKey) selectBatchRange(batchSelectionAnchor, row);
+                else toggleBatchRowSelection(row);
+            });
+        };
+        allRows.forEach(bindAppointmentRow);
+        const pagination = page.querySelector(".table-footer .pagination");
+        const pageSizeSelect = page.querySelector(".table-footer .page-select");
+        const pageSummary = page.querySelector(".table-footer > span");
+        let activePage = Number.parseInt(page.querySelector("[data-page].active")?.dataset.page || "1", 10);
+
+        if (!Number.isFinite(activePage) || activePage < 1) {
+            activePage = 1;
+        }
+
+        const getPageSize = () => {
+            const parsedSize = Number.parseInt(pageSizeSelect?.value || "", 10);
+
+            return Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : 10;
+        };
+
+        const getPageCount = () => Math.max(1, Math.ceil(rows.length / getPageSize()));
+
+        const clampPage = (pageNumber) => Math.min(Math.max(pageNumber, 1), getPageCount());
+
+        const updatePageSummary = (startIndex, visibleCount) => {
+            if (!pageSummary) {
+                return;
+            }
+
+            if (!rows.length) {
+                pageSummary.textContent = "顯示 0 筆，共 0 筆";
+                return;
+            }
+
+            pageSummary.textContent = `顯示 ${startIndex + 1} - ${startIndex + visibleCount} 筆，共 ${rows.length} 筆`;
+        };
+
+        const getVisiblePageNumbers = () => {
+            const pageCount = getPageCount();
+            const maxVisiblePages = 7;
+
+            if (pageCount <= maxVisiblePages) {
+                const visiblePages = [];
+
+                for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+                    visiblePages.push(pageNumber);
+                }
+
+                while (visiblePages.length < maxVisiblePages) {
+                    visiblePages.push(`placeholder-${visiblePages.length}`);
+                }
+
+                return visiblePages;
+            }
+
+            if (activePage <= 4) {
+                return [1, 2, 3, 4, 5, "ellipsis-end", pageCount];
+            }
+
+            if (activePage >= pageCount - 3) {
+                return [1, "ellipsis-start", pageCount - 4, pageCount - 3, pageCount - 2, pageCount - 1, pageCount];
+            }
+
+            return [1, "ellipsis-start", activePage - 1, activePage, activePage + 1, "ellipsis-end", pageCount];
+        };
+
+        const createPageButton = (label, pageNumber, options = {}) => {
+            const button = document.createElement("button");
+
+            button.type = "button";
+            button.textContent = label;
+
+            if (typeof pageNumber === "number") {
+                button.dataset.page = String(pageNumber);
+            }
+
+            if (options.ariaLabel) {
+                button.setAttribute("aria-label", options.ariaLabel);
+            }
+
+            if (options.active) {
+                button.classList.add("active");
+                button.setAttribute("aria-current", "page");
+            }
+
+            if (options.disabled) {
+                button.disabled = true;
+            }
+
+            if (options.placeholder) {
+                button.classList.add("pagination-placeholder");
+                button.disabled = true;
+                button.setAttribute("aria-hidden", "true");
+                button.tabIndex = -1;
+                return button;
+            }
+
+            if (!options.disabled) {
+                button.addEventListener("click", () => setActivePage(pageNumber));
+            }
+
+            return button;
+        };
+
+        const renderPagination = () => {
+            if (!pagination) {
+                return;
+            }
+
+            const pageCount = getPageCount();
+            const buttons = [
+                createPageButton("‹", activePage - 1, {
+                    ariaLabel: "上一頁",
+                    disabled: activePage === 1
+                })
+            ];
+
+            getVisiblePageNumbers().forEach((pageNumber) => {
+                if (typeof pageNumber === "string" && pageNumber.startsWith("placeholder-")) {
+                    buttons.push(createPageButton("", null, {
+                        placeholder: true
+                    }));
+                    return;
+                }
+
+                if (typeof pageNumber !== "number") {
+                    buttons.push(createPageButton("...", null, {
+                        ariaLabel: "省略頁碼",
+                        disabled: true
+                    }));
+                    return;
+                }
+
+                buttons.push(createPageButton(String(pageNumber), pageNumber, {
+                    active: pageNumber === activePage,
+                    ariaLabel: `第 ${pageNumber} 頁`
+                }));
+            });
+
+            buttons.push(createPageButton("›", activePage + 1, {
+                ariaLabel: "下一頁",
+                disabled: activePage === pageCount
+            }));
+
+            pagination.replaceChildren(...buttons);
+        };
+
+        let appointmentSortKey = "";
+        let appointmentSortDirection = "asc";
+        const originalSortOrder = new WeakMap(allRows.map((row, index) => [row, index]));
+        const appointmentSortButtons = Array.from(page.querySelectorAll("[data-appointment-sort]"));
+
+        const getAppointmentSortValue = (row, key) => {
+            if (key === "appointmentDate") return normalizeDateValue(row.dataset.appointmentDate) || null;
+            if (key === "status") {
+                const code = String(row.dataset.reserveStatus || "").trim();
+                const index = ["1", "4", "5", "6", "2", "0"].indexOf(code);
+                return index < 0 ? null : index;
+            }
+            const text = String(row.dataset[key] || "").trim();
+            if (!text || text === "-" || text === "—") return null;
+            if (key === "time") {
+                const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(text)
+                    || /^(\d{2})(\d{2})(\d{2})?$/.exec(text);
+                if (match) return [match[1].padStart(2, "0"), match[2], match[3] || "00"].join(":");
+            }
+            return text;
+        };
+
+        const compareAppointmentRows = (left, right) => {
+            const a = getAppointmentSortValue(left, appointmentSortKey);
+            const b = getAppointmentSortValue(right, appointmentSortKey);
+            if (a === null && b !== null) return 1;
+            if (b === null && a !== null) return -1;
+            const compared = a === b ? 0 : typeof a === "number" ? a - b
+                : a.localeCompare(b, "zh-Hant-TW", { numeric: true });
+            return compared ? compared * (appointmentSortDirection === "asc" ? 1 : -1)
+                : (originalSortOrder.get(left) ?? 0) - (originalSortOrder.get(right) ?? 0);
+        };
+
+        appointmentSortButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                const key = button.dataset.appointmentSort;
+                appointmentSortDirection = appointmentSortKey === key && appointmentSortDirection === "asc" ? "desc" : "asc";
+                appointmentSortKey = key;
+                appointmentSortButtons.forEach((item) => {
+                    const active = item === button;
+                    item.closest("th").setAttribute("aria-sort", active ? (appointmentSortDirection === "asc" ? "ascending" : "descending") : "none");
+                    item.querySelectorAll("[data-sort-direction]").forEach((arrow) => {
+                        arrow.classList.toggle("is-active", active && arrow.dataset.sortDirection === appointmentSortDirection);
+                    });
+                    const label = item.firstChild.textContent.trim();
+                    item.setAttribute("aria-label", label + (active ? (appointmentSortDirection === "asc" ? "：目前遞增，點擊遞減排序" : "：目前遞減，點擊遞增排序") : "：點擊遞增排序"));
+                });
+                setActivePage(1);
+            });
+        });
+
+        const setActivePage = (pageNumber) => {
+            if (appointmentSortKey) {
+                rows.sort(compareAppointmentRows);
+                const body = rows[0]?.parentElement;
+                if (body) {
+                    const fragment = document.createDocumentFragment();
+                    rows.forEach((row) => fragment.appendChild(row));
+                    body.appendChild(fragment);
+                }
+            }
+
+            activePage = clampPage(pageNumber);
+
+            const pageSize = getPageSize();
+            const startIndex = (activePage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, rows.length);
+            const visibleRowSet = new Set(rows.slice(startIndex, endIndex));
+
+            allRows.forEach((row) => {
+                row.hidden = !visibleRowSet.has(row);
+            });
+
+            const visibleRows = rows.slice(startIndex, endIndex);
+            const selectedRow = rows.find((row) => row.classList.contains("is-selected"));
+
+            if (visibleRows.length && !visibleRows.includes(selectedRow)) {
+                setSelectedRow(visibleRows[0]);
+            } else if (!rows.length) {
+                clearSelectedFields();
+            } else {
+                syncSelectedAppointmentButton(selectedRow);
+            }
+
+            updatePageSummary(startIndex, visibleRows.length);
+            renderPagination();
+            syncHorizontalScrollbarSize();
+            syncBatchSelectionState();
+        };
+
+        const applyAppointmentFilters = (resetPage = true) => {
+            const startDate = normalizeDateValue(startDateInput?.value);
+            const endDate = normalizeDateValue(endDateInput?.value);
+            const selectedArea = (reservationAreaSelect?.value || "").trim();
+            const selectedStatus = (appointmentStatusSelect?.value || "").trim();
+            const keyword = normalizeFilterValue(keywordInput?.value);
+            const searchAllDatesForDefaultKeyword = Boolean(keyword)
+                && !dateFilterTouched
+                && isDefaultTodayDateRange();
+
+            rows = allRows.filter((row) => {
+                const matchesKeyword = matchesAppointmentKeyword(row, keyword);
+                const matchesDate = isAppointmentDateInRange(row, startDate, endDate)
+                    || (searchAllDatesForDefaultKeyword && matchesKeyword);
+
+                return matchesDate
+                    && (!selectedArea || getAppointmentWorkArea(row) === selectedArea)
+                    && (!selectedStatus || getAppointmentReserveStatus(row) === selectedStatus)
+                    && matchesKeyword;
+            });
+
+            syncDashboardCounts();
+            setActivePage(resetPage ? 1 : activePage);
+        };
+
+        const setAppointmentQueryState = (state, message = "") => {
+            page.dataset.queryState = state;
+
+            if (searchButton) {
+                searchButton.disabled = state === "loading";
+                searchButton.setAttribute("aria-busy", String(state === "loading"));
+                searchButton.setAttribute("aria-disabled", String(state === "loading"));
+                searchButton.title = "";
+            }
+
+            if (searchButtonLabel) {
+                searchButtonLabel.textContent = state === "loading" ? "查詢中" : "搜尋";
+            }
+
+            if (queryStatus) {
+                queryStatus.dataset.state = state;
+                queryStatus.textContent = message;
+            }
+        };
+
+        const setAppointmentGridAnimation = (state = "") => {
+            window.clearTimeout(appointmentGridAnimationTimer);
+            appointmentGridAnimationTimer = 0;
+            tablePanel?.classList.toggle("is-query-loading", state === "loading");
+            tablePanel?.classList.toggle("is-query-refreshed", state === "refreshed");
+            tablePanel?.setAttribute("aria-busy", String(state === "loading"));
+        };
+        const playAppointmentGridRefreshed = () => {
+            setAppointmentGridAnimation("refreshed");
+            setAppointmentQueryState("done", `清單已更新，共 ${rows.length} 筆`);
+            appointmentGridAnimationTimer = window.setTimeout(() => {
+                setAppointmentGridAnimation();
+                setAppointmentQueryState("idle");
+            }, 1200);
+        };
+        const closeAppointmentQueryError = () => {
+            if (queryErrorModal) {
+                queryErrorModal.hidden = true;
+            }
+        };
+
+        const showAppointmentQueryError = (message) => {
+            const normalizedMessage = String(message || "").trim()
+                || "查詢時間過長，請縮小查詢範圍後再試。";
+
+            if (!queryErrorModal || !queryErrorMessage) {
+                window.alert(normalizedMessage);
+                return;
+            }
+
+            queryErrorMessage.textContent = normalizedMessage;
+            queryErrorModal.hidden = false;
+            queryErrorModal.querySelector("[data-appointment-query-error-close]:not(.appointment-confirm-backdrop)")?.focus();
+        };
+
+        const buildAppointmentSearchUrl = () => {
+            const url = new URL(window.location.href);
+            const keyword = String(keywordInput?.value || "").trim();
+            const startDate = String(startDateInput?.value || "").trim();
+            const endDate = String(endDateInput?.value || "").trim();
+            const selectedArea = String(reservationAreaSelect?.value || "").trim();
+            const selectedStatus = String(appointmentStatusSelect?.value || "").trim();
+            const shouldSearchAllDatesForKeyword = Boolean(keyword)
+                && !dateFilterTouched
+                && isDefaultTodayDateRange();
+
+            url.search = "";
+
+            if (startDate && !shouldSearchAllDatesForKeyword) {
+                url.searchParams.set("checkDateStart", startDate);
+            }
+
+            if (endDate && !shouldSearchAllDatesForKeyword) {
+                url.searchParams.set("checkDateEnd", endDate);
+            }
+
+            if (selectedArea) {
+                url.searchParams.set("reservationArea", selectedArea);
+            }
+
+            if (selectedStatus) {
+                url.searchParams.set("reserveStatus", selectedStatus);
+            }
+
+            if (keyword) {
+                url.searchParams.set("keyword", keyword);
+            }
+
+            return url.toString();
+        };
+
+        const runAppointmentSearch = () => {
+            if (isAppointmentQueryRunning || page.dataset.queryState === "loading") {
+                return;
+            }
+
+            for (const input of [startDateInput, endDateInput]) {
+                if (!input) continue;
+                input.setCustomValidity("");
+                if (!input.validity.valid || (input.value && !normalizeDateValue(input.value))) {
+                    input.setCustomValidity("請輸入有效的日期（西元年／月／日），並確認月份與日期正確。");
+                    input.reportValidity();
+                    input.focus();
+                    return;
+                }
+            }
+
+            const targetUrl = buildAppointmentSearchUrl();
+            const currentUrl = new URL(window.location.href);
+            const normalizedTargetUrl = new URL(targetUrl);
+            const isCurrentQuery = normalizedTargetUrl.pathname === currentUrl.pathname
+                && normalizedTargetUrl.search === currentUrl.search;
+
+            isAppointmentQueryRunning = true;
+            window.clearTimeout(appointmentQueryTimeoutTimer);
+            closeActionMenus();
+            setAppointmentQueryState("loading", "查詢中...");
+            setAppointmentGridAnimation("loading");
+            markAppointmentGridRefresh();
+            appointmentQueryTimeoutTimer = window.setTimeout(() => {
+                window.stop();
+                appointmentQueryTimeoutTimer = 0;
+                isAppointmentQueryRunning = false;
+                clearAppointmentGridRefreshMark();
+                setAppointmentGridAnimation();
+                setAppointmentQueryState("idle");
+                showAppointmentQueryError("查詢超過 30 秒，已自動逾時，請縮小查詢範圍後再試。");
+            }, appointmentQueryTimeoutMilliseconds);
+
+            window.setTimeout(() => {
+                try {
+                    if (isCurrentQuery) { window.location.reload(); }
+                    else { window.location.assign(targetUrl); }
+                } catch {
+                    window.clearTimeout(appointmentQueryTimeoutTimer);
+                    appointmentQueryTimeoutTimer = 0;
+                    isAppointmentQueryRunning = false;
+                    clearAppointmentGridRefreshMark();
+                    setAppointmentGridAnimation();
+                    setAppointmentQueryState("idle");
+                    showAppointmentQueryError("無法送出查詢，請稍後再試。");
+                }
+            }, 360);
+        };
+
+        const getTodayInputDate = () => {
+            const today = new Date();
+            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        };
+
+        const toDateInputValue = (value) => {
+            const normalized = normalizeDateValue(value);
+
+            return normalized
+                ? `${normalized.slice(0, 4)}-${normalized.slice(4, 6)}-${normalized.slice(6, 8)}`
+                : "";
+        };
+
+        const applyAppointmentQueryFromUrl = () => {
+            const query = new URLSearchParams(window.location.search);
+            const keyword = String(query.get("keyword") || query.get("barcode") || query.get("healthCode") || "").trim();
+            const projectNo = String(query.get("projectNo") || query.get("projectNumber") || "").trim();
+            const customerName = String(query.get("customerName") || query.get("company") || "").trim();
+            const startDateParam = query.get("checkDateStart") || query.get("startDate");
+            const endDateParam = query.get("checkDateEnd") || query.get("endDate");
+            const hasDateQuery = query.has("checkDateStart")
+                || query.has("checkDateEnd")
+                || query.has("startDate")
+                || query.has("endDate");
+            const hasAppointmentQuery = keyword || projectNo || customerName || hasDateQuery;
+
+            if (!hasAppointmentQuery) {
+                return;
+            }
+
+            const today = getTodayInputDate();
+            const shouldUseTodayFallback = !keyword && (projectNo || customerName);
+            const fallbackDate = shouldUseTodayFallback ? today : "";
+            const startDate = toDateInputValue(startDateParam) || fallbackDate;
+            const endDate = toDateInputValue(endDateParam) || startDate || fallbackDate;
+
+            if (keywordInput) {
+                keywordInput.value = keyword || projectNo || customerName;
+            }
+
+            if (startDateInput) {
+                startDateInput.value = startDate;
+            }
+
+            if (endDateInput) {
+                endDateInput.value = endDate;
+            }
+
+            dateFilterTouched = Boolean(startDate || endDate);
+        };
+
+        const focusAppointmentFromUrl = () => {
+            const query = new URLSearchParams(window.location.search);
+            const barcode = normalizeFilterValue(query.get("focusBarcode"));
+            const projectNumber = normalizeFilterValue(query.get("focusProjectNumber"));
+
+            if (!barcode && !projectNumber) {
+                return;
+            }
+
+            const focusedRow = rows.find((row) =>
+                (!barcode || normalizeFilterValue(row.dataset.barcode) === barcode)
+                && (!projectNumber || normalizeFilterValue(row.dataset.projectNumber) === projectNumber));
+
+            if (!focusedRow) {
+                return;
+            }
+
+            const focusedRowIndex = rows.indexOf(focusedRow);
+            const focusedPage = Math.floor(focusedRowIndex / getPageSize()) + 1;
+
+            setSelectedRow(focusedRow);
+            setActivePage(focusedPage);
+            focusedRow.focus({ preventScroll: true });
+        };
+
+        applyAppointmentQueryFromUrl();
+        [startDateInput, endDateInput].forEach((input) => {
+            // Leave native text editing and the calendar icon available independently.
+            input?.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                runAppointmentSearch();
+            });
+
+            ["input", "change"].forEach((eventName) => {
+                input?.addEventListener(eventName, () => {
+                    input.setCustomValidity("");
+                    dateFilterTouched = true;
+                });
+            });
+        });
+        keywordInput?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") {
+                return;
+            }
+
+            event.preventDefault();
+            runAppointmentSearch();
+        });
+
+        searchButton?.addEventListener("click", runAppointmentSearch);
+        queryErrorCloseButtons.forEach((button) => button.addEventListener("click", closeAppointmentQueryError));
+        rejectionCloseButtons.forEach((button) => button.addEventListener("click", closeAppointmentRejection));
+        selectedAppointmentButton?.addEventListener("click", openSelectedAppointment);
+        pageSizeSelect?.addEventListener("change", () => setActivePage(1));
+        batchClearButton?.addEventListener("click", clearBatchSelection);
+        batchRegisterButton?.addEventListener("click", runBatchRegister);
+        batchResultCloseButtons.forEach((button) => button.addEventListener("click", closeBatchResultDialog));
+        batchResultDownloadButton?.addEventListener("click", downloadBatchResults);
+        if (String(queryErrorMessage?.textContent || "").trim()) {
+            showAppointmentQueryError(queryErrorMessage.textContent);
+        }
+        window.addEventListener("pageshow", () => {
+            window.clearTimeout(appointmentQueryTimeoutTimer);
+            appointmentQueryTimeoutTimer = 0;
+            isAppointmentQueryRunning = false;
+            if (consumeAppointmentGridRefreshMark()) { playAppointmentGridRefreshed(); }
+            else { setAppointmentGridAnimation(); setAppointmentQueryState("idle"); }
+        });
+        applyAppointmentFilters(false);
+        focusAppointmentFromUrl();
+    })();
+</script>

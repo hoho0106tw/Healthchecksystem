@@ -1,0 +1,325 @@
+﻿@using System.Text.Encodings.Web
+@using System.Text.Json
+@model HealthSys_20260428_v2.csproj.Models.OtherSuiteLookupFrameViewModel
+
+@{
+    Layout = null;
+    ViewData["Title"] = Model.Title;
+    var jsonOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Encoder = JavaScriptEncoder.Default
+    };
+    var suitesJson = JsonSerializer.Serialize(
+        Model.Suites,
+        jsonOptions);
+    var lookupUrlJson = JsonSerializer.Serialize(
+        Url.Action("OtherSuiteLookupFrame", "Appointment") ?? "",
+        jsonOptions);
+}
+
+<!DOCTYPE html>
+<html lang="zh-TW" class="patient-lookup-frame-root other-suite-frame-root">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Model.Title - Health Checkup System</title>
+    <link rel="stylesheet" href="~/css/ui.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/theme-controls.css" asp-append-version="true" />
+<script src="~/js/theme-frame.js" asp-append-version="true"></script>
+</head>
+<body class="hc patient-lookup-frame-body other-suite-frame-body">
+    <main class="other-suite-lookup-frame" data-initial-keyword="@Model.InitialKeyword" data-selected-project="@Model.SelectedProjectName" data-selected-project-no="@Model.SelectedProjectNo" aria-labelledby="other-suite-lookup-title">
+        <header class="other-suite-window-header">
+            <h1 id="other-suite-lookup-title">@Model.Title</h1>
+            <div class="other-suite-window-controls" aria-label="視窗控制">
+                <button type="button" tabindex="-1" aria-label="最小化" aria-disabled="true">−</button>
+                <button type="button" tabindex="-1" aria-label="最大化" aria-disabled="true">□</button>
+                <button type="button" data-lookup-close aria-label="關閉新增組套">×</button>
+            </div>
+        </header>
+
+        <section class="other-suite-lookup-content" aria-label="組套查詢">
+            <aside class="other-suite-project-panel" aria-label="專案名稱">
+                <div class="other-suite-panel-heading">專案名稱</div>
+                <div class="other-suite-project-list" data-other-suite-projects>
+                    @foreach (var project in Model.Projects)
+                    {
+                        <button class="@(project.IsSelected ? "is-active" : "")" type="button" data-project-no="@project.ProjectNo" data-project-name="@project.Name">
+                            <span class="other-suite-project-arrow" aria-hidden="true"></span>
+                            <span>@project.Name</span>
+                        </button>
+                    }
+                </div>
+            </aside>
+
+            <section class="other-suite-suite-panel" aria-label="組套清單">
+                <div class="other-suite-table-wrap">
+                    <table class="other-suite-lookup-table">
+                        <thead>
+                            <tr>
+                                <th class="other-suite-lookup-choice-column">
+                                    <input type="checkbox" data-other-suite-lookup-select-all aria-label="全選新增組套" disabled />
+                                </th>
+                                <th>組套名稱</th>
+                                <th>組套碼</th>
+                                <th>金額</th>
+                            </tr>
+                        </thead>
+                        <tbody data-other-suite-results></tbody>
+                    </table>
+                </div>
+                <div class="other-suite-search-row">
+                    <label for="other-suite-keyword">查詢</label>
+                    <input id="other-suite-keyword" type="search" value="@Model.InitialKeyword" placeholder="請輸入關鍵字" autocomplete="off" data-other-suite-keyword />
+                </div>
+            </section>
+        </section>
+
+        <footer class="other-suite-lookup-footer">
+            <div class="other-suite-footer-actions">
+                <button class="ghost-button" type="button" data-lookup-cancel>關閉</button>
+                <button class="primary-button" type="button" data-lookup-confirm>確定</button>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        (function () {
+            const suites = @Html.Raw(suitesJson);
+            const lookupUrl = @Html.Raw(lookupUrlJson);
+            const root = document.querySelector(".other-suite-lookup-frame");
+            const projectButtons = Array.from(document.querySelectorAll("[data-project-no]"));
+            const keywordInput = document.querySelector("[data-other-suite-keyword]");
+            const resultsBody = document.querySelector("[data-other-suite-results]");
+            const confirmButton = document.querySelector("[data-lookup-confirm]");
+            const selectAllCheckbox = document.querySelector("[data-other-suite-lookup-select-all]");
+            let selectedProjectNo = root.dataset.selectedProjectNo || "";
+            let selectedProjectName = root.dataset.selectedProject || "";
+            let visibleSuites = [];
+            const selectedSuiteIds = new Set();
+
+            function normalize(value) {
+                return String(value || "")
+                    .normalize("NFKC")
+                    .replace(/\s+/g, "")
+                    .trim()
+                    .toUpperCase();
+            }
+
+            function escapeHtml(value) {
+                return String(value || "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            function formatPrice(value) {
+                const number = Number(value);
+
+                if (!Number.isFinite(number)) {
+                    return "0";
+                }
+
+                return number.toLocaleString("en-US", {
+                    maximumFractionDigits: 0
+                });
+            }
+
+            function matchesKeyword(suite, keyword) {
+                if (!keyword) {
+                    return true;
+                }
+
+                return [suite.name, suite.code, suite.projectName, suite.projectNo].some(function (field) {
+                    return normalize(field).includes(keyword);
+                });
+            }
+
+            function renderProjectButtons() {
+                projectButtons.forEach(function (button) {
+                    button.classList.toggle("is-active", button.dataset.projectNo === selectedProjectNo);
+                });
+            }
+
+            function updateSelectAllState() {
+                if (!selectAllCheckbox) {
+                    return;
+                }
+
+                const selectedVisibleCount = visibleSuites.filter(function (suite) {
+                    return selectedSuiteIds.has(suite.id);
+                }).length;
+
+                selectAllCheckbox.disabled = visibleSuites.length === 0;
+                selectAllCheckbox.checked = visibleSuites.length > 0 && selectedVisibleCount === visibleSuites.length;
+                selectAllCheckbox.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visibleSuites.length;
+            }
+
+            function renderSuites() {
+                const keyword = normalize(keywordInput.value);
+                visibleSuites = suites.filter(function (suite) {
+                    return (!selectedProjectNo || suite.projectNo === selectedProjectNo) && matchesKeyword(suite, keyword);
+                });
+
+                if (!visibleSuites.length) {
+                    resultsBody.innerHTML = '<tr class="lookup-empty-row"><td colspan="4">查無符合條件的組套</td></tr>';
+                    confirmButton.disabled = selectedSuiteIds.size === 0;
+                    updateSelectAllState();
+                    return;
+                }
+
+                resultsBody.innerHTML = visibleSuites.map(function (suite) {
+                    const isSelected = selectedSuiteIds.has(suite.id);
+
+                    return [
+                        '<tr class="' + (isSelected ? "is-selected" : "") + '" data-suite-id="' + escapeHtml(suite.id) + '">',
+                        '<td class="other-suite-lookup-choice-cell"><input type="checkbox" name="otherSuiteSelection" value="' + escapeHtml(suite.id) + '"' + (isSelected ? " checked" : "") + ' aria-label="選擇 ' + escapeHtml(suite.name) + '" /></td>',
+                        '<td><span class="other-suite-row-arrow" aria-hidden="true"></span>' + escapeHtml(suite.name) + "</td>",
+                        "<td>" + escapeHtml(suite.code) + "</td>",
+                        '<td class="other-suite-price-cell">' + escapeHtml(suite.priceText || formatPrice(suite.price)) + "</td>",
+                        "</tr>"
+                    ].join("");
+                }).join("");
+
+                confirmButton.disabled = selectedSuiteIds.size === 0;
+                updateSelectAllState();
+            }
+
+            function toggleSuite(id, isSelected) {
+                if (!id) {
+                    return;
+                }
+
+                if (isSelected) {
+                    selectedSuiteIds.add(id);
+                } else {
+                    selectedSuiteIds.delete(id);
+                }
+
+                renderSuites();
+            }
+
+            function postToParent(message) {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(message, window.location.origin);
+                }
+            }
+
+            function closeLookup() {
+                postToParent({ type: "healthsys:other-suite-lookup-close" });
+            }
+
+            function loadProject(projectNo) {
+                const url = new URL(lookupUrl, window.location.origin);
+                const keyword = keywordInput.value.trim();
+
+                if (projectNo) {
+                    url.searchParams.set("projectNo", projectNo);
+                }
+
+                if (keyword) {
+                    url.searchParams.set("keyword", keyword);
+                }
+
+                window.location.href = url.toString();
+            }
+
+            function confirmSelection() {
+                const selectedSuites = suites.filter(function (item) {
+                    return selectedSuiteIds.has(item.id);
+                });
+
+                if (selectedSuites.length === 0) {
+                    return;
+                }
+
+                postToParent({
+                    type: "healthsys:other-suites-selected",
+                    suites: selectedSuites
+                });
+            }
+
+            projectButtons.forEach(function (button) {
+                button.addEventListener("click", function () {
+                    selectedProjectNo = button.dataset.projectNo || "";
+                    selectedProjectName = button.dataset.projectName || "";
+                    renderProjectButtons();
+                    loadProject(selectedProjectNo);
+                });
+            });
+
+            keywordInput.addEventListener("input", renderSuites);
+
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener("change", function () {
+                    visibleSuites.forEach(function (suite) {
+                        if (selectAllCheckbox.checked) {
+                            selectedSuiteIds.add(suite.id);
+                        } else {
+                            selectedSuiteIds.delete(suite.id);
+                        }
+                    });
+
+                    renderSuites();
+                });
+            }
+
+            resultsBody.addEventListener("click", function (event) {
+                if (event.target.matches("input[name='otherSuiteSelection']")) {
+                    return;
+                }
+
+                const row = event.target.closest("tr[data-suite-id]");
+
+                if (row) {
+                    const checkbox = row.querySelector("input[name='otherSuiteSelection']");
+
+                    if (checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                    }
+
+                    toggleSuite(row.dataset.suiteId || "", checkbox ? checkbox.checked : !row.classList.contains("is-selected"));
+                }
+            });
+
+            resultsBody.addEventListener("change", function (event) {
+                if (!event.target.matches("input[name='otherSuiteSelection']")) {
+                    return;
+                }
+
+                toggleSuite(event.target.value, event.target.checked);
+            });
+
+            resultsBody.addEventListener("dblclick", function (event) {
+                const row = event.target.closest("tr[data-suite-id]");
+
+                if (row) {
+                    const suite = suites.find(function (item) {
+                        return item.id === (row.dataset.suiteId || "");
+                    });
+
+                    if (!suite) {
+                        return;
+                    }
+
+                    postToParent({
+                        type: "healthsys:other-suite-selected",
+                        suite: suite
+                    });
+                }
+            });
+
+            document.querySelector("[data-lookup-close]").addEventListener("click", closeLookup);
+            document.querySelector("[data-lookup-cancel]").addEventListener("click", closeLookup);
+            confirmButton.addEventListener("click", confirmSelection);
+
+            renderProjectButtons();
+            renderSuites();
+        })();
+    </script>
+</body>
+</html>
+

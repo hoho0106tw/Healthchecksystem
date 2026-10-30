@@ -1,0 +1,64 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <!-- <RuntimeIdentifier>win-x86</RuntimeIdentifier> -->
+    <Platforms>AnyCPU;x86</Platforms>
+    <UserSecretsId>3a7519f0-bf07-4157-9493-5719acda8362</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenAI" Version="2.8.0" />
+    <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.26.200" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="inai-settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup><!-- 示範模式停用院內 DLL 與 COM 參考。
+    <Reference Include="DBUser">
+      <HintPath>lib\DBUser.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="FemhDb">
+      <HintPath>lib\FemhDb.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="FemhSecurityLibrary">
+      <HintPath>lib\FemhSecurityLibrary.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Interop.RDO">
+      <HintPath>bin\Release\net10.0\publish\Interop.RDO.dll</HintPath>
+    </Reference>
+    <Reference Include="Interop.RegForFEH">
+      <HintPath>bin\Release\net10.0\publish\Interop.RegForFEH.dll</HintPath>
+    </Reference>
+    -->
+  
+    <Folder Include="lib\" />
+  </ItemGroup>
+
+  <Target Name="CopyAiAgentExtension" AfterTargets="Build">
+    <ItemGroup>
+      <AiAgentExtension Include="ChromeExtension\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AiAgentExtension)" DestinationFiles="@(AiAgentExtension->'$(MSBuildProjectDirectory)\bin\my-ai-agent-extension\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="PublishAiAgentExtension" AfterTargets="Publish">
+    <ItemGroup>
+      <PublishedAiAgentExtension Include="ChromeExtension\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PublishedAiAgentExtension)" DestinationFiles="@(PublishedAiAgentExtension->'$(PublishDir)my-ai-agent-extension\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>
+

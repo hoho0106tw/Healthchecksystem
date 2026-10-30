@@ -1,0 +1,288 @@
+@model HealthSys_20260428_v2.csproj.Models.ErrorViewModel
+
+@{
+    Layout = null;
+    ViewData["Title"] = "錯誤訊息";
+    var pageTitle = $"{ViewData["Title"]} - Health Checkup System";
+}
+
+<!DOCTYPE html>
+<html lang="zh-TW" class="error-document">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@pageTitle</title>
+    <link rel="stylesheet" href="~/css/ui.css" asp-append-version="true" />
+</head>
+<body class="hc error-standalone-body">
+    <main class="error-page" aria-labelledby="error-title">
+        <section class="error-panel">
+            <div class="error-visual" aria-hidden="true">
+                <div class="error-illustration">
+                    <span class="error-illustration-cloud cloud-one"></span>
+                    <span class="error-illustration-cloud cloud-two"></span>
+                    <span class="error-clipboard">
+                        <span class="error-clipboard-clip"></span>
+                        <span class="error-heart-badge"></span>
+                        <span class="error-document-line line-one"></span>
+                        <span class="error-document-line line-two"></span>
+                        <span class="error-ecg-line"></span>
+                    </span>
+                    <span class="error-warning-triangle"></span>
+                </div>
+            </div>
+
+            <div class="error-content">
+                <header class="error-header">
+                    <h1 id="error-title">系統發生錯誤</h1>
+                    <p class="error-lead">很抱歉，健檢資料暫時無法載入，請稍後再試。</p>
+                    <span class="error-code-pill">錯誤代碼：@Model.StatusCode</span>
+                </header>
+
+                <p class="error-admin-note">若問題持續發生，請聯絡系統管理員。</p>
+
+                <div class="error-reason-block">
+                    <span>錯誤原因</span>
+                    <p class="error-reason">@Model.Reason</p>
+                    <div class="error-reason-actions">
+                        <button class="ghost-button error-ai-button" type="button"
+                                data-error-ai-button
+                                data-error-title="@Model.Title"
+                                data-error-code="@Model.StatusCode"
+                                data-error-reason="@Model.Reason"
+                                data-error-detail="@Model.Detail"
+                                data-error-path="@Model.RequestPath"
+                                data-error-request-id="@Model.RequestId"
+                                data-error-time="@Model.OccurredAt">
+                            <span class="ai-mini-icon" aria-hidden="true"></span>
+                            <span>智能客服</span>
+                        </button>
+                        <span class="error-copy-status" data-error-ai-status aria-live="polite"></span>
+                    </div>
+                </div>
+
+                <dl class="error-meta">
+                    <div>
+                        <dt>錯誤代碼</dt>
+                        <dd>@Model.StatusCode</dd>
+                    </div>
+                    <div>
+                        <dt>發生時間</dt>
+                        <dd>@Model.OccurredAt</dd>
+                    </div>
+                    <div>
+                        <dt>請求路徑</dt>
+                        <dd>@Model.RequestPath</dd>
+                    </div>
+                    <div>
+                        <dt>追蹤編號</dt>
+                        <dd>@Model.RequestId</dd>
+                    </div>
+                    @if (Model.HasDetail)
+                    {
+                        <div class="full-span">
+                            <dt>例外訊息</dt>
+                            <dd>@Model.Detail</dd>
+                        </div>
+                    }
+                </dl>
+
+                <div class="error-actions">
+                    <button class="primary-button" type="button" data-error-back-button>
+                        <span class="back-mini-icon" aria-hidden="true"></span>
+                        <span>回到前一頁</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <aside class="error-reminder-panel" aria-labelledby="error-reminder-title">
+            <span class="error-reminder-icon" aria-hidden="true"></span>
+            <div>
+                <h2 id="error-reminder-title">貼心提醒</h2>
+                <p>請檢查輸入格式，或重新嘗試看看。若問題持續發生，請提供追蹤編號給系統管理員。</p>
+            </div>
+        </aside>
+    </main>
+    <script>
+        (function () {
+            const aiButton = document.querySelector("[data-error-ai-button]");
+            const aiStatus = document.querySelector("[data-error-ai-status]");
+            const backButton = document.querySelector("[data-error-back-button]");
+            const restoredElements = [];
+            let dialogExpanded = false;
+
+            function buildAiPrompt(button) {
+                const detail = button.dataset.errorDetail || "";
+                const lines = [
+                    "請協助判斷以下系統錯誤原因，並提供可能原因與排除步驟：",
+                    "",
+                    "錯誤標題：" + (button.dataset.errorTitle || ""),
+                    "錯誤代碼：" + (button.dataset.errorCode || ""),
+                    "錯誤原因：" + (button.dataset.errorReason || ""),
+                    "請求路徑：" + (button.dataset.errorPath || ""),
+                    "追蹤編號：" + (button.dataset.errorRequestId || ""),
+                    "發生時間：" + (button.dataset.errorTime || "")
+                ];
+
+                if (detail) {
+                    lines.push("例外訊息：" + detail);
+                }
+
+                return lines.join("\n");
+            }
+
+            function copyText(text) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    return navigator.clipboard.writeText(text);
+                }
+
+                const textarea = document.createElement("textarea");
+                textarea.value = text;
+                textarea.setAttribute("readonly", "");
+                textarea.style.position = "fixed";
+                textarea.style.left = "-9999px";
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand("copy");
+                textarea.remove();
+                return Promise.resolve();
+            }
+
+            function rememberStyle(element) {
+                if (!element || restoredElements.some(function (item) { return item.element === element; })) {
+                    return;
+                }
+
+                restoredElements.push({
+                    element: element,
+                    style: element.getAttribute("style")
+                });
+            }
+
+            function setExpandedStyle(element, styles) {
+                rememberStyle(element);
+                Object.keys(styles).forEach(function (key) {
+                    element.style[key] = styles[key];
+                });
+            }
+
+            function expandDialogIfEmbedded() {
+                let frame = null;
+
+                try {
+                    frame = window.frameElement;
+                } catch (error) {
+                    frame = null;
+                }
+
+                const isEmbedded = Boolean(frame) || window.parent !== window;
+
+                if (!isEmbedded) {
+                    return;
+                }
+
+                dialogExpanded = true;
+                document.documentElement.classList.add("error-dialog-mode");
+                document.body.classList.add("error-dialog-mode");
+
+                try {
+                    if (frame) {
+                        const shell = frame.closest("dialog, [role='dialog'], .modal, .modal-dialog, .dialog, .ui-dialog, .k-window, .patient-lookup-frame-shell, .error-dialog") || frame;
+
+                        setExpandedStyle(shell, {
+                            width: "min(1080px, calc(100vw - 24px))",
+                            maxWidth: "calc(100vw - 24px)",
+                            height: "min(760px, calc(100vh - 24px))",
+                            maxHeight: "calc(100vh - 24px)"
+                        });
+
+                        setExpandedStyle(frame, {
+                            width: "100%",
+                            height: "100%",
+                            maxWidth: "100%",
+                            maxHeight: "100%"
+                        });
+                    }
+                } catch (error) {
+                }
+
+                try {
+                    window.parent.postMessage({
+                        type: "healthsys:error-dialog-layout",
+                        action: "expand",
+                        width: "min(1080px, calc(100vw - 24px))",
+                        height: "min(760px, calc(100vh - 24px))"
+                    }, "*");
+                } catch (error) {
+                }
+            }
+
+            function restoreDialogSize() {
+                if (!dialogExpanded) {
+                    return;
+                }
+
+                while (restoredElements.length) {
+                    const item = restoredElements.pop();
+
+                    if (!item.element) {
+                        continue;
+                    }
+
+                    if (item.style === null) {
+                        item.element.removeAttribute("style");
+                    } else {
+                        item.element.setAttribute("style", item.style);
+                    }
+                }
+
+                try {
+                    window.parent.postMessage({
+                        type: "healthsys:error-dialog-layout",
+                        action: "restore"
+                    }, "*");
+                } catch (error) {
+                }
+            }
+
+            if (aiButton) {
+                aiButton.addEventListener("click", function () {
+                    const originalText = aiButton.textContent;
+                    const prompt = buildAiPrompt(aiButton);
+
+                    copyText(prompt).then(function () {
+                        if (aiStatus) {
+                            aiStatus.textContent = "已複製，可提供給智能客服";
+                        }
+                        aiButton.classList.add("is-copied");
+                        window.setTimeout(function () {
+                            if (aiStatus) {
+                                aiStatus.textContent = "";
+                            }
+                            aiButton.classList.remove("is-copied");
+                            aiButton.setAttribute("aria-label", originalText.trim());
+                        }, 2600);
+                    }).catch(function () {
+                        if (aiStatus) {
+                            aiStatus.textContent = "複製失敗，請手動複製錯誤資訊";
+                        }
+                    });
+                });
+            }
+
+            if (backButton) {
+                backButton.addEventListener("click", function () {
+                    restoreDialogSize();
+                    window.setTimeout(function () {
+                        history.back();
+                    }, 0);
+                });
+            }
+
+            window.addEventListener("pagehide", restoreDialogSize);
+            expandDialogIfEmbedded();
+        })();
+    </script>
+</body>
+</html>

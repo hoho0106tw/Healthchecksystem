@@ -1,0 +1,51 @@
+<aside id="inai-panel" class="inai-panel" aria-label="智能查詢" hidden data-inai-panel data-chat-url="@Url.Action("Chat", "Inai")">
+    <header class="inai-header">
+        <div class="inai-identity">
+            <span class="inai-brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+            <div class="inai-title"><strong>智能查詢</strong><span>AI 對話助理</span></div>
+        </div>
+        <div class="inai-header-actions">
+            <button type="button" data-inai-clear title="清除對話"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5m4-5v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>清除</span></button>
+            <button type="button" data-inai-close aria-label="收合智能查詢" title="收合"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+    </header>
+    <div class="inai-messages" data-inai-messages role="log" aria-live="polite" aria-relevant="additions text">
+        <div class="inai-empty" data-inai-empty>
+            <span class="inai-welcome-icon" aria-hidden="true">
+                <svg viewBox="0 0 260 260" fill="none">
+                    <defs>
+                        <radialGradient id="inai-orb-glow"><stop stop-color="#d8edff" stop-opacity=".85"/><stop offset="1" stop-color="#edf8ff" stop-opacity="0"/></radialGradient>
+                        <linearGradient id="inai-bubble-front" x1="60" y1="74" x2="178" y2="188" gradientUnits="userSpaceOnUse"><stop stop-color="#fff" stop-opacity=".96"/><stop offset="1" stop-color="#d4eaff" stop-opacity=".75"/></linearGradient>
+                        <linearGradient id="inai-bubble-outline" x1="69" y1="78" x2="181" y2="181" gradientUnits="userSpaceOnUse"><stop stop-color="#8dd6ff"/><stop offset=".55" stop-color="#378dff"/><stop offset="1" stop-color="#799af7"/></linearGradient>
+                        <linearGradient id="inai-bubble-back" x1="136" y1="116" x2="205" y2="194" gradientUnits="userSpaceOnUse"><stop stop-color="#deefff" stop-opacity=".7"/><stop offset="1" stop-color="#a5d8ff" stop-opacity=".45"/></linearGradient>
+                        <linearGradient id="inai-star" x1="105" y1="105" x2="145" y2="148" gradientUnits="userSpaceOnUse"><stop stop-color="#318dff"/><stop offset="1" stop-color="#0861ee"/></linearGradient>
+                    </defs>
+                    <circle cx="130" cy="132" r="122" fill="url(#inai-orb-glow)"/>
+                    <circle cx="131" cy="130" r="111" stroke="#d4eaff" stroke-opacity=".8"/>
+                    <circle cx="166" cy="112" r="64" fill="#dceeff" fill-opacity=".48"/>
+                    <circle cx="34" cy="73" r="15" fill="#def1ff" fill-opacity=".9"/>
+                    <ellipse cx="39" cy="191" rx="20" ry="25" transform="rotate(-34 39 191)" fill="#ceeaff" fill-opacity=".75"/>
+                    <circle cx="236" cy="151" r="9" fill="#e0f2ff"/>
+                    <path d="M147 113h34c17 0 27 11 27 27v31c0 13-7 22-17 26v13c0 4-3 5-6 3l-18-14h-20c-17 0-28-11-28-27v-31c0-17 11-28 28-28Z" fill="url(#inai-bubble-back)" stroke="#a6d6ff" stroke-width="1.8"/>
+                    <path d="m92 86 49-8c21-3 35 8 35 28v40c0 20-10 32-29 35l-27 4-25 19c-4 3-8 1-8-4v-11c-13-2-23-11-23-27v-38c0-21 10-35 28-38Z" fill="url(#inai-bubble-front)" stroke="url(#inai-bubble-outline)" stroke-width="1.8"/>
+                    <path d="M121 111c2 0 3 8 5 12s11 5 11 7-9 3-12 6-3 13-5 13-3-10-6-13-12-3-12-6 10-3 13-6 4-13 6-13Z" fill="url(#inai-star)"/>
+                </svg>
+            </span>
+            <strong>有什麼想了解的？</strong>
+            <p>輸入您的問題，開始一段對話。</p>
+        </div>
+    </div>
+    <p class="inai-status" data-inai-status role="status"></p>
+    <form class="inai-form" data-inai-form>
+        @Html.AntiForgeryToken()
+        <label for="inai-question" class="inai-input-label">查詢內容</label>
+        <div class="inai-composer">
+            <textarea id="inai-question" data-inai-input rows="3" maxlength="4000" placeholder="想問些什麼？" required></textarea>
+            <div class="inai-composer-footer">
+                <span class="inai-input-hint">Enter 送出 · Shift + Enter 換行</span>
+                <button type="submit" data-inai-send><span>送出</span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 14-7-5 14-2-6-7-1Zm7 1 7-8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+        </div>
+    </form>
+</aside>
+<button type="button" class="inai-handle" data-inai-handle aria-controls="inai-panel" aria-expanded="false" hidden>智能查詢 ‹</button>

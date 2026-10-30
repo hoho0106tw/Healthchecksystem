@@ -1,0 +1,451 @@
+﻿@model HealthSys_20260428_v2.csproj.Models.HealthCheckProjectDetailViewModel
+
+@{
+    Layout = null;
+    ViewData["Title"] = "專案查看";
+    var projectName = string.IsNullOrWhiteSpace(Model.Project.Name)
+        ? Model.Project.Target
+        : Model.Project.Name;
+    var selectedPackageName = Model.SelectedPackage?.Name ?? Model.Packages.FirstOrDefault()?.Name ?? "";
+    string Money(int amount) => amount.ToString("N0");
+    string MoneyWithDecimal(int amount) => amount.ToString("N2");
+}
+
+<!DOCTYPE html>
+<html lang="zh-TW" class="project-detail-frame-root">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Health Checkup System</title>
+    <link rel="stylesheet" href="~/css/ui.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/theme-controls.css" asp-append-version="true" />
+<script src="~/js/theme-frame.js" asp-append-version="true"></script>
+</head>
+<body class="hc project-detail-frame-body">
+    <main class="project-detail-frame" aria-labelledby="project-detail-title" data-project-detail-frame data-project-orders-url="@Url.Action("HealthCheckProjectOrders", "ProjectPackageSettings")">
+        <header class="project-detail-frame-header">
+            <h1 id="project-detail-title">專案查看</h1>
+            <button class="project-detail-frame-close" type="button" data-project-detail-close aria-label="收合專案查看">
+                <span class="customer-action-icon close" aria-hidden="true"></span>
+                <span>收合</span>
+            </button>
+        </header>
+
+        <section class="project-detail-summary" aria-label="專案摘要">
+            <article>
+                <span>專案編號</span>
+                <strong class="project-detail-code">@Model.Project.Code</strong>
+            </article>
+            <article>
+                <span>專案名稱</span>
+                <strong>@projectName</strong>
+            </article>
+            <article>
+                <span>公司代號</span>
+                <strong>@Model.Project.CustomerNo</strong>
+            </article>
+            <article>
+                <span>公司名稱</span>
+                <strong>@Model.Project.CustomerName</strong>
+            </article>
+            <article>
+                <span>醫令小計</span>
+                <strong>NT$ @Money(Model.PackagePublicExpense)</strong>
+            </article>
+            <article>
+                <span>問卷項目</span>
+                <strong>NT$ @Money(Model.SpecialPublicExpense)</strong>
+            </article>
+            <article>
+                <span>總金額</span>
+                <strong class="project-detail-total-amount">NT$ @Money(Model.TotalPublicExpense)</strong>
+            </article>
+        </section>
+
+        <section class="project-detail-note" aria-label="備註">
+            <span>備註</span>
+            <p>@(string.IsNullOrWhiteSpace(Model.Project.Notes) ? "無" : Model.Project.Notes)</p>
+        </section>
+
+        <div class="project-detail-list-grid">
+            <section class="project-detail-panel project-detail-package-panel" aria-labelledby="project-detail-package-title" data-detail-grid="packages">
+                <header class="project-detail-section-header">
+                    <h2 id="project-detail-package-title">套餐清單</h2>
+                </header>
+                <div class="project-detail-table-wrap">
+                    <table class="project-detail-table project-detail-package-table">
+                        <thead>
+                            <tr>
+                                <th>序號</th>
+                                <th>套餐名稱</th>
+                                <th>優待身分</th>
+                                <th>金額</th>
+                            </tr>
+                        </thead>
+                        <tbody data-detail-grid-body>
+                            @if (Model.Packages.Count > 0)
+                            {
+                                foreach (var package in Model.Packages)
+                                {
+                                    <tr class="@(package.Active ? "is-active" : "")" data-project-package-row data-package-name="@package.Name" data-fix-items="@package.FixItems">
+                                        <td>@package.SchemeNo</td>
+                                        <td>@package.Name</td>
+                                        <td>
+                                            <div class="project-detail-accounting-badge">
+                                                <span class="project-detail-accounting-icon" aria-hidden="true">帳</span>
+                                                <span>
+                                                    <small>記帳單位</small>
+                                                    <strong>@(string.IsNullOrWhiteSpace(package.SelfPayAccountingUnitDisplay) ? "未設定" : package.SelfPayAccountingUnitDisplay)</strong>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td>@Money(package.PublicExpense)</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr class="project-detail-empty-row">
+                                    <td colspan="4">尚無套餐資料</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <footer class="project-detail-grid-footer">
+                    <div class="project-detail-grid-controls">
+                        <label class="project-detail-page-size">
+                            <span>每頁</span>
+                            <select data-detail-page-size aria-label="套餐清單每頁筆數">
+                                <option value="5" selected>5</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                            </select>
+                        </label>
+                        <nav class="project-detail-pagination" aria-label="套餐清單分頁" data-detail-pagination></nav>
+                    </div>
+                </footer>
+            </section>
+
+            <section class="project-detail-panel project-detail-special-panel" aria-labelledby="project-detail-special-title" data-detail-grid="specials">
+                <header class="project-detail-section-header">
+                    <h2 id="project-detail-special-title">問卷項目</h2>
+                </header>
+                <div class="project-detail-table-wrap">
+                    <table class="project-detail-table project-detail-special-table">
+                        <thead>
+                            <tr>
+                                <th>序號</th>
+                                <th>問卷項目</th>
+                                <th>金額</th>
+                            </tr>
+                        </thead>
+                        <tbody data-detail-grid-body>
+                            @if (Model.SpecialItems.Count > 0)
+                            {
+                                foreach (var item in Model.SpecialItems)
+                                {
+                                    <tr>
+                                        <td>@item.SortOrder</td>
+                                        <td>@(string.IsNullOrWhiteSpace(item.Name) ? "-" : item.Name)</td>
+                                        <td>@MoneyWithDecimal(item.PublicExpense)</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr class="project-detail-empty-row">
+                                    <td colspan="3">尚無問卷項目</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <footer class="project-detail-grid-footer">
+                    <div class="project-detail-grid-controls">
+                        <label class="project-detail-page-size">
+                            <span>每頁</span>
+                            <select data-detail-page-size aria-label="問卷項目每頁筆數">
+                                <option value="5" selected>5</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                            </select>
+                        </label>
+                        <nav class="project-detail-pagination" aria-label="問卷項目分頁" data-detail-pagination></nav>
+                    </div>
+                </footer>
+            </section>
+        </div>
+
+        <section class="project-detail-panel project-detail-order-panel" aria-labelledby="project-detail-order-title" data-detail-grid="orders">
+            <header class="project-detail-section-header order">
+                <h2 id="project-detail-order-title">
+                    <span>醫令項目 - 組套：</span>
+                    <strong data-project-detail-selected-package>@selectedPackageName</strong>
+                </h2>
+            </header>
+            <div class="project-detail-table-wrap compact">
+                <table class="project-detail-table project-detail-order-table">
+                    <thead>
+                        <tr>
+                            <th>醫令代碼</th>
+                            <th>醫令名稱</th>
+                        </tr>
+                    </thead>
+                    <tbody data-project-detail-order-body data-detail-grid-body>
+                        @if (Model.Orders.Count > 0)
+                        {
+                            foreach (var item in Model.Orders)
+                            {
+                                <tr>
+                                    <td>@item.Code</td>
+                                    <td>@item.Name</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr class="project-detail-empty-row">
+                                <td colspan="2">查無此套餐醫令項目</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <footer class="project-detail-grid-footer project-detail-order-footer">
+                <div class="project-detail-grid-controls">
+                    <label class="project-detail-page-size">
+                        <span>每頁</span>
+                        <select data-detail-page-size aria-label="醫令項目每頁筆數">
+                            <option value="5" selected>5</option>
+                            <option value="10">10</option>
+                            <option value="15">15</option>
+                        </select>
+                    </label>
+                    <nav class="project-detail-pagination" aria-label="醫令項目分頁" data-detail-pagination></nav>
+                </div>
+                <a asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProjectOrders" asp-route-mode="edit" asp-route-code="@Model.Project.Code" target="_parent">查看更多醫令</a>
+            </footer>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const frame = document.querySelector("[data-project-detail-frame]");
+
+            if (!frame) {
+                return;
+            }
+
+            const packageLabel = frame.querySelector("[data-project-detail-selected-package]");
+            const orderBody = frame.querySelector("[data-project-detail-order-body]");
+            const ordersUrl = frame.dataset.projectOrdersUrl || "";
+            const gridPagers = new Map();
+
+            function postToParent(message) {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(message, window.location.origin);
+                }
+            }
+
+            function closeFrame() {
+                postToParent({ type: "healthsys:project-detail-frame-close" });
+            }
+
+            function createGridPager(grid) {
+                const body = grid.querySelector("[data-detail-grid-body]");
+                const pageSizeSelect = grid.querySelector("[data-detail-page-size]");
+                const pagination = grid.querySelector("[data-detail-pagination]");
+                let page = 1;
+                let pageSize = Number.parseInt(pageSizeSelect?.value || "5", 10) || 5;
+
+                function getRows() {
+                    return Array.from(body?.querySelectorAll("tr") || [])
+                        .filter((row) => !row.classList.contains("project-detail-empty-row"));
+                }
+
+                function getEmptyRows() {
+                    return Array.from(body?.querySelectorAll("tr.project-detail-empty-row") || []);
+                }
+
+                function makePageButton(label, targetPage, disabled, ariaLabel) {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.textContent = label;
+                    button.disabled = disabled;
+                    button.setAttribute("aria-label", ariaLabel);
+                    button.addEventListener("click", function () {
+                        page = targetPage;
+                        render();
+                    });
+                    return button;
+                }
+
+                function renderPagination(pageCount, hasRows) {
+                    if (!pagination) {
+                        return;
+                    }
+
+                    const status = document.createElement("span");
+                    status.className = "project-detail-page-status";
+                    status.textContent = hasRows ? `${page} / ${pageCount}` : "0 / 0";
+
+                    pagination.replaceChildren(
+                        makePageButton("<", Math.max(1, page - 1), !hasRows || page <= 1, "上一頁"),
+                        status,
+                        makePageButton(">", Math.min(pageCount, page + 1), !hasRows || page >= pageCount, "下一頁")
+                    );
+                }
+
+                function render() {
+                    const rows = getRows();
+                    const emptyRows = getEmptyRows();
+                    const hasRows = rows.length > 0;
+                    const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+
+                    page = Math.min(Math.max(1, page), pageCount);
+
+                    rows.forEach((row, index) => {
+                        row.hidden = !hasRows || index < (page - 1) * pageSize || index >= page * pageSize;
+                    });
+
+                    emptyRows.forEach((row) => {
+                        row.hidden = hasRows;
+                    });
+
+                    if (pageSizeSelect) {
+                        pageSizeSelect.disabled = !hasRows;
+                    }
+
+                    renderPagination(pageCount, hasRows);
+                }
+
+                pageSizeSelect?.addEventListener("change", function () {
+                    pageSize = Number.parseInt(pageSizeSelect.value || "5", 10) || 5;
+                    page = 1;
+                    render();
+                });
+
+                render();
+
+                return {
+                    refresh() {
+                        page = 1;
+                        render();
+                    }
+                };
+            }
+
+            function refreshGridPager(name) {
+                gridPagers.get(name)?.refresh();
+            }
+
+            function renderOrders(orders) {
+                if (!orderBody) {
+                    return;
+                }
+
+                orderBody.innerHTML = "";
+
+                if (!Array.isArray(orders) || orders.length === 0) {
+                    const row = document.createElement("tr");
+                    const cell = document.createElement("td");
+                    cell.colSpan = 2;
+                    cell.textContent = "查無此套餐醫令項目";
+                    row.className = "project-detail-empty-row";
+                    row.append(cell);
+                    orderBody.append(row);
+                    refreshGridPager("orders");
+                    return;
+                }
+
+                orders.forEach((order) => {
+                    const row = document.createElement("tr");
+                    const codeCell = document.createElement("td");
+                    const nameCell = document.createElement("td");
+
+                    codeCell.textContent = order.code || "";
+                    nameCell.textContent = order.name || "";
+                    row.append(codeCell, nameCell);
+                    orderBody.append(row);
+                });
+
+                refreshGridPager("orders");
+            }
+
+            function renderLoadingOrders() {
+                if (!orderBody) {
+                    return;
+                }
+
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+                cell.colSpan = 2;
+                cell.textContent = "載入醫令項目...";
+                row.className = "project-detail-empty-row";
+                row.append(cell);
+                orderBody.replaceChildren(row);
+                refreshGridPager("orders");
+            }
+
+            async function loadOrders(fixItems) {
+                if (!ordersUrl || !fixItems) {
+                    renderOrders([]);
+                    return;
+                }
+
+                const url = new URL(ordersUrl, window.location.href);
+                url.searchParams.set("fixItems", fixItems || "");
+                renderLoadingOrders();
+
+                try {
+                    const response = await fetch(url.toString(), {
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest"
+                        }
+                    });
+
+                    if (!response.ok) {
+                        renderOrders([]);
+                        return;
+                    }
+
+                    const result = await response.json();
+                    renderOrders(result.orders);
+                } catch {
+                    renderOrders([]);
+                }
+            }
+
+            frame.querySelectorAll("[data-detail-grid]").forEach((grid) => {
+                gridPagers.set(grid.dataset.detailGrid || "", createGridPager(grid));
+            });
+
+            frame.querySelector("[data-project-detail-close]")?.addEventListener("click", closeFrame);
+
+            frame.addEventListener("click", function (event) {
+                if (!(event.target instanceof Element)) {
+                    return;
+                }
+
+                const row = event.target.closest("[data-project-package-row]");
+
+                if (!row || !frame.contains(row)) {
+                    return;
+                }
+
+                frame.querySelectorAll("[data-project-package-row]").forEach((candidate) => {
+                    candidate.classList.toggle("is-active", candidate === row);
+                });
+
+                if (packageLabel) {
+                    packageLabel.textContent = row.dataset.packageName || "";
+                }
+
+                loadOrders(row.dataset.fixItems || "");
+            });
+        })();
+    </script>
+</body>
+</html>
+

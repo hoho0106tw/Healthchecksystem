@@ -1,0 +1,392 @@
+.account-query { width: 100%; min-width: 0; container-type: inline-size; color: var(--app-text-color, #263d55); font: 13px/1.5 "Microsoft JhengHei", "Noto Sans TC", sans-serif; padding: 12px 6px 28px; }
+.account-query * { box-sizing: border-box; }
+.account-card { width: 100%; min-width: 0; margin-bottom: 17px; overflow: hidden; border: 1px solid var(--app-border, #dbe5ef); border-radius: 11px; background: var(--app-surface, #fff); box-shadow: 0 5px 18px #22486d0a; }
+.account-search { padding: 17px 20px; }
+.account-card h2 { margin: 0; font-size: calc(16px * var(--app-font-scale, 1)); color: var(--app-text-color, #263d55); }
+.account-search h2 { margin-bottom: 12px; font-size: calc(15px * var(--app-font-scale, 1)); }
+.account-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.35fr) auto; align-items: end; gap: 12px; }
+.account-fields label { display: block; color: var(--app-muted, #657d94); font-size: calc(11px * var(--app-font-scale, 1)); font-weight: 700; }
+.account-fields input { display: block; width: 100%; height: 39px; margin-top: 5px; padding: 0 10px; border: 1px solid var(--app-border, #ccdbea); border-radius: 7px; background: var(--app-surface, #fbfdff); color: var(--app-text-color, #263d55); font: inherit; font-size: calc(13px * var(--app-font-scale, 1)); }
+.account-form-actions, .account-head-actions { display: flex; align-items: center; gap: 7px; }
+.account-button { height: 39px; padding: 0 14px; border: 1px solid var(--app-border, #cbd9e8); border-radius: 7px; background: var(--app-surface, #fff); color: var(--app-text-color, #346080); font: inherit; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.account-button:hover { filter: brightness(.96); }
+.account-button:focus-visible, .account-fields input:focus-visible, .account-pagination select:focus-visible, .account-suite-button:focus-visible { outline: 3px solid #a5d1ff; outline-offset: 2px; }
+.account-primary { border-color: #176ac8; background: #176ac8; color: #fff; }
+.account-excel { height: 36px; border-color: #177c6c; background: #177c6c; color: #fff; }
+.account-excel:disabled { opacity: .55; cursor: not-allowed; }
+.account-error { margin: 10px 0 0; color: #b42318; }
+.account-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; }
+.account-toolbar { justify-content: flex-end; }
+.account-card-head > div:first-child { min-width: 0; }
+.account-card-head p { margin: 3px 0 0; color: var(--app-muted, #849caf); font-size: calc(11px * var(--app-font-scale, 1)); }
+.account-card-head .account-scroll-hint { display: none; color: var(--app-muted, #477ba8); }
+.account-count { padding: 4px 10px; border-radius: 20px; background: var(--app-surface-soft, #eaf4ff); color: #246db2; font-size: calc(11px * var(--app-font-scale, 1)); font-weight: 800; white-space: nowrap; }
+.account-table-scroll { max-width: 100%; height: max(160px, calc(100dvh - 330px)); overflow: auto; border-top: 1px solid var(--app-border, #dbe5ef); }
+.account-table { width: 100%; min-width: 1100px; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+.account-table thead th { position: sticky; top: 0; z-index: 2; padding: 11px 12px; border-bottom: 1px solid var(--app-border, #d7e4f1); background: var(--app-surface-soft, #f4f8fd); color: var(--app-muted, #647e96); font-size: calc(11px * var(--app-font-scale, 1)); text-align: left; white-space: nowrap; }
+.account-table thead th:first-child { width: 27%; }
+.account-table thead th:nth-child(2) { width: 12%; }
+.account-table thead th:nth-child(3) { width: 21%; }
+.account-table td { padding: 13px 12px; border-bottom: 1px solid var(--app-border, #e5edf5); background: var(--app-surface, #fff); vertical-align: middle; }
+.account-table .amount { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.account-heading-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-left: 2px;
+    padding: 0;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    cursor: help;
+}
+.account-heading-help:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.account-amount-tooltip {
+    position: fixed;
+    z-index: 2000;
+    width: max-content;
+    max-width: min(320px, calc(100vw - 16px));
+    padding: 10px 12px;
+    border: 1px solid var(--aq-line);
+    border-radius: 6px;
+    background: var(--aq-row);
+    color: var(--aq-text);
+    box-shadow: 0 4px 14px #0003;
+    white-space: normal;
+    pointer-events: none;
+}
+.account-amount-tooltip[hidden] { display: none; }
+.account-table .account-receivable-heading { color: #145d9f; background: var(--app-surface-soft, #e1f0ff); }
+.account-table .account-deduction-heading { color: var(--app-muted, #6c7891); }
+.account-table .account-receivable-cell { background: var(--app-surface-soft, #f0f7ff); }
+.account-table .account-item-total { color: var(--app-text-color, #244f75); font-weight: 800; }
+.account-table .account-project-total-row th, .account-table .account-project-total-row td { padding: 12px; border-top: 3px solid #c4d9ed; border-bottom: 3px solid #b8d1e9; background: var(--app-surface-soft, #edf5fc); color: var(--app-text-color, #214e78); font-weight: 800; }
+.account-table .account-project-total-row th { text-align: left; }
+.account-table .account-project-total-row th:first-child { border-left: 3px solid #c4d9ed; }
+.account-table .account-project-total-row td:last-child { border-right: 3px solid #c4d9ed; }
+.account-table .account-project-total-row th span { margin-left: 9px; color: var(--app-muted, #6484a1); font-size: calc(11px * var(--app-font-scale, 1)); font-weight: 600; }
+.account-table .account-project-total-row td:nth-last-child(4) { background: var(--app-surface-soft, #e1f0ff); color: #125ca8; }
+.account-table .account-project-total-row .account-discount-chip, .account-table .account-project-total-row .account-booked-chip, .account-table .account-project-total-row .account-arrears-chip { background: var(--app-surface, #fff); }
+.account-table tfoot th, .account-table tfoot td { position: sticky; bottom: 0; z-index: 2; padding: 13px 12px; border-top: 3px solid #b9d0e8; border-bottom: 3px solid #b9d0e8; background: var(--app-surface-soft, #edf4fb); box-shadow: 0 -5px 12px #163e6512; color: var(--app-text-color, #244b70); font-size: calc(13px * var(--app-font-scale, 1)); font-weight: 800; }
+.account-table tfoot th:first-child { border-left: 3px solid #b9d0e8; }
+.account-table tfoot td:last-child { border-right: 3px solid #b9d0e8; }
+.account-table tfoot th { text-align: left; }
+.account-table tfoot th span { margin-left: 9px; color: var(--app-muted, #7290a9); font-size: calc(10px * var(--app-font-scale, 1)); font-weight: 500; }
+.account-table tfoot #account-grid-total { background: var(--app-surface-soft, #e6f1fc); }
+.account-table tfoot #account-grid-receivable { background: #dceeff; color: #125ca8; }
+.account-table tfoot #account-grid-discount { color: #23835b; }
+.account-table tfoot #account-grid-booked { color: var(--app-muted, #5558a7); }
+.account-table tfoot #account-grid-arrears { color: #a66a2d; }
+.account-discount-chip, .account-booked-chip, .account-arrears-chip { display: inline-block; min-width: 62px; padding: 3px 7px; border: 1px solid; border-radius: 5px; font-size: calc(11px * var(--app-font-scale, 1)); font-weight: 800; text-align: right; }
+.account-discount-chip { border-color: #cdebd8; background: var(--app-surface-soft, #edf9f1); color: #23835b; }
+.account-booked-chip { border-color: var(--app-border, #dcdff7); background: var(--app-surface-soft, #f0f1fc); color: var(--app-muted, #5558a7); }
+.account-arrears-chip { border-color: #f2dfc8; background: #fff6eb; color: #a66a2d; }
+.account-project-cell { padding: 16px !important; border-right: 1px solid #d1e4f7; background: var(--app-surface-soft, #edf5ff) !important; vertical-align: top !important; }
+.account-project-code { color: #3c7cb7; font-size: calc(10px * var(--app-font-scale, 1)); font-weight: 800; letter-spacing: .09em; }
+.account-project-name { margin: 5px 0 8px; color: var(--app-text-color, #21486b); font-size: calc(14px * var(--app-font-scale, 1)); font-weight: 800; }
+.account-project-company { display: block; margin-top: 3px; color: var(--app-muted, #527493); font-size: calc(11px * var(--app-font-scale, 1)); font-weight: 600; }
+.account-project-meta { display: grid; gap: 8px; margin: 0; padding-top: 8px; border-top: 1px solid #d2e4f6; color: var(--app-muted, #6886a0); font-size: calc(11px * var(--app-font-scale, 1)); }
+.account-meta-full { display: flex; align-items: baseline; gap: 8px; margin: 0; }
+.account-meta-full dt { flex: none; }
+.account-meta-full dt, .account-meta-full dd { color: var(--app-text-color, #21486b); font-size: calc(13px * var(--app-font-scale, 1)); font-weight: 800; }
+.account-meta-toggle-row { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.account-meta-toggle { display: inline-flex; align-items: center; gap: 4px; padding: 1px 0; border: 0; background: transparent; color: var(--app-muted, #477ba8); font: inherit; font-size: calc(11px * var(--app-font-scale, 1)); font-weight: 800; cursor: pointer; }
+.account-meta-toggle:hover { text-decoration: underline; }
+.account-meta-toggle:focus-visible { outline: 3px solid #a5d1ff; outline-offset: 2px; }
+.account-meta-more { display: grid; gap: 8px; margin: 0; }
+.account-meta-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.account-meta-pair > div { min-width: 0; }
+.account-meta-pair dt { font-size: calc(10px * var(--app-font-scale, 1)); }
+.account-meta-pair dd { color: var(--app-muted, #4d6c88); font-weight: 700; }
+.account-meta-pair dt { color: var(--app-muted, #8ba2b7); }
+.account-project-meta dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.account-project-count { display: inline-block; margin-top: 11px; padding: 3px 7px; border: 1px solid #d2e4f6; border-radius: 5px; background: var(--app-surface, #fff); color: var(--app-muted, #477ba8); font-size: calc(10px * var(--app-font-scale, 1)); font-weight: 700; }
+.account-suite-row .account-suite-name-cell { border-left: 3px solid #b5d9fb; }
+.account-suite-button { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; color: var(--app-text-color, #275576); font: inherit; font-weight: 800; text-align: left; cursor: pointer; }
+.account-suite-button:hover span:last-child { text-decoration: underline; }
+.account-chevron { display: grid; width: 20px; height: 20px; flex: none; place-items: center; border-radius: 5px; background: var(--app-surface-soft, #e8f3ff); color: #226db8; }
+.account-suite-note { margin: 4px 0 0 28px; color: var(--app-muted, #889eb1); font-size: calc(10px * var(--app-font-scale, 1)); }
+.account-order-row td { background: var(--app-surface, #fbfdff); }
+.account-order-row:hover td { background: var(--app-surface-soft, #f1f7fd); }
+.account-order-row:hover .account-total-cell { background: var(--app-surface-soft, #e8f3ff); }
+.account-order-row:hover .account-receivable-cell { background: #dceeff; }
+.account-order-row td:nth-child(2) { padding-left: 42px; border-left: 3px solid #b5d9fb; }
+.account-order-name { color: var(--app-muted, #516d85); font-weight: 650; }
+.account-order-name::before { content: "↳"; margin-right: 7px; color: #64a0d8; }
+.account-muted { color: var(--app-muted, #aab8c5); font-weight: 400; }
+.account-receivable { color: #1664b4; font-weight: 800; }
+.account-empty { padding: 45px !important; color: var(--app-muted, #8197aa); text-align: center; }
+.account-pagination { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 20px; border-top: 1px solid var(--app-border, #e5edf5); color: var(--app-muted, #607c98); font-size: calc(11px * var(--app-font-scale, 1)); font-weight: 700; }
+.account-pagination label, .account-page-controls { display: inline-flex; align-items: center; gap: 9px; }
+.account-pagination select { height: 32px; padding: 0 26px 0 9px; border: 1px solid var(--app-border, #ccdbea); border-radius: 6px; background: var(--app-surface, #fff); color: var(--app-text-color, #263d55); font: inherit; }
+.account-pagination .account-button { height: 32px; padding: 0 11px; font-size: calc(11px * var(--app-font-scale, 1)); }
+.account-pagination .account-button:disabled { opacity: .45; cursor: not-allowed; }
+.account-page-controls span { min-width: 73px; color: var(--app-text-color, #315e86); text-align: center; white-space: nowrap; }
+.account-table-foot { display: flex; justify-content: space-between; gap: 12px; padding: 13px 20px; color: var(--app-muted, #8197aa); font-size: calc(11px * var(--app-font-scale, 1)); }
+@media (max-width: 900px) { .account-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } .account-form-actions { align-self: end; } }
+@media (max-width: 600px) { .account-query { padding: 2px 0 22px; } .account-fields { grid-template-columns: 1fr; } .account-card-head, .account-table-foot, .account-pagination { flex-direction: column; align-items: flex-start; } .account-head-actions { width: 100%; justify-content: space-between; } }
+@container (max-width: 1000px) { .account-card-head .account-scroll-hint { display: block; } }
+@container (max-width: 860px) { .account-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } .account-form-actions { align-self: end; } }
+@container (max-width: 720px) { .account-card-head, .account-pagination, .account-table-foot { flex-direction: column; align-items: flex-start; } .account-head-actions { width: 100%; justify-content: space-between; } .account-table-scroll { height: max(160px, calc(100dvh - 400px)); } }
+@container (max-width: 520px) { .account-fields { grid-template-columns: 1fr; } .account-form-actions { justify-content: flex-end; } .account-search, .account-card-head, .account-pagination, .account-table-foot { padding-left: 14px; padding-right: 14px; } .account-page-controls { width: 100%; justify-content: space-between; } }
+
+/* The layout theme owns the accent and mode. Keep this page's surfaces in sync. */
+.account-query {
+    --aq-accent: var(--app-accent, #176ac8);
+    --aq-accent-text: var(--app-accent-dark, #125ca8);
+    --aq-surface: #fff;
+    --aq-input: #fbfdff;
+    --aq-soft: #f4f8fd;
+    --aq-row: #fff;
+    --aq-row-alt: #fbfdff;
+    --aq-hover: #f1f7fd;
+    --aq-project: color-mix(in srgb, var(--aq-accent) 8%, #fff);
+    --aq-total: color-mix(in srgb, var(--aq-accent) 8%, #fff);
+    --aq-highlight: color-mix(in srgb, var(--aq-accent) 13%, #fff);
+    --aq-line: #dbe5ef;
+    --aq-text: #263d55;
+    --aq-title: #193956;
+    --aq-muted: #71879c;
+    --aq-shadow: 0 5px 18px #22486d0a;
+    color: var(--aq-text);
+}
+
+html[data-theme-mode="dark"] .account-query {
+    --aq-accent-text: var(--app-lightbar, #8dbdff);
+    --aq-surface: #1d1d1f;
+    --aq-input: #242426;
+    --aq-soft: #29292c;
+    --aq-row: #1d1d1f;
+    --aq-row-alt: #222225;
+    --aq-hover: #2a2a2e;
+    --aq-project: color-mix(in srgb, var(--aq-accent) 15%, #1d1d1f);
+    --aq-total: color-mix(in srgb, var(--aq-accent) 12%, #242426);
+    --aq-highlight: color-mix(in srgb, var(--aq-accent) 20%, #242426);
+    --aq-line: #38383d;
+    --aq-text: #e8e8ed;
+    --aq-title: #f5f5f7;
+    --aq-muted: #a1a1a6;
+    --aq-shadow: 0 12px 28px #0005;
+}
+
+html[data-theme-mode="gray"] .account-query {
+    --aq-surface: #fff;
+    --aq-input: #f7f8fa;
+    --aq-soft: #e9ecef;
+    --aq-row: #fff;
+    --aq-row-alt: #f8f9fb;
+    --aq-hover: #f0f2f5;
+    --aq-project: color-mix(in srgb, var(--aq-accent) 5%, #f7f8fa);
+    --aq-total: color-mix(in srgb, var(--aq-accent) 6%, #f7f8fa);
+    --aq-highlight: color-mix(in srgb, var(--aq-accent) 10%, #f7f8fa);
+    --aq-line: #d5dbe4;
+    --aq-text: #202936;
+    --aq-title: #202936;
+    --aq-muted: #637083;
+    --aq-shadow: 0 12px 26px #1f29370f;
+}
+
+.account-query .account-card h2 { color: var(--aq-title); }
+.account-query .account-card-head p,
+.account-query .account-table-foot { color: var(--aq-muted); }
+.account-query .account-primary { border-color: var(--aq-accent); background: var(--aq-accent); color: #fff; }
+.account-query .account-excel { border-color: var(--aq-accent); background: var(--aq-accent); color: #fff; }
+.account-query .account-count,
+.account-query .account-chevron { color: var(--aq-accent-text); background: var(--aq-highlight); }
+.account-query .account-project-code,
+.account-query .account-suite-button,
+.account-query .account-receivable,
+.account-query .account-page-controls span { color: var(--aq-accent-text); }
+.account-query .account-button:focus-visible,
+.account-query .account-fields input:focus-visible,
+.account-query .account-pagination select:focus-visible,
+.account-query .account-suite-button:focus-visible { outline-color: var(--aq-accent); }
+
+html[data-theme-mode] .account-query .account-card {
+    color: var(--aq-text);
+    border-color: var(--aq-line);
+    background: var(--aq-surface);
+    box-shadow: var(--aq-shadow);
+}
+html[data-theme-mode] .account-query .account-fields label,
+html[data-theme-mode] .account-query .account-pagination { color: var(--aq-muted); }
+html[data-theme-mode] .account-query .account-fields input,
+html[data-theme-mode] .account-query .account-pagination select,
+html[data-theme-mode] .account-query .account-button:not(.account-primary):not(.account-excel) {
+    color: var(--aq-text);
+    border-color: var(--aq-line);
+    background: var(--aq-input);
+}
+html[data-theme-mode] .account-query .account-card-head,
+html[data-theme-mode] .account-query .account-table-scroll,
+html[data-theme-mode] .account-query .account-pagination,
+html[data-theme-mode] .account-query .account-table-foot { border-color: var(--aq-line); }
+html[data-theme-mode] .account-query .account-table thead th {
+    color: var(--aq-muted);
+    border-color: var(--aq-line);
+    background: var(--aq-soft);
+}
+html[data-theme-mode] .account-query .account-table thead .account-receivable-heading { color: var(--aq-accent-text); background: var(--aq-highlight); }
+html[data-theme-mode] .account-query .account-table td { color: var(--aq-text); border-color: var(--aq-line); background: var(--aq-row); }
+html[data-theme-mode] .account-query .account-table .account-receivable { color: var(--aq-accent-text); }
+html[data-theme-mode] .account-query .account-table .account-empty { color: var(--aq-muted); }
+html[data-theme-mode] .account-query .account-table .account-receivable-cell { background: var(--aq-highlight); }
+html[data-theme-mode] .account-query .account-project-cell {
+    color: var(--aq-text);
+    border-color: var(--aq-line);
+    background: var(--aq-project) !important;
+}
+html[data-theme-mode] .account-query .account-project-name,
+html[data-theme-mode] .account-query .account-meta-full dt,
+html[data-theme-mode] .account-query .account-meta-full dd,
+html[data-theme-mode] .account-query .account-item-total { color: var(--aq-title); }
+html[data-theme-mode] .account-query .account-project-company,
+html[data-theme-mode] .account-query .account-meta-pair dd,
+html[data-theme-mode] .account-query .account-order-name { color: var(--aq-text); }
+html[data-theme-mode] .account-query .account-project-meta { border-color: var(--aq-line); }
+html[data-theme-mode] .account-query .account-meta-toggle-row { border-color: var(--aq-line); }
+html[data-theme-mode] .account-query .account-meta-toggle { color: var(--aq-accent-text); }
+html[data-theme-mode] .account-query .account-meta-toggle:focus-visible { outline-color: var(--aq-accent); }
+html[data-theme-mode] .account-query .account-meta-pair dt,
+html[data-theme-mode] .account-query .account-suite-note,
+html[data-theme-mode] .account-query .account-muted { color: var(--aq-muted); }
+html[data-theme-mode] .account-query .account-suite-name-cell,
+html[data-theme-mode] .account-query .account-order-row td:nth-child(2) { border-left-color: var(--aq-accent); }
+html[data-theme-mode] .account-query .account-order-row td { background: var(--aq-row-alt); }
+html[data-theme-mode] .account-query .account-order-row:hover td { background: var(--aq-hover); }
+html[data-theme-mode] .account-query .account-project-total-row th,
+html[data-theme-mode] .account-query .account-project-total-row td,
+html[data-theme-mode] .account-query .account-table tfoot th,
+html[data-theme-mode] .account-query .account-table tfoot td {
+    color: var(--aq-title);
+    border-color: var(--aq-line);
+    background: var(--aq-total);
+}
+html[data-theme-mode] .account-query .account-project-total-row th span,
+html[data-theme-mode] .account-query .account-table tfoot th span { color: var(--aq-muted); }
+html[data-theme-mode] .account-query .account-project-total-row td:nth-last-child(4),
+html[data-theme-mode] .account-query .account-table tfoot #account-grid-total,
+html[data-theme-mode] .account-query .account-table tfoot #account-grid-receivable { color: var(--aq-accent-text); background: var(--aq-highlight); }
+html[data-theme-mode] .account-query .account-discount-chip,
+html[data-theme-mode] .account-query .account-booked-chip,
+html[data-theme-mode] .account-query .account-arrears-chip { background: var(--aq-soft); }
+html[data-theme-mode="dark"] .account-query .account-discount-chip { color: #78d5a3; border-color: #32674b; }
+html[data-theme-mode="dark"] .account-query .account-booked-chip { color: var(--app-text-color, #b8baff); border-color: var(--app-border, #56568a); }
+html[data-theme-mode="dark"] .account-query .account-arrears-chip { color: #f0bb83; border-color: #81613e; }
+
+.account-query .account-table thead .account-receivable-heading,
+.account-query .account-table td.account-receivable-cell,
+.account-query .account-table .account-project-total-row td.account-receivable-cell,
+.account-query .account-table tfoot td#account-grid-receivable,
+html[data-theme-mode] body.hc .account-query .account-table thead .account-receivable-heading,
+html[data-theme-mode] body.hc .account-query .account-table td.account-receivable-cell,
+html[data-theme-mode] body.hc .account-query .account-table .account-project-total-row td.account-receivable-cell,
+html[data-theme-mode] body.hc .account-query .account-table tfoot td#account-grid-receivable {
+    /* Receivable text keeps the same red across all themes and accent colors. */
+    color: #c62828 !important;
+}
+
+.account-query .account-table td.amount:not(.account-receivable-cell):not(#account-grid-receivable):not(.account-deduction-cell),
+html[data-theme-mode] body.hc .account-query .account-table td.amount:not(.account-receivable-cell):not(#account-grid-receivable):not(.account-deduction-cell) {
+    color: var(--app-text-color, #263850) !important;
+}
+
+.account-query .account-table :is(.account-deduction-heading, .account-deduction-cell, .account-discount-chip, .account-booked-chip, .account-arrears-chip),
+html[data-theme-mode] body.hc .account-query .account-table :is(.account-deduction-heading, .account-deduction-cell, .account-discount-chip, .account-booked-chip, .account-arrears-chip) {
+    color: var(--app-deduction-color, var(--app-accent-dark, #125ca8)) !important;
+}
+
+.account-query .account-table .account-project-gap td,
+html[data-theme-mode] .account-query .account-table .account-project-gap td {
+    height: 7px;
+    padding: 0;
+    border: 0;
+    background: var(--aq-soft);
+}
+
+.account-loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--aq-line);
+    background: var(--aq-soft);
+    color: var(--aq-accent-text);
+    font-size: calc(12px * var(--app-font-scale, 1));
+    font-weight: 700;
+}
+.account-loading[hidden] { display: none; }
+.account-loading-track {
+    position: relative;
+    width: 130px;
+    height: 6px;
+    flex: none;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--aq-highlight);
+}
+.account-loading-track::after {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 42%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, transparent, var(--aq-accent), transparent);
+    content: "";
+    animation: account-loading-sweep 1.3s ease-in-out infinite;
+}
+@keyframes account-loading-sweep {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(240%); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .account-loading-track::after { animation: none; width: 100%; background: var(--aq-accent); }
+}
+
+/* Keep only receivable amounts highlighted; other amount cells match suite rows. */
+.account-query .account-table thead th:not(.account-receivable-heading),
+.account-query .account-table .account-project-total-row th,
+.account-query .account-table .account-project-total-row td:not(.account-receivable-cell),
+.account-query .account-table tfoot th,
+.account-query .account-table tfoot td:not(#account-grid-receivable),
+.account-query .account-table .account-order-row td,
+html[data-theme-mode] .account-query .account-table thead th:not(.account-receivable-heading),
+html[data-theme-mode] .account-query .account-table .account-project-total-row th,
+html[data-theme-mode] .account-query .account-table .account-project-total-row td:not(.account-receivable-cell),
+html[data-theme-mode] .account-query .account-table tfoot th,
+html[data-theme-mode] .account-query .account-table tfoot td:not(#account-grid-receivable),
+html[data-theme-mode] .account-query .account-table .account-order-row td {
+    background: var(--aq-row);
+}
+.account-query .account-table td.account-project-cell,
+html[data-theme-mode] .account-query .account-table td.account-project-cell {
+    background: var(--aq-row) !important;
+}
+.account-query .account-table :is(.account-discount-chip, .account-booked-chip, .account-arrears-chip),
+html[data-theme-mode] .account-query .account-table :is(.account-discount-chip, .account-booked-chip, .account-arrears-chip) {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: calc(14px * var(--app-font-scale, 1));
+}
+.account-query .account-table tfoot :is(#account-grid-discount, #account-grid-booked, #account-grid-arrears) {
+    font-size: calc(14px * var(--app-font-scale, 1));
+}
+
+.account-query .account-table tbody :is(.account-suite-row, .account-order-row):is(:hover, :focus-within, .is-selected) > td:not(.account-project-cell),
+html[data-theme-mode] body.hc .account-query .account-table tbody :is(.account-suite-row, .account-order-row):is(:hover, :focus-within, .is-selected) > td:not(.account-project-cell) {
+    background: var(--app-selected-row-bg, var(--app-lightbar-soft)) !important;
+}
+.account-query .account-table tbody .account-suite-row.is-selected:is(:hover, :focus-within) > td:not(.account-project-cell),
+html[data-theme-mode] body.hc .account-query .account-table tbody .account-suite-row.is-selected:is(:hover, :focus-within) > td:not(.account-project-cell) {
+    background: var(--app-selected-row-hover-bg, var(--app-lightbar-soft)) !important;
+}
+.account-query .account-table .account-suite-row:is(:hover, :focus-within, .is-selected) .account-suite-name-cell {
+    border-left-color: var(--app-lightbar);
+    box-shadow: inset 4px 0 var(--app-lightbar), inset 14px 0 18px var(--app-lightbar-glow);
+}

@@ -1,0 +1,506 @@
+@model HealthSys_20260428_v2.csproj.Models.BasicDataMaintenanceViewModel
+
+@{
+    ViewData["Title"] = "資料維護";
+    var initialPhraseCount = Math.Min(Model.PageSizeOptions.FirstOrDefault(10), Model.PhraseNotes.Count);
+    var initialAreaCount = Math.Min(Model.PageSizeOptions.FirstOrDefault(10), Model.BookingAreas.Count);
+    var initialFlowCount = Math.Min(Model.PageSizeOptions.FirstOrDefault(10), Model.FlowSheets.Count);
+}
+
+<section class="basic-data-page" aria-label="資料維護" data-basic-data-page>
+    <nav class="basic-data-tabs" aria-label="資料維護分頁">
+        <button class="is-active" type="button" role="tab" aria-selected="true" data-basic-tab="phrase">片語備註</button>
+        <button type="button" role="tab" aria-selected="false" data-basic-tab="area">預約區域</button>
+        <button type="button" role="tab" aria-selected="false" data-basic-tab="flow">流程單</button>
+    </nav>
+
+    <section class="basic-data-panel" aria-label="片語備註資料" data-basic-panel="phrase">
+        <div class="basic-data-toolbar">
+            <label class="basic-search-field">
+                <span class="sr-only">搜尋片語內容或分類</span>
+                <span class="customer-action-icon search" aria-hidden="true"></span>
+                <input type="search" placeholder="搜尋片語內容或分類" aria-label="搜尋片語內容或分類" data-basic-search />
+            </label>
+            <label class="basic-status-field">
+                <span>狀態</span>
+                <select aria-label="片語備註狀態" data-basic-status>
+                    @foreach (var option in Model.StatusOptions)
+                    {
+                        <option value="@option.Value" selected="@option.IsSelected">@option.Text</option>
+                    }
+                </select>
+            </label>
+            <button class="primary-button basic-add-button" type="button" data-basic-add="phrase">
+                <span class="customer-action-icon add" aria-hidden="true"></span>
+                <span>新增片語備註</span>
+            </button>
+        </div>
+
+        <div class="basic-table-wrap">
+            <table class="basic-data-table phrase-table">
+                <thead>
+                    <tr>
+                        <th>片語內容 <span class="basic-sort" aria-hidden="true"></span></th>
+                        <th>分類</th>
+                        <th>狀態</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var note in Model.PhraseNotes)
+                    {
+                        var keywords = $"{note.Content} {note.Category} {note.Status}";
+                        <tr data-basic-row data-status="@note.Status" data-keywords="@keywords">
+                            <td data-editable>@note.Content</td>
+                            <td data-editable>@note.Category</td>
+                            <td>
+                                <span class="basic-status-pill @note.StatusTone">@note.Status</span>
+                            </td>
+                            <td>
+                                <span class="basic-row-actions">
+                                    <button class="basic-icon-button edit" type="button" aria-label="編輯片語" title="編輯" data-basic-edit>
+                                        <span class="customer-action-icon edit" aria-hidden="true"></span>
+                                    </button>
+                                    <button class="basic-icon-button delete" type="button" aria-label="刪除片語" title="刪除" data-basic-delete>
+                                        <span class="customer-action-icon trash" aria-hidden="true"></span>
+                                    </button>
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                    <tr class="basic-empty-row" data-basic-empty hidden>
+                        <td colspan="4">查無符合條件的片語備註</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="basic-table-footer">
+            <span data-basic-summary>顯示第 1 至 @initialPhraseCount 筆，共 @Model.PhraseNotes.Count 筆</span>
+            <nav class="basic-pagination" aria-label="片語備註分頁" data-basic-pagination></nav>
+            <label class="basic-page-size">
+                <span class="sr-only">每頁筆數</span>
+                <select aria-label="片語備註每頁筆數" data-basic-page-size>
+                    @foreach (var pageSize in Model.PageSizeOptions)
+                    {
+                        <option value="@pageSize">@pageSize / 頁</option>
+                    }
+                </select>
+            </label>
+        </footer>
+    </section>
+
+    <section class="basic-data-panel" aria-label="預約區域資料" data-basic-panel="area" hidden>
+        <div class="basic-data-toolbar">
+            <label class="basic-search-field">
+                <span class="sr-only">搜尋區域代碼或名稱</span>
+                <span class="customer-action-icon search" aria-hidden="true"></span>
+                <input type="search" placeholder="搜尋區域代碼或名稱" aria-label="搜尋區域代碼或名稱" data-basic-search />
+            </label>
+            <label class="basic-status-field">
+                <span>狀態</span>
+                <select aria-label="預約區域狀態" data-basic-status>
+                    @foreach (var option in Model.BookingAreaStatusOptions)
+                    {
+                        <option value="@option.Value" selected="@option.IsSelected">@option.Text</option>
+                    }
+                </select>
+            </label>
+            <button class="primary-button basic-add-button" type="button" data-basic-add="area">
+                <span class="customer-action-icon add" aria-hidden="true"></span>
+                <span>新增預約區域</span>
+            </button>
+        </div>
+
+        <div class="basic-table-wrap">
+            <table class="basic-data-table area-table">
+                <thead>
+                    <tr>
+                        <th>區域代碼 <span class="basic-sort" aria-hidden="true"></span></th>
+                        <th>預約區域</th>
+                        <th>狀態</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var area in Model.BookingAreas)
+                    {
+                        var keywords = $"{area.Code} {area.Name} {area.Status}";
+                        <tr data-basic-row data-status="@area.Status" data-keywords="@keywords">
+                            <td data-editable>@area.Code</td>
+                            <td data-editable>@area.Name</td>
+                            <td>
+                                <span class="basic-status-pill @area.StatusTone">@area.Status</span>
+                            </td>
+                            <td>
+                                <span class="basic-row-actions">
+                                    <button class="basic-icon-button edit" type="button" aria-label="編輯預約區域" title="編輯" data-basic-edit>
+                                        <span class="customer-action-icon edit" aria-hidden="true"></span>
+                                    </button>
+                                    <button class="basic-icon-button delete" type="button" aria-label="刪除預約區域" title="刪除" data-basic-delete>
+                                        <span class="customer-action-icon trash" aria-hidden="true"></span>
+                                    </button>
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                    <tr class="basic-empty-row" data-basic-empty hidden>
+                        <td colspan="4">查無符合條件的預約區域</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="basic-table-footer">
+            <span data-basic-summary>顯示第 1 至 @initialAreaCount 筆，共 @Model.BookingAreas.Count 筆</span>
+            <nav class="basic-pagination" aria-label="預約區域分頁" data-basic-pagination></nav>
+            <label class="basic-page-size">
+                <span class="sr-only">每頁筆數</span>
+                <select aria-label="預約區域每頁筆數" data-basic-page-size>
+                    @foreach (var pageSize in Model.PageSizeOptions)
+                    {
+                        <option value="@pageSize">@pageSize / 頁</option>
+                    }
+                </select>
+            </label>
+        </footer>
+    </section>
+
+    <section class="basic-data-panel" aria-label="流程單資料" data-basic-panel="flow" hidden>
+        <div class="basic-data-toolbar flow-toolbar">
+            <label class="basic-search-field">
+                <span class="sr-only">搜尋流程單名稱</span>
+                <span class="customer-action-icon search" aria-hidden="true"></span>
+                <input type="search" placeholder="搜尋流程單名稱" aria-label="搜尋流程單名稱" data-basic-search />
+            </label>
+            <button class="primary-button basic-add-button" type="button" data-basic-add="flow">
+                <span class="customer-action-icon add" aria-hidden="true"></span>
+                <span>新增流程單</span>
+            </button>
+        </div>
+
+        <div class="basic-table-wrap">
+            <table class="basic-data-table flow-table">
+                <thead>
+                    <tr>
+                        <th>流程單名稱 <span class="basic-sort" aria-hidden="true"></span></th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var flow in Model.FlowSheets)
+                    {
+                        var keywords = flow.Name;
+                        <tr data-basic-row data-keywords="@keywords">
+                            <td data-editable>@flow.Name</td>
+                            <td>
+                                <span class="basic-row-actions">
+                                    <button class="basic-icon-button edit" type="button" aria-label="編輯流程單" title="編輯" data-basic-edit>
+                                        <span class="customer-action-icon edit" aria-hidden="true"></span>
+                                    </button>
+                                    <button class="basic-icon-button delete" type="button" aria-label="刪除流程單" title="刪除" data-basic-delete>
+                                        <span class="customer-action-icon trash" aria-hidden="true"></span>
+                                    </button>
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                    <tr class="basic-empty-row" data-basic-empty hidden>
+                        <td colspan="2">查無符合條件的流程單</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="basic-table-footer">
+            <span data-basic-summary>顯示第 1 至 @initialFlowCount 筆，共 @Model.FlowSheets.Count 筆</span>
+            <nav class="basic-pagination" aria-label="流程單分頁" data-basic-pagination></nav>
+            <label class="basic-page-size">
+                <span class="sr-only">每頁筆數</span>
+                <select aria-label="流程單每頁筆數" data-basic-page-size>
+                    @foreach (var pageSize in Model.PageSizeOptions)
+                    {
+                        <option value="@pageSize">@pageSize / 頁</option>
+                    }
+                </select>
+            </label>
+        </footer>
+    </section>
+</section>
+
+<script>
+    (function () {
+        const page = document.querySelector("[data-basic-data-page]");
+
+        if (!page) {
+            return;
+        }
+
+        const tabs = Array.from(page.querySelectorAll("[data-basic-tab]"));
+        const panels = Array.from(page.querySelectorAll("[data-basic-panel]"));
+        const currentPages = new Map(panels.map((panel) => [panel.dataset.basicPanel, 1]));
+
+        function normalize(value) {
+            return (value || "").trim().toUpperCase();
+        }
+
+        function panelKey(panel) {
+            return panel?.dataset.basicPanel || "";
+        }
+
+        function rowsFor(panel) {
+            return Array.from(panel.querySelectorAll("[data-basic-row]"));
+        }
+
+        function rowMatches(row, panel) {
+            const searchValue = normalize(panel.querySelector("[data-basic-search]")?.value);
+            const statusValue = panel.querySelector("[data-basic-status]")?.value || "";
+            const rowStatus = row.dataset.status || "";
+            const keywords = normalize(row.dataset.keywords);
+
+            return (!searchValue || keywords.includes(searchValue)) && (!statusValue || rowStatus === statusValue);
+        }
+
+        function pageSize(panel) {
+            const value = Number.parseInt(panel.querySelector("[data-basic-page-size]")?.value || "10", 10);
+
+            return Number.isFinite(value) && value > 0 ? value : 10;
+        }
+
+        function makePageButton(label, targetPage, active, disabled, panel) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+            button.disabled = disabled;
+
+            if (active) {
+                button.classList.add("active");
+                button.setAttribute("aria-current", "page");
+            }
+
+            button.addEventListener("click", function () {
+                currentPages.set(panelKey(panel), targetPage);
+                renderPanel(panel, false);
+            });
+
+            return button;
+        }
+
+        function renderPagination(panel, totalPages) {
+            const pagination = panel.querySelector("[data-basic-pagination]");
+            const currentPage = currentPages.get(panelKey(panel)) || 1;
+
+            if (!pagination) {
+                return;
+            }
+
+            pagination.innerHTML = "";
+            pagination.append(makePageButton("‹", Math.max(1, currentPage - 1), false, currentPage === 1, panel));
+
+            for (let index = 1; index <= totalPages; index += 1) {
+                pagination.append(makePageButton(String(index), index, index === currentPage, false, panel));
+            }
+
+            pagination.append(makePageButton("›", Math.min(totalPages, currentPage + 1), false, currentPage === totalPages, panel));
+        }
+
+        function renderPanel(panel, resetPage) {
+            const key = panelKey(panel);
+            const rows = rowsFor(panel);
+            const matchingRows = rows.filter((row) => rowMatches(row, panel));
+            const size = pageSize(panel);
+            const totalPages = Math.max(1, Math.ceil(matchingRows.length / size));
+            let currentPage = resetPage ? 1 : currentPages.get(key) || 1;
+
+            if (currentPage > totalPages) {
+                currentPage = totalPages;
+            }
+
+            currentPages.set(key, currentPage);
+
+            const startIndex = (currentPage - 1) * size;
+            const endIndex = startIndex + size;
+            const visibleRows = matchingRows.slice(startIndex, endIndex);
+
+            rows.forEach((row) => {
+                row.hidden = !visibleRows.includes(row);
+            });
+
+            const summary = panel.querySelector("[data-basic-summary]");
+
+            if (summary) {
+                const firstVisible = matchingRows.length === 0 ? 0 : startIndex + 1;
+                const lastVisible = matchingRows.length === 0 ? 0 : Math.min(endIndex, matchingRows.length);
+                summary.textContent = `顯示第 ${firstVisible} 至 ${lastVisible} 筆，共 ${matchingRows.length} 筆`;
+            }
+
+            const emptyRow = panel.querySelector("[data-basic-empty]");
+
+            if (emptyRow) {
+                emptyRow.hidden = matchingRows.length > 0;
+            }
+
+            renderPagination(panel, totalPages);
+        }
+
+        function refreshKeywords(row) {
+            row.dataset.keywords = Array.from(row.querySelectorAll("[data-editable], .basic-status-pill"))
+                .map((cell) => cell.textContent || "")
+                .join(" ");
+        }
+
+        function setEditing(row, editing) {
+            row.classList.toggle("is-editing", editing);
+            row.querySelectorAll("[data-editable]").forEach((cell) => {
+                if (editing) {
+                    cell.setAttribute("contenteditable", "true");
+                } else {
+                    cell.removeAttribute("contenteditable");
+                }
+            });
+
+            const editButton = row.querySelector("[data-basic-edit]");
+
+            if (editButton) {
+                editButton.setAttribute("aria-label", editing ? "完成編輯" : "編輯");
+                editButton.setAttribute("title", editing ? "完成編輯" : "編輯");
+            }
+
+            if (editing) {
+                row.querySelector("[data-editable]")?.focus();
+            } else {
+                refreshKeywords(row);
+            }
+        }
+
+        function escapeHtml(value) {
+            return (value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function actionButtons(label) {
+            return [
+                '<span class="basic-row-actions">',
+                '<button class="basic-icon-button edit" type="button" aria-label="編輯' + label + '" title="編輯" data-basic-edit>',
+                '<span class="customer-action-icon edit" aria-hidden="true"></span>',
+                "</button>",
+                '<button class="basic-icon-button delete" type="button" aria-label="刪除' + label + '" title="刪除" data-basic-delete>',
+                '<span class="customer-action-icon trash" aria-hidden="true"></span>',
+                "</button>",
+                "</span>"
+            ].join("");
+        }
+
+        function appendRow(panel, values) {
+            const row = document.createElement("tr");
+            const key = panelKey(panel);
+            const isPhrase = key === "phrase";
+            const isArea = key === "area";
+            const status = isArea ? "啟動" : "啟用";
+            const statusCell = '<span class="basic-status-pill enabled">' + status + '</span>';
+
+            row.setAttribute("data-basic-row", "");
+
+            if (isPhrase) {
+                row.dataset.status = status;
+                row.innerHTML = [
+                    "<td data-editable>" + escapeHtml(values.content) + "</td>",
+                    "<td data-editable>" + escapeHtml(values.category) + "</td>",
+                    "<td>" + statusCell + "</td>",
+                    "<td>" + actionButtons("片語") + "</td>"
+                ].join("");
+            } else if (isArea) {
+                row.dataset.status = status;
+                row.innerHTML = [
+                    "<td data-editable>" + escapeHtml(values.code) + "</td>",
+                    "<td data-editable>" + escapeHtml(values.name) + "</td>",
+                    "<td>" + statusCell + "</td>",
+                    "<td>" + actionButtons("預約區域") + "</td>"
+                ].join("");
+            } else {
+                row.innerHTML = [
+                    "<td data-editable>" + escapeHtml(values.name) + "</td>",
+                    "<td>" + actionButtons("流程單") + "</td>"
+                ].join("");
+            }
+
+            refreshKeywords(row);
+            panel.querySelector("tbody")?.insertBefore(row, panel.querySelector("[data-basic-empty]"));
+            setEditing(row, true);
+            renderPanel(panel, true);
+        }
+
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", function () {
+                const target = tab.dataset.basicTab;
+
+                tabs.forEach((candidate) => {
+                    const active = candidate === tab;
+                    candidate.classList.toggle("is-active", active);
+                    candidate.setAttribute("aria-selected", String(active));
+                });
+
+                panels.forEach((panel) => {
+                    panel.hidden = panelKey(panel) !== target;
+                });
+
+                renderPanel(panels.find((panel) => panelKey(panel) === target), false);
+            });
+        });
+
+        panels.forEach((panel) => {
+            panel.querySelector("[data-basic-search]")?.addEventListener("input", function () {
+                renderPanel(panel, true);
+            });
+
+            panel.querySelector("[data-basic-status]")?.addEventListener("change", function () {
+                renderPanel(panel, true);
+            });
+
+            panel.querySelector("[data-basic-page-size]")?.addEventListener("change", function () {
+                renderPanel(panel, true);
+            });
+
+            panel.querySelector("[data-basic-add]")?.addEventListener("click", function () {
+                if (panelKey(panel) === "phrase") {
+                    appendRow(panel, { content: "新的片語備註", category: "一般回覆" });
+                } else if (panelKey(panel) === "area") {
+                    appendRow(panel, { code: "NEW", name: "新的預約區域" });
+                } else {
+                    appendRow(panel, { name: "新的流程單" });
+                }
+            });
+        });
+
+        page.addEventListener("click", function (event) {
+            if (!(event.target instanceof Element)) {
+                return;
+            }
+
+            const editButton = event.target.closest("[data-basic-edit]");
+            const deleteButton = event.target.closest("[data-basic-delete]");
+            const row = event.target.closest("[data-basic-row]");
+            const panel = event.target.closest("[data-basic-panel]");
+
+            if (!row || !panel) {
+                return;
+            }
+
+            if (editButton) {
+                setEditing(row, !row.classList.contains("is-editing"));
+                renderPanel(panel, false);
+            }
+
+            if (deleteButton) {
+                row.remove();
+                renderPanel(panel, false);
+            }
+        });
+
+        panels.forEach((panel) => renderPanel(panel, true));
+    })();
+</script>

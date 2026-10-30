@@ -1,0 +1,54 @@
+@model HealthSys_20260428_v2.csproj.Models.InspectionTasksViewModel
+@{ ViewData["Title"] = "檢查報告"; }
+<link rel="stylesheet" href="~/css/inspection-tasks.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/inspection-tasks-detail.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/inspection-tasks-extras.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/inspection-tasks-switch.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/inspection-tasks-lab.css" asp-append-version="true" />
+<svg class="it-sprite" aria-hidden="true"><symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21c1-5 3-7 8-7s7 2 8 7"/></symbol><symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20Zm0 6v5m0 3v1"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></symbol></svg>
+<section class="inspection-task-page" data-inspection-page data-lab-url="@Url.Action("InspectionLabResults", "Reports")" data-ecg-url="@Url.Action("InspectionEcgReports", "Reports")" data-special-url="@Url.Action("InspectionSpecialReports", "Reports")" data-image-url="@Url.Action("InspectionImageReports", "Reports")">
+ <form class="it-filters" data-task-filter method="get" asp-controller="Reports" asp-action="Reports"><label>健檢日期</label><span class="it-date"><input type="date" name="checkDateStart" value="@Model.FilterStartDate"></span><i>~</i><span class="it-date"><input type="date" name="checkDateEnd" value="@Model.FilterEndDate"></span><label>專案：</label><select id="task-project"><option value="">全部專案</option>@foreach (var projectName in Model.ProjectNames) {<option value="@projectName">@projectName</option>}</select><span class="it-search"><span>⌕</span><input id="task-keyword" type="search" placeholder="姓名、專案或條碼"></span><button class="it-query" type="submit">查詢</button></form>
+ <div class="it-tabs"><button class="active" type="button" data-status="all">全部 <b>@Model.Tasks.Count</b></button><button type="button" data-status="progress">進行中 <b>@Model.Tasks.Count(task => task.FlowStatus == "progress")</b></button><button class="complete" type="button" data-status="complete">已完成 <b>@Model.Tasks.Count(task => task.FlowStatus == "complete")</b></button><button class="it-critical-tab" type="button" data-status="critical">危急 <b>@Model.Tasks.Count(task => task.CriticalCount > 0)</b></button><span class="it-list-layout-controls" aria-label="受檢者清單顯示方式"><button type="button" data-list-layout="hidden">隱藏清單</button><button class="active" type="button" data-list-layout="compact">預設</button><button type="button" data-list-layout="expanded">全部展開</button></span></div>
+ @if (!string.IsNullOrWhiteSpace(Model.QueryErrorMessage))
+ {
+  <p class="it-query-error" role="alert">@Model.QueryErrorMessage</p>
+ }
+ <div class="it-workspace list-layout-compact">
+  <section class="it-list-card"><header><h2>本次受檢者</h2></header><div class="it-table-box"><table class="it-list"><thead><tr><th aria-sort="none" data-column-label="狀態"><button type="button" data-list-sort="0" aria-label="狀態排序">狀態<span class="it-list-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th><th>姓名</th><th aria-sort="none" data-column-label="專案"><button type="button" data-list-sort="2" aria-label="專案排序">專案<span class="it-list-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th><th aria-sort="none" data-column-label="條碼"><button type="button" data-list-sort="3" aria-label="條碼排序">條碼<span class="it-list-sort-arrows" aria-hidden="true"><span data-sort-direction="asc">▲</span><span data-sort-direction="desc">▼</span></span></button></th></tr></thead><tbody>
+   @foreach (var task in Model.Tasks)
+   {
+    <tr class="@(task.Selected ? "selected" : null)" tabindex="0" data-person data-status="@($"{task.FlowStatus}{(task.CriticalCount > 0 ? " critical" : "")}")" data-person-meta="@task.Status" data-search="@($"{task.Name} {task.Barcode} {task.ProjectName}")" data-barcode="@task.Barcode" data-progress="@task.Progress" data-flow="@System.Text.Json.JsonSerializer.Serialize(task.FlowSteps, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))" data-abnormal="@task.Abnormal" data-critical-count="@task.CriticalCount" data-project-no="@task.ProjectNumber" data-chop1-date="@task.Chop1Date" data-chop1-time="@task.Chop1Time" data-chop1-room="@task.Chop1Room" data-intop1-no="@task.Intop1No" data-chop0-dc="@task.Chop0Dc">
+     <td><span class="badge @task.StatusTone">@task.Status</span>@if (task.CriticalCount > 0) {<span class="badge danger it-critical-badge">危急 @task.CriticalCount 項</span>}</td><td title="@task.Name">@task.Name</td><td title="@task.ProjectName">@task.ProjectName</td><td title="@task.Barcode">@task.Barcode</td>
+    </tr>
+   }
+  </tbody></table><p class="it-empty" hidden>查無符合條件的受檢者</p></div>
+  <footer class="it-grid-footer" data-grid-pagination>
+   <span data-page-summary>共 @Model.Tasks.Count 筆</span>
+   <div class="pagination-controls">
+    <label class="it-page-size">每頁 <select class="page-select" data-page-size aria-label="每頁筆數"><option value="10" selected>10 筆</option><option value="20">20 筆</option><option value="50">50 筆</option></select></label>
+    <nav class="pagination" data-pagination aria-label="分頁"><button type="button" disabled aria-label="上一頁">‹</button><button type="button" class="active" aria-current="page">1</button><button type="button" disabled aria-label="下一頁">›</button></nav>
+   </div>
+  </footer></section>
+  <article class="it-detail"><div class="it-detail-main" data-detail-overview>
+   <header class="it-person"><span class="avatar"><svg><use href="#i-user"/></svg></span><div class="name"><h2></h2><span></span></div><dl><div><dt>病歷號</dt><dd></dd></div><div><dt>條碼</dt><dd></dd></div><div><dt>專案</dt><dd></dd></div></dl><div class="state"><div><span class="badge"></span><span class="badge danger" data-overview-lab-badge hidden></span></div><label>完成度　<strong></strong></label><span class="wide"><i style="width:0%"></i></span></div></header>
+   <div class="it-alert" data-overview-lab-alert hidden></div>
+   <div class="it-stations">
+    <button class="station" data-target="lab"><span class="station-icon">♜</span><span><b>Lab 檢驗</b><strong data-overview-lab-total></strong><em data-overview-lab-count></em></span></button>
+    <button class="station station-no-icon" data-target="image"><span><b>影像報告</b><strong></strong><em></em></span></button>
+    <button class="station" data-target="measure"><span class="station-icon"><svg><use href="#i-user"/></svg></span><span><b>身體測量</b><strong></strong></span></button>
+    <button class="station" data-target="survey"><span class="station-icon">▣</span><span><b>問卷資料</b><strong></strong></span></button>
+   </div>
+   <div class="it-lower"><section class="it-summary"><h3>異常項目摘要</h3><div><table><thead><tr><th>來源</th><th>項目</th><th>結果</th><th>參考值</th><th>判定</th></tr></thead><tbody data-overview-lab-rows></tbody></table></div><small>* 僅顯示 LAB 檢查值標紅的項目</small></section>
+    <section class="it-flow"><h3>健檢流程進度</h3><ol data-inspection-flow aria-live="polite"></ol></section></div>
+  </div>
+  <section class="it-subview" data-detail-subview hidden aria-live="polite">
+   <header><button type="button" data-back-overview>← 返回總覽</button><div><span data-view-icon></span><h2 data-view-title></h2><p data-view-description></p></div></header>
+   <div class="it-subview-person"><span class="avatar"><svg><use href="#i-user"/></svg></span><div><b></b><span></span></div><span class="badge"></span></div>
+   <div class="it-subview-stats"><article><span>項目總數</span><strong data-view-total>0</strong></article><article><span>已完成</span><strong class="green" data-view-complete>0</strong></article><article><span>需注意</span><strong class="red" data-view-alert>0</strong></article></div>
+   <div class="it-subview-table"><table><thead><tr data-view-headers><th>項目</th><th>結果／內容</th><th>狀態</th><th>更新時間</th></tr></thead><tbody data-view-rows></tbody></table></div>
+   <footer class="it-lab-grid-footer" data-lab-pagination-footer hidden><span data-lab-page-summary></span><nav class="pagination" data-lab-pagination aria-label="Lab 分頁"></nav></footer>
+  </section>
+  <nav class="it-side-nav"><button class="active" type="button" data-target="overview"><span>▦</span><b>總覽</b></button><button type="button" data-target="lab"><span>♜</span><b>Lab 檢驗</b></button><button type="button" data-target="image"><b>影像報告</b></button><button type="button" data-target="special"><span>✚</span><b>特檢報告</b></button><button type="button" data-target="ecg"><span>⌁</span><b>心電圖</b></button><button type="button" data-target="measure"><svg><use href="#i-user"/></svg><b>身體測量</b></button><button type="button" data-target="survey"><span>▣</span><b>問卷資料</b></button><button type="button" data-target="doctor"><span>♧</span><b>醫師總評</b></button></nav></article>
+ </div>
+</section>
+<script src="~/js/inspection-tasks.js" asp-append-version="true"></script>

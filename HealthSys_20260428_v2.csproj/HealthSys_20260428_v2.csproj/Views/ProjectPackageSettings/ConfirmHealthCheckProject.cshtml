@@ -1,0 +1,203 @@
+@model HealthSys_20260428_v2.csproj.Models.HealthProjectWizardViewModel
+
+@{
+    ViewData["Title"] = "確認發布";
+    var routeMode = Model.IsEditMode ? "edit" : null;
+    var routeCode = Model.IsEditMode ? Model.Project.Code : null;
+    var routeProjectNo = Model.IsEditMode ? null : Model.Project.Code;
+    var routeIsPastHistory = Model.Project.IsPastHistoryEnabled ? "Y" : "N";
+    var routeIsOralCheck = Model.Project.IsOralCheckEnabled ? "Y" : "N";
+    var routeIsOnlineQuestion = Model.Project.IsOnlineQuestionEnabled ? "Y" : "N";
+    string Money(int amount) => amount.ToString("N0");
+}
+
+<section class="project-wizard-page confirm-step" aria-label="確認發布" data-project-confirm-page>
+    <header class="project-wizard-heading">
+        <h1>確認發布</h1>
+        <p>@(Model.IsEditMode ? "請仔細檢視專案資料、組套內容與通知設定，確認後即可完成編輯並發布專案。" : "請仔細檢視專案資料、組套內容與通知設定，確認後即可完成建立並發布專案。")</p>
+    </header>
+
+    <nav class="project-wizard-stepper line" aria-label="@(Model.IsEditMode ? "編輯專案步驟" : "建立專案步驟")">
+        @foreach (var step in Model.Steps)
+        {
+            <div class="project-wizard-step @step.State">
+                <span class="project-wizard-step-number">@step.Number</span>
+                <strong>@step.Title</strong>
+            </div>
+        }
+    </nav>
+
+    <section class="project-wizard-project-strip four" aria-label="專案資訊">
+        <article>
+            <span>專案名稱</span>
+            <strong>@Model.Project.Name</strong>
+        </article>
+        <article>
+            <span>套餐名稱</span>
+            <strong>@Model.Project.Target</strong>
+        </article>
+        <article>
+            <span>專案編號</span>
+            <strong>@Model.Project.Code</strong>
+        </article>
+        <article>
+            <span>體檢醫院</span>
+            <strong>@Model.Project.Hospital</strong>
+        </article>
+    </section>
+
+    <div class="project-confirm-layout">
+        <section class="project-wizard-card project-confirm-basic">
+            <h2>專案基本資料</h2>
+            <dl>
+                <div><dt>體檢醫院</dt><dd>@Model.Project.Hospital</dd></div>
+                <div><dt>公司編號</dt><dd>@Model.Project.CustomerNo</dd></div>
+                <div><dt>受檢單位</dt><dd>@Model.Project.ClientUnit</dd></div>
+                <div><dt>體檢年度</dt><dd>@Model.Project.Year</dd></div>
+                <div><dt>體檢日期</dt><dd>@Model.Project.CheckDate</dd></div>
+                <div><dt>結束日期</dt><dd>@Model.Project.EndDate</dd></div>
+                <div><dt>比對值</dt><dd>@Model.Project.Category</dd></div>
+                <div><dt>問卷</dt><dd>@Model.Project.Questionnaire</dd></div>
+                <div><dt>流程單</dt><dd>@Model.Project.FlowSheet</dd></div>
+                <div><dt>預設執行區域</dt><dd>@Model.Project.DefaultArea</dd></div>
+            </dl>
+            <p>@Model.Project.Notes</p>
+        </section>
+
+        <section class="project-wizard-card project-confirm-summary">
+            <h2>組套摘要</h2>
+            <div class="project-confirm-metrics">
+                <article><strong>@Model.SelectedItems.Count</strong><span>醫令總數</span></article>
+                <article><strong>@Model.SelectedSpecialOperations.Count</strong><span>問卷項目</span></article>
+                <article><strong>NT$ @Money(Model.MedicalOrderSubtotal)</strong><span>醫令小計</span></article>
+                <article><strong>NT$ @Money(Model.SpecialOperationSubtotal)</strong><span>問卷項目小計</span></article>
+            </div>
+        </section>
+
+        <section class="project-wizard-card project-confirm-notice">
+            <h2>預約與通知設定</h2>
+            <dl>
+                <div><dt>預約區間</dt><dd>2026/05/01 - 2026/12/31</dd></div>
+                <div><dt>簡訊提醒</dt><dd><span class="basic-status-pill enabled">已啟用</span></dd></div>
+                <div><dt>Email通知</dt><dd><span class="basic-status-pill enabled">已啟用</span></dd></div>
+                <div><dt>文字通知</dt><dd>親愛的同仁您好，您的健康檢查已可預約，請儘早完成預約。</dd></div>
+                <div><dt>預約提醒</dt><dd>您的健康檢查預約即將到期，請於期限內完成預約。</dd></div>
+            </dl>
+        </section>
+
+        <section class="project-wizard-card project-confirm-orders">
+            <h2>已加入醫令</h2>
+            <table class="project-order-table">
+                <thead>
+                    <tr>
+                        <th>項次</th>
+                        <th>醫令名稱</th>
+                        <th>分類</th>
+                        <th>價格</th>
+                        <th>必選</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.SelectedItems.Take(5))
+                    {
+                        <tr>
+                            <td>@item.SortOrder</td>
+                            <td>@item.Name</td>
+                            <td>@item.Category</td>
+                            <td>NT$ @Money(item.Price)</td>
+                            <td><span class="project-confirm-check" aria-hidden="true"></span></td>
+                        </tr>
+                    }
+                    @if (Model.SelectedItems.Count == 0)
+                    {
+                        <tr class="suite-empty-row">
+                            <td colspan="5">尚未加入醫令</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <a asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProjectOrders" asp-route-mode="@routeMode" asp-route-code="@routeCode" asp-route-projectNo="@routeProjectNo" asp-route-isPastHistory="@routeIsPastHistory" asp-route-isOralCheck="@routeIsOralCheck" asp-route-isOnlineQuestion="@routeIsOnlineQuestion" data-wizard-carry-link>查看全部 ›</a>
+        </section>
+
+        <section class="project-wizard-card project-confirm-orders project-confirm-specials">
+            <h2>已選問卷項目</h2>
+            <table class="project-order-table">
+                <thead>
+                    <tr>
+                        <th>項次</th>
+                        <th>問卷項目</th>
+                        <th>金額</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.SelectedSpecialOperations.Take(5))
+                    {
+                        <tr>
+                            <td>@item.SortOrder</td>
+                            <td>@item.Name</td>
+                            <td>NT$ @Money(item.Price)</td>
+                        </tr>
+                    }
+                    @if (Model.SelectedSpecialOperations.Count == 0)
+                    {
+                        <tr class="suite-empty-row">
+                            <td colspan="3">尚未選擇問卷項目</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <a asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProjectSpecialOperations" asp-route-mode="@routeMode" asp-route-code="@routeCode" asp-route-projectNo="@routeProjectNo" asp-route-isPastHistory="@routeIsPastHistory" asp-route-isOralCheck="@routeIsOralCheck" asp-route-isOnlineQuestion="@routeIsOnlineQuestion" data-wizard-carry-link>查看全部 ›</a>
+        </section>
+
+        <aside class="project-wizard-card project-confirm-checklist">
+            <h2>發布前檢查</h2>
+            <ul>
+                <li>專案資料已完成</li>
+                <li>醫令組套已設定</li>
+                <li>問卷項目已確認</li>
+                <li>通知設定已完成</li>
+                <li>可建立並發布</li>
+            </ul>
+            <p>@(Model.IsEditMode ? "所有檢查項目均已完成，可以完成編輯並發布專案。" : "所有檢查項目均已完成，可以建立並發布專案。")</p>
+        </aside>
+    </div>
+
+    <section class="project-confirm-price" aria-label="價格摘要">
+        <article><span>醫令小計</span><strong>NT$ @Money(Model.MedicalOrderSubtotal)</strong></article>
+        <article><span>問卷項目</span><strong>NT$ @Money(Model.SpecialOperationSubtotal)</strong></article>
+        <article><span>折扣</span><strong class="green-text">- NT$ @Money(Model.DiscountAmount) <small>(@Model.DiscountRate.ToString("0.##")%)</small></strong></article>
+        <article class="highlight"><span>專案售價</span><strong>NT$ @Money(Model.FinalPrice)</strong></article>
+        <article><span>成本估計</span><strong>NT$ @Money(Model.CostEstimate)</strong></article>
+    </section>
+
+    <footer class="project-wizard-footer">
+        <a class="ghost-button" asp-controller="ProjectPackageSettings" asp-action="CreateHealthCheckProjectSpecialOperations" asp-route-mode="@routeMode" asp-route-code="@routeCode" asp-route-projectNo="@routeProjectNo" asp-route-isPastHistory="@routeIsPastHistory" asp-route-isOralCheck="@routeIsOralCheck" asp-route-isOnlineQuestion="@routeIsOnlineQuestion" data-wizard-carry-link>上一步</a>
+        <button class="ghost-button" type="button">
+            <span class="project-save-icon" aria-hidden="true"></span>
+            <span>@(Model.IsEditMode ? "儲存修改" : "儲存草稿")</span>
+        </button>
+        <a class="primary-button" asp-controller="ProjectPackageSettings" asp-action="CompleteHealthCheckProject" asp-route-mode="@routeMode" asp-route-code="@routeCode" asp-route-projectNo="@routeProjectNo" asp-route-isPastHistory="@routeIsPastHistory" asp-route-isOralCheck="@routeIsOralCheck" asp-route-isOnlineQuestion="@routeIsOnlineQuestion" data-wizard-carry-link>@(Model.IsEditMode ? "完成編輯並發布" : "完成建立並發布")</a>
+    </footer>
+</section>
+
+<script>
+    (function () {
+        const page = document.querySelector("[data-project-confirm-page]");
+
+        if (!page) {
+            return;
+        }
+
+        const sourceQuery = new URLSearchParams(window.location.search);
+
+        page.querySelectorAll("[data-wizard-carry-link]").forEach(function (link) {
+            const url = new URL(link.href, window.location.href);
+
+            sourceQuery.forEach(function (value, key) {
+                url.searchParams.set(key, value);
+            });
+
+            link.href = url.href;
+        });
+    })();
+</script>

@@ -1,0 +1,565 @@
+@model HealthSys_20260428_v2.csproj.Models.ProjectPackageSettingsViewModel
+
+@{
+    ViewData["Title"] = "專案套餐設定";
+    var selectedSubtotal = Model.SelectedItems.Sum(item => item.Price);
+    var finalPrice = selectedSubtotal - Model.DiscountAmount;
+    var availableVisibleCount = Math.Min(12, Model.AvailableItems.Count);
+    var selectedVisibleCount = Model.SelectedItems.Count;
+    string Money(int amount) => amount.ToString("N0");
+}
+
+<section class="project-package-page" aria-label="專案套餐設定" data-project-package-page>
+    <div class="project-package-shell">
+        <header class="project-package-top">
+            <div class="project-package-heading">
+                <nav class="project-package-breadcrumb" aria-label="目前位置">
+                    <span>首頁</span>
+                    <span>系統設定</span>
+                    <strong>專案套餐設定</strong>
+                </nav>
+                <h1>專案套餐設定</h1>
+                <p>設定專案的檢查項目組合與金額，並建立專案套餐。</p>
+            </div>
+
+            <aside class="project-info-card" aria-label="專案資訊">
+                <h2>專案資訊</h2>
+                <dl>
+                    <div>
+                        <dt><span class="project-info-icon home" aria-hidden="true"></span>專案編號</dt>
+                        <dd>@Model.Project.Code</dd>
+                    </div>
+                    <div>
+                        <dt><span class="project-info-icon calendar" aria-hidden="true"></span>建立日期</dt>
+                        <dd>@Model.Project.CreatedAt</dd>
+                    </div>
+                    <div>
+                        <dt><span class="project-info-icon user" aria-hidden="true"></span>建立者</dt>
+                        <dd>@Model.Project.Owner</dd>
+                    </div>
+                    <div>
+                        <dt><span class="project-info-icon refresh" aria-hidden="true"></span>最後更新</dt>
+                        <dd>@Model.Project.UpdatedAt</dd>
+                    </div>
+                </dl>
+            </aside>
+
+            <div class="project-package-meta" aria-label="專案摘要">
+                <article>
+                    <span>專案編號</span>
+                    <strong>@Model.Project.Code</strong>
+                    <i class="project-info-dot" aria-hidden="true"></i>
+                </article>
+                <article>
+                    <span>套餐名稱</span>
+                    <strong>@Model.Project.Name</strong>
+                </article>
+                <article>
+                    <span>適用對象</span>
+                    <strong>@Model.Project.Target</strong>
+                    <button class="project-mini-edit" type="button" aria-label="編輯適用對象" title="編輯適用對象">
+                        <span class="customer-action-icon edit" aria-hidden="true"></span>
+                    </button>
+                </article>
+                <article>
+                    <span>類別</span>
+                    <strong class="project-tag">@Model.Project.Category</strong>
+                </article>
+                <article>
+                    <span>狀態</span>
+                    <strong class="project-status @Model.Project.StatusTone">@Model.Project.Status</strong>
+                </article>
+                <article>
+                    <span>檢查項目數</span>
+                    <strong data-selected-count>@Model.Project.ItemCount</strong>
+                </article>
+                <article class="project-package-price">
+                    <span>套餐售價</span>
+                    <strong>NT$ <span data-package-price>@Money(Model.Project.Price)</span></strong>
+                </article>
+            </div>
+        </header>
+
+        <div class="project-package-workspace">
+            <section class="package-picker-panel" aria-labelledby="package-picker-title">
+                <header class="package-panel-header">
+                    <div>
+                        <h2 id="package-picker-title">專案套餐設定</h2>
+                        <p>選擇檢查分類與項目</p>
+                    </div>
+                    <button class="package-text-button" type="button" data-clear-available>
+                        <span class="customer-action-icon close" aria-hidden="true"></span>
+                        <span>清除選擇</span>
+                    </button>
+                </header>
+
+                <div class="package-category-grid" aria-label="檢查分類">
+                    @foreach (var category in Model.Categories)
+                    {
+                        <button class="package-category @(category.Active ? "is-active" : "") @category.Tone" type="button" data-category-filter="@category.Key" aria-pressed="@(category.Active ? "true" : "false")">
+                            <span class="package-category-icon @category.Icon" aria-hidden="true"></span>
+                            <span>@category.Name</span>
+                        </button>
+                    }
+                </div>
+
+                <div class="package-search-row">
+                    <label class="package-search-field">
+                        <span class="customer-action-icon search" aria-hidden="true"></span>
+                        <input type="search" placeholder="搜尋項目名稱、分類或關鍵字..." aria-label="搜尋項目名稱、分類或關鍵字" data-package-search />
+                    </label>
+                    <button class="package-filter-button" type="button" aria-label="篩選" title="篩選">
+                        <span class="filter-mini-icon" aria-hidden="true"></span>
+                        <span>篩選</span>
+                    </button>
+                </div>
+
+                <div class="package-table-wrap picker">
+                    <table class="package-picker-table">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <input type="checkbox" aria-label="全選可加入項目" data-available-select-all />
+                                </th>
+                                <th>項目名稱</th>
+                                <th>分類</th>
+                                <th>價格(單價)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.AvailableItems)
+                            {
+                                var keywords = $"{item.Name} {item.Category} {item.CategoryKey} {item.Price}";
+                                <tr data-available-item data-category="@item.CategoryKey" data-name="@item.Name" data-category-name="@item.Category" data-price="@item.Price" data-icon="@item.Icon" data-keywords="@keywords">
+                                    <td>
+                                        <input type="checkbox" aria-label="選取 @item.Name" checked="@item.Selected" data-available-checkbox />
+                                    </td>
+                                    <td>
+                                        <span class="package-item-name">
+                                            <span class="package-item-icon @item.Icon" aria-hidden="true"></span>
+                                            <span>@item.Name</span>
+                                        </span>
+                                    </td>
+                                    <td>@item.Category</td>
+                                    <td>NT$ <strong>@Money(item.Price)</strong></td>
+                                </tr>
+                            }
+                            <tr class="package-empty-row" data-available-empty hidden>
+                                <td colspan="4">查無符合條件的檢查項目</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <footer class="package-panel-footer">
+                    <span data-available-summary>顯示 1-@availableVisibleCount 筆，共 120 筆</span>
+                    <nav class="package-pagination" aria-label="可加入項目分頁">
+                        <button type="button" aria-label="上一頁">‹</button>
+                        <button class="active" type="button" aria-current="page">1</button>
+                        <button type="button">2</button>
+                        <button type="button">3</button>
+                        <span>...</span>
+                        <button type="button">10</button>
+                        <button type="button" aria-label="下一頁">›</button>
+                    </nav>
+                </footer>
+            </section>
+
+            <div class="package-transfer-controls" aria-label="套餐內容操作">
+                <button class="package-transfer-button primary" type="button" data-add-selected>
+                    <span class="package-transfer-icon arrow-right" aria-hidden="true"></span>
+                    <span>加入套餐</span>
+                </button>
+                <button class="package-transfer-button" type="button" data-remove-selected>
+                    <span class="package-transfer-icon arrow-left" aria-hidden="true"></span>
+                    <span>移除</span>
+                </button>
+                <button class="package-transfer-button" type="button" data-move-up>
+                    <span class="package-transfer-icon arrow-up" aria-hidden="true"></span>
+                    <span>上移</span>
+                </button>
+                <button class="package-transfer-button" type="button" data-move-down>
+                    <span class="package-transfer-icon arrow-down" aria-hidden="true"></span>
+                    <span>下移</span>
+                </button>
+            </div>
+
+            <section class="package-content-panel" aria-labelledby="package-content-title">
+                <header class="package-panel-header content">
+                    <h2 id="package-content-title">專案套餐內容</h2>
+                    <div class="package-panel-actions">
+                        <button class="package-outline-button" type="button" data-reset-selected>
+                            <span class="customer-action-icon import" aria-hidden="true"></span>
+                            <span>匯入套餐</span>
+                        </button>
+                        <button class="package-outline-button danger" type="button" data-clear-selected>
+                            <span class="customer-action-icon trash" aria-hidden="true"></span>
+                            <span>清空全部</span>
+                        </button>
+                    </div>
+                </header>
+
+                <div class="package-table-wrap content">
+                    <table class="package-content-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>順序</th>
+                                <th>項目名稱</th>
+                                <th>分類</th>
+                                <th>價格(單價)</th>
+                                <th>必選項目</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody data-selected-body>
+                            @foreach (var item in Model.SelectedItems)
+                            {
+                                <tr data-selected-item data-name="@item.Name" data-category="@item.CategoryKey" data-category-name="@item.Category" data-price="@item.Price" data-icon="@item.Icon">
+                                    <td><span class="package-drag-handle" aria-hidden="true"></span></td>
+                                    <td data-sort-cell>@item.SortOrder</td>
+                                    <td>
+                                        <span class="package-item-name strong">
+                                            <span class="package-item-icon @item.Icon" aria-hidden="true"></span>
+                                            <span>@item.Name</span>
+                                        </span>
+                                    </td>
+                                    <td>@item.Category</td>
+                                    <td>NT$ <strong>@Money(item.Price)</strong></td>
+                                    <td>
+                                        <input type="checkbox" checked="@item.Required" aria-label="@item.Name 必選項目" data-required-checkbox />
+                                    </td>
+                                    <td><span class="package-status-pill @item.StatusTone">@item.Status</span></td>
+                                    <td>
+                                        <span class="package-row-actions">
+                                            <button type="button" aria-label="編輯 @item.Name" title="編輯">
+                                                <span class="customer-action-icon edit" aria-hidden="true"></span>
+                                            </button>
+                                            <button class="danger" type="button" aria-label="刪除 @item.Name" title="刪除" data-remove-row>
+                                                <span class="customer-action-icon trash" aria-hidden="true"></span>
+                                            </button>
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                            <tr class="package-empty-row" data-selected-empty hidden>
+                                <td colspan="8">尚未加入套餐內容</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <footer class="package-total-panel" aria-label="套餐金額摘要">
+                    <article>
+                        <span>項目小計</span>
+                        <strong>NT$ <span data-subtotal>@Money(selectedSubtotal)</span></strong>
+                    </article>
+                    <article>
+                        <span>折扣設定</span>
+                        <strong>- NT$ <span data-discount>@Money(Model.DiscountAmount)</span> <small>(@Model.DiscountRate.ToString("0.##")%)</small></strong>
+                        <button class="project-mini-edit" type="button" aria-label="編輯折扣設定" title="編輯折扣設定">
+                            <span class="customer-action-icon edit" aria-hidden="true"></span>
+                        </button>
+                    </article>
+                    <article class="total-price">
+                        <span>套餐售價</span>
+                        <strong>NT$ <span data-final-price>@Money(finalPrice)</span></strong>
+                    </article>
+                    <article>
+                        <span>成本估算 <i class="project-info-dot" aria-hidden="true"></i></span>
+                        <strong>NT$ <span data-cost-estimate>@Money(Model.CostEstimate)</span></strong>
+                    </article>
+                </footer>
+            </section>
+        </div>
+
+        <footer class="project-package-footer">
+            <button class="ghost-button" type="button">取消</button>
+            <button class="ghost-button" type="button">
+                <span class="project-save-icon" aria-hidden="true"></span>
+                <span>儲存草稿</span>
+            </button>
+            <button class="primary-button" type="button">
+                <span class="project-save-icon" aria-hidden="true"></span>
+                <span>儲存並發佈</span>
+            </button>
+        </footer>
+    </div>
+</section>
+
+<script>
+    (function () {
+        const page = document.querySelector("[data-project-package-page]");
+
+        if (!page) {
+            return;
+        }
+
+        const availableRows = Array.from(page.querySelectorAll("[data-available-item]"));
+        const selectedBody = page.querySelector("[data-selected-body]");
+        const availableSelectAll = page.querySelector("[data-available-select-all]");
+        const availableSearch = page.querySelector("[data-package-search]");
+        const categoryButtons = Array.from(page.querySelectorAll("[data-category-filter]"));
+        const initialSelectedRows = selectedBody ? selectedBody.innerHTML : "";
+        const discountAmount = Number.parseInt(page.querySelector("[data-discount]")?.textContent.replace(/,/g, "") || "0", 10);
+        let activeCategory = "";
+        let activeSelectedRow = null;
+
+        function formatMoney(value) {
+            return Math.max(0, value).toLocaleString("en-US");
+        }
+
+        function normalize(value) {
+            return (value || "").trim().toUpperCase();
+        }
+
+        function escapeHtml(value) {
+            return (value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function safeClassName(value) {
+            return (value || "stethoscope").replace(/[^a-z0-9_-]/gi, "") || "stethoscope";
+        }
+
+        function selectedRows() {
+            return Array.from(page.querySelectorAll("[data-selected-item]"));
+        }
+
+        function syncSortOrder() {
+            selectedRows().forEach((row, index) => {
+                const sortCell = row.querySelector("[data-sort-cell]");
+
+                if (sortCell) {
+                    sortCell.textContent = String(index + 1);
+                }
+            });
+        }
+
+        function updateTotals() {
+            const rows = selectedRows();
+            const subtotal = rows.reduce((sum, row) => sum + Number.parseInt(row.dataset.price || "0", 10), 0);
+            const finalPrice = Math.max(0, subtotal - (Number.isFinite(discountAmount) ? discountAmount : 0));
+            const emptyRow = page.querySelector("[data-selected-empty]");
+
+            page.querySelector("[data-subtotal]").textContent = formatMoney(subtotal);
+            page.querySelector("[data-final-price]").textContent = formatMoney(finalPrice);
+            page.querySelector("[data-cost-estimate]").textContent = formatMoney(subtotal);
+            page.querySelector("[data-package-price]").textContent = formatMoney(finalPrice);
+            page.querySelector("[data-selected-count]").textContent = String(rows.length);
+
+            if (emptyRow) {
+                emptyRow.hidden = rows.length > 0;
+            }
+
+            syncSortOrder();
+        }
+
+        function updateAvailableSummary() {
+            const visibleRows = availableRows.filter((row) => !row.hidden);
+            const summary = page.querySelector("[data-available-summary]");
+            const emptyRow = page.querySelector("[data-available-empty]");
+
+            if (summary) {
+                summary.textContent = `顯示 ${visibleRows.length ? 1 : 0}-${Math.min(12, visibleRows.length)} 筆，共 120 筆`;
+            }
+
+            if (emptyRow) {
+                emptyRow.hidden = visibleRows.length > 0;
+            }
+        }
+
+        function filterAvailable() {
+            const keyword = normalize(availableSearch?.value);
+
+            availableRows.forEach((row) => {
+                const categoryMatch = !activeCategory || row.dataset.category === activeCategory;
+                const searchableText = [
+                    row.dataset.name,
+                    row.dataset.categoryName,
+                    row.dataset.category,
+                    row.dataset.keywords
+                ].map(normalize).join(" ");
+                const keywordMatch = !keyword || searchableText.includes(keyword);
+
+                row.hidden = !(categoryMatch && keywordMatch);
+            });
+
+            if (availableSelectAll) {
+                availableSelectAll.checked = false;
+            }
+
+            updateAvailableSummary();
+        }
+
+        function makeSelectedRow(sourceRow) {
+            const name = sourceRow.dataset.name || "";
+            const categoryName = sourceRow.dataset.categoryName || "";
+            const category = sourceRow.dataset.category || "";
+            const price = Number.parseInt(sourceRow.dataset.price || "0", 10);
+            const icon = safeClassName(sourceRow.dataset.icon || "stethoscope");
+            const safeName = escapeHtml(name);
+            const safeCategoryName = escapeHtml(categoryName);
+            const row = document.createElement("tr");
+
+            row.setAttribute("data-selected-item", "");
+            row.dataset.name = name;
+            row.dataset.categoryName = categoryName;
+            row.dataset.category = category;
+            row.dataset.price = String(price);
+            row.dataset.icon = icon;
+            row.innerHTML = [
+                '<td><span class="package-drag-handle" aria-hidden="true"></span></td>',
+                '<td data-sort-cell></td>',
+                '<td><span class="package-item-name strong"><span class="package-item-icon ' + icon + '" aria-hidden="true"></span><span>' + safeName + '</span></span></td>',
+                '<td>' + safeCategoryName + '</td>',
+                '<td>NT$ <strong>' + formatMoney(price) + '</strong></td>',
+                '<td><input type="checkbox" checked aria-label="' + safeName + ' 必選項目" data-required-checkbox /></td>',
+                '<td><span class="package-status-pill enabled">啟用</span></td>',
+                '<td><span class="package-row-actions"><button type="button" aria-label="編輯 ' + safeName + '" title="編輯"><span class="customer-action-icon edit" aria-hidden="true"></span></button><button class="danger" type="button" aria-label="刪除 ' + safeName + '" title="刪除" data-remove-row><span class="customer-action-icon trash" aria-hidden="true"></span></button></span></td>'
+            ].join("");
+
+            return row;
+        }
+
+        function itemAlreadySelected(name) {
+            return selectedRows().some((row) => row.dataset.name === name);
+        }
+
+        function addCheckedItems() {
+            if (!selectedBody) {
+                return;
+            }
+
+            const checkedRows = availableRows.filter((row) => row.querySelector("[data-available-checkbox]")?.checked);
+            const emptyRow = page.querySelector("[data-selected-empty]");
+
+            checkedRows.forEach((row) => {
+                const name = row.dataset.name || "";
+
+                if (!name || itemAlreadySelected(name)) {
+                    return;
+                }
+
+                selectedBody.insertBefore(makeSelectedRow(row), emptyRow || null);
+            });
+
+            updateTotals();
+        }
+
+        function setActiveSelectedRow(row) {
+            selectedRows().forEach((candidate) => candidate.classList.toggle("is-selected", candidate === row));
+            activeSelectedRow = row;
+        }
+
+        function removeActiveSelectedRows() {
+            const rows = selectedRows().filter((row) => row.classList.contains("is-selected"));
+
+            rows.forEach((row) => row.remove());
+            activeSelectedRow = null;
+            updateTotals();
+        }
+
+        function moveActiveRow(direction) {
+            if (!activeSelectedRow) {
+                return;
+            }
+
+            if (direction < 0 && activeSelectedRow.previousElementSibling?.matches("[data-selected-item]")) {
+                selectedBody.insertBefore(activeSelectedRow, activeSelectedRow.previousElementSibling);
+            }
+
+            if (direction > 0 && activeSelectedRow.nextElementSibling?.matches("[data-selected-item]")) {
+                selectedBody.insertBefore(activeSelectedRow.nextElementSibling, activeSelectedRow);
+            }
+
+            syncSortOrder();
+        }
+
+        categoryButtons.forEach((button) => {
+            button.addEventListener("click", function () {
+                activeCategory = button.dataset.categoryFilter || "";
+
+                categoryButtons.forEach((candidate) => {
+                    const active = candidate === button;
+                    candidate.classList.toggle("is-active", active);
+                    candidate.setAttribute("aria-pressed", String(active));
+                });
+
+                filterAvailable();
+            });
+        });
+
+        availableSearch?.addEventListener("input", filterAvailable);
+        availableSelectAll?.addEventListener("change", function () {
+            availableRows.filter((row) => !row.hidden).forEach((row) => {
+                const checkbox = row.querySelector("[data-available-checkbox]");
+
+                if (checkbox) {
+                    checkbox.checked = availableSelectAll.checked;
+                }
+            });
+        });
+
+        page.querySelector("[data-clear-available]")?.addEventListener("click", function () {
+            page.querySelectorAll("[data-available-checkbox]").forEach((checkbox) => {
+                checkbox.checked = false;
+            });
+
+            if (availableSelectAll) {
+                availableSelectAll.checked = false;
+            }
+        });
+
+        page.querySelector("[data-add-selected]")?.addEventListener("click", addCheckedItems);
+        page.querySelector("[data-remove-selected]")?.addEventListener("click", removeActiveSelectedRows);
+        page.querySelector("[data-move-up]")?.addEventListener("click", function () {
+            moveActiveRow(-1);
+        });
+        page.querySelector("[data-move-down]")?.addEventListener("click", function () {
+            moveActiveRow(1);
+        });
+        page.querySelector("[data-clear-selected]")?.addEventListener("click", function () {
+            selectedRows().forEach((row) => row.remove());
+            activeSelectedRow = null;
+            updateTotals();
+        });
+        page.querySelector("[data-reset-selected]")?.addEventListener("click", function () {
+            if (!selectedBody) {
+                return;
+            }
+
+            selectedBody.innerHTML = initialSelectedRows;
+            activeSelectedRow = null;
+            updateTotals();
+        });
+
+        page.addEventListener("click", function (event) {
+            if (!(event.target instanceof Element)) {
+                return;
+            }
+
+            const removeButton = event.target.closest("[data-remove-row]");
+            const selectedRow = event.target.closest("[data-selected-item]");
+
+            if (removeButton && selectedRow) {
+                selectedRow.remove();
+                activeSelectedRow = null;
+                updateTotals();
+                return;
+            }
+
+            if (selectedRow) {
+                setActiveSelectedRow(selectedRow);
+            }
+        });
+
+        filterAvailable();
+        updateTotals();
+    })();
+</script>
